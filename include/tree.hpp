@@ -7,6 +7,9 @@ class Branch {
     std::vector<Vector2> verts;
 
     Branch(std::vector<Vector2> verts);
+
+    Vector2 forward() const;
+    Vector2 front() const;
 };
 
 class Tree {

@@ -42,12 +42,20 @@ int main() {
 
 	// Try using randomly generated tendrils too
 	Tree tree2({}, tree_shader);
-	const auto& tendrils = Tree::random_tendril_config(69, 500, 50, 1.2, -99999);
+	int seed = 69;
+	const auto& tendrils = Tree::random_tendril_config(seed, 500, 50, 1.2, -9999);
 	tree2.tendrils.push_back(tendrils);
 	tree2.make_branches_tendrils();
 	tree2.init_texture();
 
 	while (!WindowShouldClose()) {
+		if (IsKeyPressed(KEY_F)) {
+			tree2.tendrils.clear();
+			const auto& tendrils = Tree::random_tendril_config(seed++, 500, 50, 1.2, -9999);
+			tree2.tendrils.push_back(tendrils);
+			tree2.make_branches_tendrils();
+			tree2.init_texture();
+		}
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 		DrawText(petra.say_hello().c_str(), 200, 20, 20, GREEN);	
