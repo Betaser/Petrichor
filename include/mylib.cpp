@@ -41,8 +41,21 @@ Vector2 operator / (const Vector2& v, const float& f) {
     return Vector2 { v.x / f, v.y / f };
 }
 
-float v_length(const Vector2& v) {
+float my_angle(const Vector2& v) {
+    const float ang = atan2f(v.y, v.x);
+    if (ang < 0) {
+        return ang + 3.14159265 * 2.0;
+    }
+    return ang;
+}
+
+float my_length(const Vector2& v) {
     return sqrtf((v.x * v.x) + (v.y * v.y));
+}
+
+Vector2 my_normalize(const Vector2& v) {
+    const float length = my_length(v);
+    return Vector2 { v.x / length, v.y / length };
 }
 
 Vector2 perp_rhr(const Vector2& v) {

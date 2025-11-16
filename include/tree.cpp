@@ -3,6 +3,19 @@
 #include <random>
 #include "tree.hpp"
 
+Branch::Branch(std::vector<Vector2> verts) {
+    this->verts = verts;
+}
+
+Vector2 Branch::front() const {
+    return (verts[0] + verts[1]) / 2;
+}
+
+Vector2 Branch::forward() const { 
+    Vector2 back = (verts[2] + verts[3]) / 2;
+    return front() - back;
+}
+
 Tree::Tree(std::vector<Branch> branches, Shader shader) {
     this->branches = branches;
     for (int j = 0; j < (int) branches.size(); j++) {
@@ -87,10 +100,6 @@ void Tree::render() {
     EndShaderMode();
 }
 
-Branch::Branch(std::vector<Vector2> verts) {
-    this->verts = verts;
-}
-
 std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float total_length, float start_thickness, float start_rotation, float split_chance) {
     std::mt19937 int_gen(seed);
     std::uniform_real_distribution<> uniform_gen(0.0, 1.0);
@@ -107,10 +116,20 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float tot
         return fmin(total_length - length_used, rand_length);
     };
 
-    const auto& angle_calc = [&length_used, &total_length, &seed_rand](std::vector<Branch> subtendril) -> float {
-        // for now just vary it with less and less based on length_used
-        float end_norm = 1.0 - length_used / total_length;
-        float radian_offset = end_norm * (seed_rand(1.0, 3.0) - 2.0);
+    const auto& angle_calc = [&start_rotation, &length_used, &total_length, &seed_rand](std::vector<Branch> subtendril) -> float {
+        // We gotta make sure the tree angles its branches kinda in a straight line.
+        float sign = seed_rand(0.0, 1.0) < 0.5 ? -1 : 1;
+        float end_norm = 1.0 - length_used / total_length * 0.3;
+        float radian_offset = end_norm * seed_rand(0.30, 0.9) * sign;
+
+        if (subtendril.size() > 1) {
+            float overall_rotation = my_angle(subtendril.back().front() - subtendril[0].front()) + radian_offset;
+            if (abs(overall_rotation - start_rotation) > 2.5) {
+                // Then make sure the next radian_offset is in the right direction
+                sign = overall_rotation > start_rotation ? 1 : -1;
+                radian_offset = seed_rand(0.50, 1.7) * sign;
+            }
+        }
         return radian_offset;
     };
 
@@ -118,8 +137,8 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float tot
         // for now just randomize it but taper to MIN based on length_used
         float end_norm = 1.0 - length_used / total_length;
         const auto& last_branch = subtendril.back();
-        float last_thickness = v_length(last_branch.verts[0] - last_branch.verts[1]);
-        return end_norm * seed_rand(0.5 * last_thickness, 2.5 * last_thickness);
+        float last_thickness = my_length(last_branch.verts[0] - last_branch.verts[1]);
+        return end_norm * seed_rand(0.5 * last_thickness, 1.2 * last_thickness);
     };
 
     const auto& make_branch = [&start_thickness](Vector2 start, float rotation, float length, float front_thickness, float back_thickness) -> Branch {
@@ -142,18 +161,20 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float tot
     std::vector<Branch> tendril { start_branch };
 
     while (length_used / total_length < 0.99) {
+        const auto& branch = tendril.back();
+        Vector2 forward = branch.forward();
+        float angle = my_angle(forward);
+
         float length = length_calc(tendril);
-        float angle = angle_calc(tendril);
+        float new_angle = angle_calc(tendril) + angle;
         float thickness = thickness_calc(tendril);
 
         length_used += length;
 
-        const auto& branch = tendril.back();
-        Vector2 front = (branch.verts[0] + branch.verts[1]) / 2;
         Vector2 back = (branch.verts[2] + branch.verts[3]) / 2;
-        Vector2 start = (front - back) * 0.95 + back;
-        float branch_thickness = v_length(branch.verts[0] - branch.verts[1]);
-        auto new_branch = make_branch(start, angle, length, thickness, branch_thickness);
+        Vector2 start = forward * 0.95 + back;
+        float branch_thickness = my_length(branch.verts[0] - branch.verts[1]);
+        auto new_branch = make_branch(start, new_angle, length, thickness, branch_thickness);
 
         tendril.push_back(new_branch);
     }
