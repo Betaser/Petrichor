@@ -42,7 +42,7 @@ int main() {
 
 	// Try using randomly generated tendrils too
 	Tree tree2({}, tree_shader);
-	const auto& tendrils = Tree::random_tendril_config(69, 500, 50, 1.2, -9999);
+	const auto& tendrils = Tree::random_tendril_config(69, 500, 50, 1.2, -99999);
 	tree2.tendrils.push_back(tendrils);
 	tree2.make_branches_tendrils();
 	tree2.init_texture();
