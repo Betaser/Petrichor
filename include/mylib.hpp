@@ -1,3 +1,4 @@
+#include <string>
 #include "raylib.h"
 
 struct Vector2I {
@@ -13,5 +14,10 @@ Vector2 operator + (const Vector2& a, const Vector2& b);
 Vector2 operator * (const Vector2& v, const float& f);
 Vector2 operator - (const Vector2& a, const Vector2& b);
 Vector2 operator / (const Vector2& a, const Vector2& b);
+Vector2 operator / (const Vector2& v, const float& f);
+
+float v_length(const Vector2& v);
+Vector2 perp_rhr(const Vector2& v);
+Vector2 unit_vector(const float& f);
 
 std::string to_str(const Vector2& v, const int& decimal_pts);

@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <math.h>
 #include "mylib.hpp"
 
 Vector2I::Vector2I(Vector2 v) {
@@ -34,6 +35,24 @@ Vector2 operator - (const Vector2& a, const Vector2& b) {
 
 Vector2 operator / (const Vector2& a, const Vector2& b) {
     return Vector2 { a.x / b.x, a.y / b.y };
+}
+
+Vector2 operator / (const Vector2& v, const float& f) {
+    return Vector2 { v.x / f, v.y / f };
+}
+
+float v_length(const Vector2& v) {
+    return sqrtf((v.x * v.x) + (v.y * v.y));
+}
+
+Vector2 perp_rhr(const Vector2& v) {
+    const float vx = -v.y;
+    const float vy = v.x;
+    return Vector2 { vx, vy };
+}
+
+Vector2 unit_vector(const float& f) {
+    return Vector2 { cosf(f), sinf(f) };
 }
 
 std::string to_str(const Vector2& v, const int& decimal_pts) {

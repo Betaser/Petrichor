@@ -16,7 +16,7 @@ int main() {
 	SetTargetFPS(60);	
 
 	Petra petra;	
-	std::string my_text = "my text worky";	
+
 	// shader setup
 	Shader tree_shader = LoadShader(0, TextFormat("tree_shader.fs", GLSL_VERSION));
 
@@ -37,15 +37,23 @@ int main() {
 			{-2, -2}
 		}),
 	}, tree_shader);
+
 	tree.init_texture();
+
+	// Try using randomly generated tendrils too
+	Tree tree2({}, tree_shader);
+	const auto& tendrils = Tree::random_tendril_config(69, 500, 50, 1.2, -9999);
+	tree2.tendrils.push_back(tendrils);
+	tree2.make_branches_tendrils();
+	tree2.init_texture();
 
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
-		DrawText(my_text.c_str(), 20, 20, 20, BLACK);	
 		DrawText(petra.say_hello().c_str(), 200, 20, 20, GREEN);	
 
 		tree.render();
+		tree2.render();
 
 		EndDrawing();
 	}	

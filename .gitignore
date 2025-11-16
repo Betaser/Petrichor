@@ -1,4 +1,6 @@
 raylib.h
+raymath.h
 app.exe
 /lib
 /raylib*
+/.vscode
