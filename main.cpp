@@ -16,7 +16,6 @@ int main() {
 	SetTargetFPS(60);	
 
 	Petra petra;	
-	std::string my_text = "my text worky";	
 	// shader setup
 	Shader tree_shader = LoadShader(0, TextFormat("tree_shader.fs", GLSL_VERSION));
 
@@ -42,7 +41,6 @@ int main() {
 	while (!WindowShouldClose()) {
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
-		DrawText(my_text.c_str(), 20, 20, 20, BLACK);	
 		DrawText(petra.say_hello().c_str(), 200, 20, 20, GREEN);	
 
 		tree.render();
