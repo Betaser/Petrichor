@@ -18,18 +18,24 @@ Vector2 Branch::forward() const {
 
 Tree::Tree(std::vector<Branch> branches, Shader shader) {
     this->branches = branches;
-    for (int j = 0; j < (int) branches.size(); j++) {
-        for (int i = 0; i < 4; i++) {
-            this->branches[j].verts[i] = branches[j].verts[i] * 30 + Vector2{400, 300};
-        }
-    }
     this->shader = shader;
 
     this->tendrils = {};
 }
 
+Tree::~Tree() {
+    unload_textures();
+}
+
+void Tree::unload_textures() {
+    UnloadTexture(blank_tex);
+    UnloadTexture(tree_tex);
+}
+
 // Will be out of date if branch verts are changed.
 void Tree::init_texture() {
+    unload_textures();
+
     // Bounding box it
     Vector2 small { 9999, 9999 };
     Vector2 big { -9999, -9999 };
@@ -44,13 +50,18 @@ void Tree::init_texture() {
     std::cout << "small " << small.x << ", " << small.y << "\n";
     std::cout << "big " << big.x << ", " << big.y << "\n";
 
-    Image blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
-    tex = LoadTextureFromImage(blank);
+    auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
+    blank_tex = LoadTextureFromImage(blank);
     texture_pos = Vector2I(small);
+
+    int loc = GetShaderLocation(shader, "tex");
+    tree_tex = LoadTexture("include/assets/tree_texture.png");
+    SetShaderValueTexture(shader, loc, tree_tex);
 }
 
-void Tree::make_branches_tendrils() {
-    branches.clear();
+std::vector<Branch> Tree::branches_from_tendrils(Tendrils tendrils) {
+    std::vector<Branch> branches;
+
     for (const auto& tendril : tendrils) {
         for (const auto& subtendril : tendril) {
             for (const auto& branch : subtendril) {
@@ -58,6 +69,8 @@ void Tree::make_branches_tendrils() {
             }
         }
     }
+
+    return branches;
 }
 
 void Tree::render() {
@@ -80,7 +93,7 @@ void Tree::render() {
         // Set the really big vertices array of the shader that doesn't exist yet
         for (int branch_i = 0; branch_i < 4; branch_i++) {
             auto pt = branch.verts[branch_i];
-            auto tex_size = Vector2I(tex.width, tex.height).to_vec2();
+            auto tex_size = Vector2I(blank_tex.width, blank_tex.height).to_vec2();
             Vector2 norm = (pt - texture_pos.to_vec2()) / tex_size;
             compressed_branches[branch_i][n_i] = norm;
             // std::cout << "pt " << to_str(pt, 4) << " norm " << to_str(norm, 4) << "\n";
@@ -96,7 +109,7 @@ void Tree::render() {
     SetShaderValueV(shader, GetShaderLocation(shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
 
     BeginShaderMode(shader);
-    DrawTexture(tex, texture_pos.x, texture_pos.y, WHITE);
+    DrawTexture(blank_tex, texture_pos.x, texture_pos.y, WHITE);
     EndShaderMode();
 }
 

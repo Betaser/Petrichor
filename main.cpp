@@ -18,50 +18,27 @@ int main() {
 	Petra petra;	
 
 	// shader setup
-	Shader tree_shader = LoadShader(0, TextFormat("tree_shader.fs", GLSL_VERSION));
-
-	Tree tree({
-		// Remember this will get flipped during rendering.
-		// tilted to the left trapezoid.
-		Branch(std::vector<Vector2>{
-			{-2.66, 1.98},
-			{-1, 2.85},
-			{2, 0},
-			{-2.03, -2.04}
-		}),
-		// rightside up trapezoid
-		Branch(std::vector<Vector2>{
-			{-1, 1.5},
-			{1, 1.5},
-			{2, -2},
-			{-2, -2}
-		}),
-	}, tree_shader);
-
-	tree.init_texture();
+	Shader tree_shader = LoadShader(0, TextFormat("include/tree_shader.fs", GLSL_VERSION));
 
 	// Try using randomly generated tendrils too
-	Tree tree2({}, tree_shader);
 	int seed = 69;
-	const auto& tendrils = Tree::random_tendril_config(seed, 500, 50, 1.2, -9999);
-	tree2.tendrils.push_back(tendrils);
-	tree2.make_branches_tendrils();
-	tree2.init_texture();
+	Tendrils tendrils = { Tree::random_tendril_config(seed++, 300, 50, 1.2, -9999) };
+	Tree tree(Tree::branches_from_tendrils(tendrils), tree_shader);
+	tree.tendrils = tendrils;
+	tree.init_texture();
 
 	while (!WindowShouldClose()) {
 		if (IsKeyPressed(KEY_F)) {
-			tree2.tendrils.clear();
-			const auto& tendrils = Tree::random_tendril_config(seed++, 500, 50, 1.2, -9999);
-			tree2.tendrils.push_back(tendrils);
-			tree2.make_branches_tendrils();
-			tree2.init_texture();
+			Tendrils tendrils = { Tree::random_tendril_config(seed++, 300, 50, 1.2, -9999) };
+			tree.branches = Tree::branches_from_tendrils(tendrils);
+			tree.tendrils = tendrils;
+			tree.init_texture();
 		}
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
 		DrawText(petra.say_hello().c_str(), 200, 20, 20, GREEN);	
 
 		tree.render();
-		tree2.render();
 
 		EndDrawing();
 	}	
