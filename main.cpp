@@ -32,13 +32,13 @@ int main() {
 	while (!WindowShouldClose()) {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			Main::clicks++;
-			Tendrils tendrils = { Tree::random_tendril_config(seed, 500, 30, 1.2, 0.2, start_location) };
+			Tendrils tendrils = { Tree::random_tendril_config(seed, 500, 20, 1.2, 0.1, start_location) };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();
 		}
 		if (IsKeyPressed(KEY_F)) {
-			Tendrils tendrils = { Tree::random_tendril_config(++seed, 500, 30, 1.2, 0.2, start_location) };
+			Tendrils tendrils = { Tree::random_tendril_config(++seed, 500, 20, 1.2, 0.1, start_location) };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();

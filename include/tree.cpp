@@ -145,7 +145,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float tot
 
     const auto& length_calc = [&total_length, &length_used, &seed_rand](std::vector<Branch> subtendril) -> float {
         // for now just go with it being independent of tendril.
-        float rand_length = seed_rand(total_length * 0.2, total_length * 0.3);
+        float rand_length = seed_rand(total_length * 0.04, total_length * 0.13);
         return fmin(total_length - length_used, rand_length);
     };
 
@@ -154,7 +154,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float tot
         if (subtendril.size() > 1) {
             float sign = seed_rand(0.0, 1.0) < 0.5 ? -1 : 1;
             float end_norm = 1.0 - length_used / total_length * 0.3;
-            float radian_offset = end_norm * seed_rand(0.30, 0.9) * sign;
+            float radian_offset = end_norm * seed_rand(0.2, 0.6) * sign;
 
             float overall_rotation = my_angle(subtendril.back().front() - subtendril[0].front()) + radian_offset;
             if (abs(overall_rotation - start_rotation) > 2.5) {
@@ -203,8 +203,8 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(int seed, float tot
         return make_branch(start, new_angle, length, new_thickness, thickness);
     };
 
-    // Why are you dictating the origin of things?
-    auto start_branch = make_branch(start_location, start_rotation, total_length * 0.5, start_thickness * 0.8, start_thickness);
+    // Starting length = ???
+    auto start_branch = make_branch(start_location, start_rotation, total_length * 0.2, start_thickness * 0.8, start_thickness);
 
     std::vector<std::vector<Branch>> tendrils;
     // In a for loop, allocate tendril vectors
