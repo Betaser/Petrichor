@@ -14,6 +14,8 @@ uniform vec2 pt3s[MAX];
 uniform vec2 pt4s[MAX];
 
 uniform sampler2D tex;
+uniform vec2 topLefts[MAX];
+uniform vec2 btmRights[MAX];
 
 uniform vec4 color;
 
@@ -66,7 +68,7 @@ void main() {
 
             vec2 xy = vec2(s0Dist / (s0Dist + s2Dist), s1Dist / (s1Dist + s3Dist));
 
-            vec4 brown = vec4(0.2 * float(i), 0.2 * float(i), 0.0, 1.0);
+            vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
             // finalColor = mix(color, brown, xy.x);
             // finalColor = mix(finalColor, vec4(1.0, 0.0, 0.0, 1.0), xy.y);
             ivec2 texelXy = ivec2(xy * textureSize(tex, 0));

@@ -1,5 +1,6 @@
 #include "tree.cpp"
 #include "petra.cpp"
+#include "main.hpp"
 #include "raylib.h"
 #include <string>
 
@@ -22,14 +23,22 @@ int main() {
 
 	// Try using randomly generated tendrils too
 	int seed = 69;
-	Tendrils tendrils = { Tree::random_tendril_config(seed++, 300, 50, 1.2, -9999) };
+	Vector2 start_location { 100, 100 };
+	Tendrils tendrils = { Tree::random_tendril_config(seed, 500, 30, 1.2, 0.2, start_location) };
 	Tree tree(Tree::branches_from_tendrils(tendrils), tree_shader);
 	tree.tendrils = tendrils;
 	tree.init_texture();
 
 	while (!WindowShouldClose()) {
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			Main::clicks++;
+			Tendrils tendrils = { Tree::random_tendril_config(seed, 500, 30, 1.2, 0.2, start_location) };
+			tree.branches = Tree::branches_from_tendrils(tendrils);
+			tree.tendrils = tendrils;
+			tree.init_texture();
+		}
 		if (IsKeyPressed(KEY_F)) {
-			Tendrils tendrils = { Tree::random_tendril_config(seed++, 300, 50, 1.2, -9999) };
+			Tendrils tendrils = { Tree::random_tendril_config(++seed, 500, 30, 1.2, 0.2, start_location) };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();

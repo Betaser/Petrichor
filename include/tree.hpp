@@ -11,8 +11,12 @@ class Branch {
 
     Branch(std::vector<Vector2> verts);
 
-    Vector2 forward() const;
-    Vector2 front() const;
+    const Vector2 forward() const;
+    const Vector2 front() const;
+    const Vector2 back() const;
+    const float front_thickness() const;
+    const float back_thickness() const;
+    const Branch clone() const;
 };
 
 class Tree {
@@ -24,7 +28,6 @@ class Tree {
     Vector2 compressed_branches[4][100];
 
     public:
-
     // Contains same branches as in tendrils
     std::vector<Branch> branches;
     Tendrils tendrils;
@@ -39,5 +42,5 @@ class Tree {
     static std::vector<Branch> branches_from_tendrils(Tendrils tendrils);
 
     // Does not figure out how we want to render it.
-    static std::vector<std::vector<Branch>> random_tendril_config(int seed, float total_length, float start_thickness, float start_rotation, float split_chance);
+    static std::vector<std::vector<Branch>> random_tendril_config(int seed, float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS);
 };

@@ -33,6 +33,10 @@ Vector2 operator - (const Vector2& a, const Vector2& b) {
     return Vector2 { a.x - b.x, a.y - b.y };
 }
 
+Vector2 operator - (const Vector2& v) {
+    return Vector2 { -v.x, -v.y };
+}
+
 Vector2 operator / (const Vector2& a, const Vector2& b) {
     return Vector2 { a.x / b.x, a.y / b.y };
 }
@@ -41,10 +45,18 @@ Vector2 operator / (const Vector2& v, const float& f) {
     return Vector2 { v.x / f, v.y / f };
 }
 
+Vector2 my_rotate(const Vector2& origin, const Vector2& pt, const float& amt) {
+    const Vector2 out = pt - origin;
+    return Vector2 { 
+        out.x * cos(amt) - out.y * sin(amt),
+        out.x * sin(amt) + out.y * cos(amt)
+    } + origin;
+}
+
 float my_angle(const Vector2& v) {
     const float ang = atan2f(v.y, v.x);
     if (ang < 0) {
-        return ang + 3.14159265 * 2.0;
+        return ang + PI * 2.0;
     }
     return ang;
 }

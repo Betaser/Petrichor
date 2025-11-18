@@ -15,6 +15,8 @@ Vector2 operator * (const Vector2& v, const float& f);
 Vector2 operator - (const Vector2& a, const Vector2& b);
 Vector2 operator / (const Vector2& a, const Vector2& b);
 Vector2 operator / (const Vector2& v, const float& f);
+Vector2 operator - (const Vector2& v);
+Vector2 my_rotate(const Vector2& origin, const Vector2& pt, const float& amt);
 
 float my_angle(const Vector2& v);
 float my_length(const Vector2& v);
