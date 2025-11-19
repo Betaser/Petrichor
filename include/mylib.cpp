@@ -17,6 +17,21 @@ Vector2I::Vector2I() {
     this->y = 0;
 }
 
+Rand::Rand(int seed) {
+    dist = std::uniform_real_distribution<>(0, 1);
+    set_seed(seed);
+}
+
+void Rand::set_seed(int seed) {
+    this->seed = seed;
+    int_gen = std::mt19937(seed);
+}
+
+const float Rand::gen(float a, float b) {
+    const float norm = dist(int_gen);
+    return norm * (b - a) + a;
+}
+
 const Vector2 Vector2I::to_vec2() {
     return Vector2 { (float) x, (float) y };
 }
@@ -59,6 +74,22 @@ float my_angle(const Vector2& v) {
         return ang + PI * 2.0;
     }
     return ang;
+}
+
+float dot(const Vector2& a, const Vector2& b) {
+    return a.x * b.x + a.y * b.y;
+}
+
+// Indicates direction to rotate towards, either -1 or 1
+float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
+    // Use cross product to figure out if we are on the left or right side
+    return ahead.x * mobile.y - ahead.y * mobile.x < 0 ? 1 : -1;
+}
+
+// Does not work past 180 degrees
+float my_angle_from(const Vector2& a, const Vector2& b) {
+    const float cos_theta = dot(a, b) / my_length(a) / my_length(b);
+    return acos(cos_theta);
 }
 
 float my_length(const Vector2& v) {

@@ -22,23 +22,26 @@ int main() {
 	Shader tree_shader = LoadShader(0, TextFormat("include/tree_shader.fs", GLSL_VERSION));
 
 	// Try using randomly generated tendrils too
-	int seed = 69;
 	Vector2 start_location { 100, 100 };
-	Tendrils tendrils = { Tree::random_tendril_config(seed, 500, 30, 1.2, 0.2, start_location) };
-	Tree tree(Tree::branches_from_tendrils(tendrils), tree_shader);
+
+	Rand rand(69);
+	Tree tree({}, tree_shader, rand);
+	Tendrils tendrils = { tree.random_tendril_config(500, 20, 1.2, 0.1, start_location) };
+	tree.branches = Tree::branches_from_tendrils(tendrils);
 	tree.tendrils = tendrils;
 	tree.init_texture();
 
 	while (!WindowShouldClose()) {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+			tree.rand.set_seed(++tree.rand.seed);
 			Main::clicks++;
-			Tendrils tendrils = { Tree::random_tendril_config(seed, 500, 20, 1.2, 0.1, start_location) };
+			Tendrils tendrils = { tree.random_tendril_config(500, 20, 1.2, 0.1, start_location) };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();
 		}
 		if (IsKeyPressed(KEY_F)) {
-			Tendrils tendrils = { Tree::random_tendril_config(++seed, 500, 20, 1.2, 0.1, start_location) };
+			Tendrils tendrils = { tree.random_tendril_config(500, 20, 1.2, 0.1, start_location) };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();
