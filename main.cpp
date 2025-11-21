@@ -27,7 +27,7 @@ int main() {
 	Rand rand(69);
 	Tree tree({}, tree_shader, rand);
 	const auto gen_tendrils = [&tree, &start_location]() {
-		return tree.random_tendril_config(400, 30, 1.2, 0.1, start_location);
+		return tree.random_tendril_config(400, 33, 1.2, 0.1, start_location);
 	};
 	Tendrils tendrils = { gen_tendrils() };
 	tree.branches = Tree::branches_from_tendrils(tendrils);

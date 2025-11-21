@@ -70,8 +70,8 @@ void main() {
 
             // Now scale x to the cylindrical curve that the branch segment has
             float pi = 3.1415926535;
-            // Below is very subtle, kinda can't see it actually
-            xy.x = (asin(2.0 * (xy.x - 0.5)) / pi) + 0.5;
+            // Below is very subtle
+            // xy.x = (asin(2.0 * (xy.x - 0.5)) / pi) + 0.5;
 
             // vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
             // finalColor = mix(color, brown, xy.x);
@@ -80,7 +80,6 @@ void main() {
             // finalColor = vec4(regionXy.x, regionXy.y, 0, 1);
 
             ivec2 texelXy = ivec2(regionXy * textureSize(tex, 0));
-            // ivec2 texelXy = ivec2(regionXy * textureSize(tex, 0));
             finalColor = texelFetch(tex, texelXy, 0);
             // finalColor = mix(finalColor, brown, xy.x);
             break;

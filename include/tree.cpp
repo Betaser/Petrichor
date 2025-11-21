@@ -124,15 +124,21 @@ void Tree::render() {
     Rand render_rand(rand.seed);
 
     for (const auto& tendril : tendrils) {
-        const float MAX_WIDTH = 200;
+        const float MAX_WIDTH = 800;
         const float MAX_HEIGHT = MAX_WIDTH;
-        const float branch_width = fmodf((tendril[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
+
+        float branch_width = fmodf((tendril[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
+        // But the texture is at this width, so branch_width should be a multiple of that
+        const float TEXTURE_WIDTH = tree_tex.width;
+        float nn_branch_width = int(branch_width * TEXTURE_WIDTH) / TEXTURE_WIDTH;
+        branch_width = nn_branch_width;
 
         for (const auto& subtendril : tendril) {
 
             // Start from the bottom of the texture, work your way up
             // x_small and x_big chosen from start_thickness, perhaps
             float left_bound = render_rand.gen(0, 1.0 - branch_width);
+            left_bound = int(left_bound * TEXTURE_WIDTH) / TEXTURE_WIDTH;
             float btm_height = 0;
 
             for (const auto& branch : subtendril) {
