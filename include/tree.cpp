@@ -123,22 +123,24 @@ void Tree::render() {
     // Given: branches is the flattened version of tendrils.
     Rand render_rand(rand.seed);
     for (const auto& tendril : tendrils) {
+        const float MAX_WIDTH = 500;
+        const float branch_width = fmodf((tendril[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
+        std::cout << "branch width " << branch_width << "\n";
         for (const auto& subtendril : tendril) {
 
             // Start from the bottom of the texture, work your way up
             // x_small and x_big chosen from start_thickness, perhaps
-            const float MAX_WIDTH = 100;
-            const float MAX_HEIGHT = 300;
-            const float branch_width = (subtendril[0].back_thickness() * 2) / MAX_WIDTH;
-
-            float left_bound = fmodf(render_rand.gen(0, 1.0 - branch_width), 1.0);
+            // const float MAX_HEIGHT = 300;
+            float left_bound = render_rand.gen(0, 1.0 - branch_width);
             float btm_height = 0;
 
             for (const auto& branch : subtendril) {
-                // Force height to be such that we get a square?
-                // const float width_over_height = (branch.back_thickness() * 2) / my_length(branch.forward());
-                // const float height = branch_width / width_over_height;
-                const float height = my_length(branch.forward()) / MAX_HEIGHT;
+                // smaller = less pixels
+                // Force height to be such that we get a square
+                const float height = fmodf(my_length(branch.forward()) / MAX_WIDTH, 1.0);
+                if (&branch == &(tendril[0][0])) {
+                    std::cout << "height " << height << "\n";
+                }
 
                 // Might be out of bounds of (1,1), in which case wrap it.
                 btm_lefts[branch_i] = Vector2 { left_bound, btm_height };
@@ -153,9 +155,7 @@ void Tree::render() {
     // texture regions
     int btm_left_locs = GetShaderLocation(shader, "btmLefts");
     int top_right_locs = GetShaderLocation(shader, "topRights");
-    for (int i = 0; i < 2; i++) {
-        std::cout << to_str(btm_lefts[i], 4) << " " << to_str(top_rights[i], 4) << "\n";
-    }
+    
     SetShaderValueV(shader, btm_left_locs, btm_lefts, SHADER_UNIFORM_VEC2, size);
     SetShaderValueV(shader, top_right_locs, top_rights, SHADER_UNIFORM_VEC2, size);
 

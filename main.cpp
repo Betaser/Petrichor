@@ -26,7 +26,10 @@ int main() {
 
 	Rand rand(69);
 	Tree tree({}, tree_shader, rand);
-	Tendrils tendrils = { tree.random_tendril_config(500, 20, 1.2, 0.1, start_location) };
+	const auto gen_tendrils = [&tree, &start_location]() {
+		return tree.random_tendril_config(400, 30, 1.2, 0.1, start_location);
+	};
+	Tendrils tendrils = { gen_tendrils() };
 	tree.branches = Tree::branches_from_tendrils(tendrils);
 	tree.tendrils = tendrils;
 	tree.init_texture();
@@ -35,13 +38,13 @@ int main() {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			tree.rand.set_seed(++tree.rand.seed);
 			Main::clicks++;
-			Tendrils tendrils = { tree.random_tendril_config(500, 20, 1.2, 0.1, start_location) };
+			Tendrils tendrils = { gen_tendrils() };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();
 		}
 		if (IsKeyPressed(KEY_F)) {
-			Tendrils tendrils = { tree.random_tendril_config(500, 20, 1.2, 0.1, start_location) };
+			Tendrils tendrils = { gen_tendrils() };
 			tree.branches = Tree::branches_from_tendrils(tendrils);
 			tree.tendrils = tendrils;
 			tree.init_texture();

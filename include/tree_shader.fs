@@ -66,9 +66,14 @@ void main() {
             arr[0] = pts[1]; arr[1] = pts[2];
             float s3Dist = distPtFromLine(fragTexCoord.xy, arr);
 
-            vec2 xy = vec2(s0Dist / (s0Dist + s2Dist), s1Dist / (s1Dist + s3Dist));
+            vec2 xy = vec2(s1Dist / (s1Dist + s3Dist), s0Dist / (s0Dist + s2Dist));
 
-            vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
+            // Now scale x to the cylindrical curve that the branch segment has
+            float pi = 3.1415926535;
+            // Below is very subtle, kinda can't see it actually
+            // xy.x = (asin(2.0 * (xy.x - 0.5)) / pi) + 0.5;
+
+            // vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
             // finalColor = mix(color, brown, xy.x);
             // finalColor = mix(finalColor, vec4(1.0, 0.0, 0.0, 1.0), xy.y);
             vec2 regionXy = (topRights[i] - btmLefts[i]) * xy + btmLefts[i];
