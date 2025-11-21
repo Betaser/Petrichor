@@ -41,3 +41,4 @@ Vector2 perp_rhr(const Vector2& v);
 Vector2 unit_vector(const float& f);
 
 std::string to_str(const Vector2& v, const int& decimal_pts);
+float snap(const float& f, const float& by);

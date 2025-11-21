@@ -116,3 +116,7 @@ std::string to_str(const Vector2& v, const int& decimal_pts) {
     sprintf(buf, "(%f, %f)", v.x, v.y);
     return std::string(buf);
 }
+
+float snap(const float& f, const float& by) {
+    return int(f * by) / by;
+}

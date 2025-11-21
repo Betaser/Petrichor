@@ -41,6 +41,7 @@ Tree::Tree(std::vector<Branch> branches, Shader shader, Rand& rand) : rand(rand)
     this->shader = shader;
 
     this->tendrils = {};
+	tree_tex = LoadTexture("include/assets/tree_texture.png");
 }
 
 Tree::~Tree() {
@@ -74,8 +75,8 @@ void Tree::init_texture() {
     blank_tex = LoadTextureFromImage(blank);
     texture_pos = Vector2I(small);
 
+	tree_tex = LoadTexture("include/assets/tree_texture.png");
     int loc = GetShaderLocation(shader, "tex");
-    tree_tex = LoadTexture("include/assets/tree_texture.png");
     SetShaderValueTexture(shader, loc, tree_tex);
 }
 
@@ -124,21 +125,13 @@ void Tree::render() {
     Rand render_rand(rand.seed);
 
     for (const auto& tendril : tendrils) {
-        const float MAX_WIDTH = 800;
-        const float MAX_HEIGHT = MAX_WIDTH;
-
-        float branch_width = fmodf((tendril[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
+        const float branch_width = fmodf((tendril[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
         // But the texture is at this width, so branch_width should be a multiple of that
-        const float TEXTURE_WIDTH = tree_tex.width;
-        float nn_branch_width = int(branch_width * TEXTURE_WIDTH) / TEXTURE_WIDTH;
-        branch_width = nn_branch_width;
 
         for (const auto& subtendril : tendril) {
-
             // Start from the bottom of the texture, work your way up
             // x_small and x_big chosen from start_thickness, perhaps
-            float left_bound = render_rand.gen(0, 1.0 - branch_width);
-            left_bound = int(left_bound * TEXTURE_WIDTH) / TEXTURE_WIDTH;
+            const float left_bound = snap(render_rand.gen(0, 1.0 - branch_width), tree_tex.width);
             float btm_height = 0;
 
             for (const auto& branch : subtendril) {
@@ -174,13 +167,15 @@ void Tree::render() {
 }
 
 std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5) {
+    start_thickness = snap(start_thickness, tree_tex.width / MAX_WIDTH);
     std::uniform_real_distribution<> uniform_gen(0.0, 1.0);
     float length_used = 0;
 
     const auto& length_calc = [this, &total_length, &length_used](std::vector<Branch> subtendril) -> float {
         // for now just go with it being independent of tendril.
         float rand_length = rand.gen(total_length * 0.04, total_length * 0.13);
-        return fmin(total_length - length_used, rand_length);
+        float ret = fmin(total_length - length_used, rand_length);
+        return snap(ret, tree_tex.width / MAX_WIDTH);
     };
 
     // Redo so that we follow a straight line given by another parameter; which will be determined by analyizing all tendrils and pathing towards a location that spreads out best.

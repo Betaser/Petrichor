@@ -70,7 +70,7 @@ void main() {
 
             // Now scale x to the cylindrical curve that the branch segment has
             float pi = 3.1415926535;
-            // Below is very subtle
+            // Below is almost too extreme
             // xy.x = (asin(2.0 * (xy.x - 0.5)) / pi) + 0.5;
 
             // vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);

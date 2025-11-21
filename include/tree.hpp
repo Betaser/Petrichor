@@ -25,6 +25,9 @@ class Branch {
 class Tree {
     private:
     static const int MAX = 100;
+    const float MAX_WIDTH = 300;
+    const float MAX_HEIGHT = MAX_WIDTH;
+
     Vector2I texture_pos;
     // Hold onto tree_tex just to unload it.
     Texture2D blank_tex, tree_tex;
