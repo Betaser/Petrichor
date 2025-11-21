@@ -122,25 +122,23 @@ void Tree::render() {
     int branch_i = 0;
     // Given: branches is the flattened version of tendrils.
     Rand render_rand(rand.seed);
+
     for (const auto& tendril : tendrils) {
-        const float MAX_WIDTH = 500;
+        const float MAX_WIDTH = 200;
+        const float MAX_HEIGHT = MAX_WIDTH;
         const float branch_width = fmodf((tendril[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
-        std::cout << "branch width " << branch_width << "\n";
+
         for (const auto& subtendril : tendril) {
 
             // Start from the bottom of the texture, work your way up
             // x_small and x_big chosen from start_thickness, perhaps
-            // const float MAX_HEIGHT = 300;
             float left_bound = render_rand.gen(0, 1.0 - branch_width);
             float btm_height = 0;
 
             for (const auto& branch : subtendril) {
                 // smaller = less pixels
                 // Force height to be such that we get a square
-                const float height = fmodf(my_length(branch.forward()) / MAX_WIDTH, 1.0);
-                if (&branch == &(tendril[0][0])) {
-                    std::cout << "height " << height << "\n";
-                }
+                const float height = fmodf(my_length(branch.forward()) / MAX_HEIGHT, 1.0);
 
                 // Might be out of bounds of (1,1), in which case wrap it.
                 btm_lefts[branch_i] = Vector2 { left_bound, btm_height };
