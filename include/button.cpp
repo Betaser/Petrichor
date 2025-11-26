@@ -23,6 +23,7 @@ void Button::take_input(Vector2 cursor) {
     bool new_hovered = horz && vert;
     if (new_hovered && !hovered) {
         // Save idle state, aka this state
+        free(idle_state);
         idle_state = new Button(pos, dim, text, on_hover);
         on_hover(*this);
     } else if (!new_hovered && hovered) {
