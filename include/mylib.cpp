@@ -111,12 +111,21 @@ Vector2 unit_vector(const float& f) {
     return Vector2 { cosf(f), sinf(f) };
 }
 
-std::string to_str(const Vector2& v, const int& decimal_pts) {
+const std::string to_str(const Vector2& v, const int& decimal_pts) {
     char buf[100];
     sprintf(buf, "(%f, %f)", v.x, v.y);
     return std::string(buf);
 }
 
-float snap(const float& f, const float& by) {
+const float snap(const float& f, const float& by) {
     return int(f * by) / by;
+}
+
+const Color lerp(const Color& a, const Color& b, const float& amt) {
+    return {
+        (unsigned char) ((float(b.r) - float(a.r)) * amt + a.r),
+        (unsigned char) ((float(b.g) - float(a.g)) * amt + a.g),
+        (unsigned char) ((float(b.b) - float(a.b)) * amt + a.b),
+        (unsigned char) ((float(b.a) - float(a.a)) * amt + a.a)
+    };
 }

@@ -21,6 +21,8 @@ uniform vec4 color;
 
 out vec4 finalColor;
 
+const float pi = 3.1415926535;
+
 vec2 perp(vec2 v) {
     float vx = v.x;
     v.x = v.y;
@@ -69,7 +71,6 @@ void main() {
             vec2 xy = vec2(s1Dist / (s1Dist + s3Dist), s0Dist / (s0Dist + s2Dist));
 
             // Now scale x to the cylindrical curve that the branch segment has
-            float pi = 3.1415926535;
             // Below is almost too extreme
             // xy.x = (asin(2.0 * (xy.x - 0.5)) / pi) + 0.5;
 

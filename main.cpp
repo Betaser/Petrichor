@@ -1,7 +1,9 @@
 #include "tree.cpp"
 #include "petra.cpp"
 #include "main.hpp"
+#include "button.cpp"
 #include "raylib.h"
+#include <sstream>
 #include <string>
 
 #if defined(PLATFORM_DESKTOP)
@@ -35,6 +37,17 @@ int main() {
 	tree.tendrils = tendrils;
 	tree.init_texture();
 
+	std::vector<Button> buttons = {
+		Button({ screenWidth - 180, 100 }, { 80, 80 }, "Show debug keybinds", 
+			[](Button& b) {
+				std::stringstream ss; ss
+				<< "Right click = toggle branch placement mode\n"
+				<< "A = rotate counterclockwise\n"
+				<< "D = rotate clockwise";
+				b.text = ss.str();
+			})
+	};
+
 	while (!WindowShouldClose()) {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			tree.rand.set_seed(++tree.rand.seed);
@@ -55,6 +68,12 @@ int main() {
 		DrawText(petra.say_hello().c_str(), 200, 20, 20, GREEN);	
 
 		tree.render();
+
+		const Vector2 mouse = GetMousePosition();
+		for (auto& button : buttons) {
+			button.take_input(mouse);
+			button.render();
+		}
 
 		EndDrawing();
 	}	
