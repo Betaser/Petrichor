@@ -38,7 +38,7 @@ int main() {
 	tree.init_texture();
 
 	std::vector<Button> buttons = {
-		Button({ screenWidth - 180, 100 }, { 80, 80 }, "Show debug keybinds", 
+		Button({ screenWidth - 190, 110 }, { 80, 80 }, "Show debug keybinds", 
 			[](Button& b) {
 				std::stringstream ss; ss
 				<< "Right click = toggle branch placement mode\n"
