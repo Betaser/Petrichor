@@ -1,3 +1,6 @@
+#ifndef TREE_H
+#define TREE_H
+
 #include "mylib.cpp"
 #include <array>
 #include <vector>
@@ -56,3 +59,5 @@ class Tree {
     // Does not figure out how we want to render it.
     std::vector<std::vector<Branch>> random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS);
 };
+
+#endif

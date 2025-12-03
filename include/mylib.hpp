@@ -1,8 +1,9 @@
-#include <string>
-#include "raylib.h"
-
 #ifndef MYLIB_H
 #define MYLIB_H
+
+#include <string>
+#include <random>
+#include "raylib.h"
 
 struct Vector2I {
     int x, y;
@@ -26,8 +27,6 @@ class Rand {
     void set_seed(int seed);
     const float gen(float a, float b);
 };
-
-#endif
 
 Vector2 operator + (const Vector2& a, const Vector2& b);
 Vector2 operator * (const Vector2& v, const float& f);
@@ -53,3 +52,5 @@ const std::string to_str(const Vector2& v, const int& decimal_pts);
 // Math, non vector
 const float snap(const float& f, const float& by);
 const Color lerp(const Color& a, const Color& b, const float& amt);
+
+#endif

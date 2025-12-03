@@ -284,7 +284,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 
         tendrils.push_back(curr_tendril);
 
-        for (int i = 0; i < (int) curr_tendril.size() - 2; i++) {
+        for (size_t i = 0; i < curr_tendril.size() - 2; i++) {
             const auto& branch = curr_tendril[i];
             splittable_branches.push_back(branch);
         }
