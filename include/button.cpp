@@ -1,6 +1,10 @@
+#include <iostream>
 #include "button.hpp"
 
 Button::Button(Vector2 pos, Vector2 dim, std::string text, std::function<void(Button&)> on_hover) {
+    idle_state = nullptr;
+    
+    std::cout << "created button\n";
     this->pos = pos;
     this->dim = dim;
     this->text = text;
@@ -13,6 +17,7 @@ Button::Button(Vector2 pos, Vector2 dim, std::string text, std::function<void(Bu
 }
 
 Button::~Button() {
+    std::cout << "deinit button\n";
     delete this->idle_state;
 }
 
@@ -23,6 +28,7 @@ void Button::take_input(Vector2 cursor) {
     bool new_hovered = horz && vert;
     if (new_hovered && !hovered) {
         // Save idle state, aka this state
+        std::cout << "free button\n";
         free(idle_state);
         idle_state = new Button(pos, dim, text, on_hover);
         on_hover(*this);
