@@ -32,10 +32,13 @@ int main() {
 		return tree.random_tendril_config(400, 20, 1.2, 0.1, start_location);
 	};
 
-	Tendrils tendrils = { gen_tendrils() };
-	tree.branches = Tree::branches_from_tendrils(tendrils);
-	tree.tendrils = tendrils;
-	tree.init_texture();
+	const auto set_tendrils = [&tree, &gen_tendrils]() {
+		Tendrils tendrils = { gen_tendrils() };
+		tree.branches = Tree::branches_from_tendrils(tendrils);
+		tree.tendrils = tendrils;
+		tree.init_texture();
+	};
+	set_tendrils();
 
 	std::vector<Button> buttons = {
 		Button({ screenWidth - 190, 110 }, { 80, 80 }, "Show debug keybinds", 
@@ -52,16 +55,10 @@ int main() {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			tree.rand.set_seed(++tree.rand.seed);
 			Main::clicks++;
-			Tendrils tendrils = { gen_tendrils() };
-			tree.branches = Tree::branches_from_tendrils(tendrils);
-			tree.tendrils = tendrils;
-			tree.init_texture();
+			set_tendrils();
 		}
 		if (IsKeyPressed(KEY_F)) {
-			Tendrils tendrils = { gen_tendrils() };
-			tree.branches = Tree::branches_from_tendrils(tendrils);
-			tree.tendrils = tendrils;
-			tree.init_texture();
+			set_tendrils();
 		}
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
