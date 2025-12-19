@@ -22,10 +22,10 @@ void LevelEditor::update_rotation(Game& game) {
 
     float rotation = floor(meta.rotation / (2.0 * PI / 30)) * (2.0 * PI / 30);
 
-    for (int i = 0; i < branches.size(); i++) {
+    for (size_t i = 0; i < branches.size(); i++) {
         auto& sel_verts = selected->branches[i].verts;
         const auto& verts = branches[i].verts;
-        for (int j = 0; j < verts.size(); j++) {
+        for (size_t j = 0; j < verts.size(); j++) {
             Vector2 rotated = verts[j];
             sel_verts[j] = my_rotate(origin, rotated, rotation);
         }
@@ -39,9 +39,9 @@ void LevelEditor::update(Game& game) {
     auto& selected = game.trees[0];
     float rotation_input = 0;
     if (IsKeyDown(KEY_A))
-        rotation_input = -0.05;
+        rotation_input = 0.05;
     if (IsKeyDown(KEY_D))
-        rotation_input = 0.05; 
+        rotation_input = -0.05; 
     auto& meta = tree_metadatas[selected->id];
     meta.rotation = meta.rotation + rotation_input;
     if (rotation_input != 0)
@@ -57,7 +57,15 @@ void LevelEditor::initialize_ui() {
         { 80, 80 }, 
         "Show debug keybinds",
         [](Button& b) {
-            auto level_editor = static_cast<LevelEditor*>(b.owner);
+            // Accessing level_editor at runtime incorrectly will be null
+            auto level_editor = dynamic_cast<LevelEditor*>(b.owner);
+            if (level_editor == nullptr) {
+                std::cout << "success\n";
+            }
+            // This will be warned against
+            switch (b.btn_owner.type) {
+                case ButtonOwner::LEVEL_EDITOR: std::cout << "forgot to cover cases\n";
+            }
             std::stringstream ss; ss
             << "Right click = toggle branch placement mode\n"
             << "G = guidelines (editor add ons that are saved separate from level data)\n"
@@ -66,5 +74,6 @@ void LevelEditor::initialize_ui() {
             << "D = rotate clockwise";
             b.text = ss.str();
         });
+    debug_btn.btn_owner = { { this }, ButtonOwner::LEVEL_EDITOR };
     buttons.push_back(debug_btn);
 }

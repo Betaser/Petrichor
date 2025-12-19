@@ -29,14 +29,14 @@ const float Branch::back_thickness() const {
 }
 
 const Branch Branch::clone() const {
-    std::vector<Vector2> vs {};
+    std::vector<Vector2> vs;
     for (auto vert : verts) {
         vs.push_back(vert);
     }
     return Branch(vs);
 }
 
-Tree::Tree() : rand(rand) {
+Tree::Tree() : rand(69) {
     id = 0;
     std::cout << "init tree\n";
 }

@@ -1,6 +1,11 @@
 #include "constants.cpp"
 #include "game.hpp"
 
+Game* Game::get() {
+	std::cout << "using game.get\n";
+	return Game::_game;
+}
+
 void Game::make_tree() {
 	Rand rand(69);
 	Shader tree_shader = LoadShader(0, TextFormat("include/tree_shader.fs", Constants::glsl_version));

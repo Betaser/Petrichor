@@ -1,3 +1,6 @@
+#ifndef LEVEL_EDITOR_H
+#define LEVEL_EDITOR_H
+
 #include "game.hpp"
 #include "button.hpp"
 #include <vector>
@@ -36,3 +39,5 @@ class LevelEditor : public Button::Owner {
     std::vector<TreeMetadata> tree_metadatas;
     private:
 };
+
+#endif

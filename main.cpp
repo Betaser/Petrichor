@@ -3,8 +3,9 @@
 #include "tree.cpp"
 #include "petra.cpp"
 #include "level_editor.cpp"
-#include "game.cpp"
 #include "button.cpp"
+#include "game.cpp"
+
 #include "raylib.h"
 #include <sstream>
 #include <string>
@@ -15,7 +16,8 @@
 #else // PLATFORM_ANDROID, PLATFORM_WEB
 	#define GLSL_VERSION 100
 #endif
-
+// Goal: get this to work: clang++ main.cpp -o app.exe -O1 -Wall -g -I ./include/ -L ./lib/ -fsanitize=undefined -fsanitize=address -lraylib -lopengl32 -lgdi32 -lwinmm;
+// g++ main.cpp -o app.exe -O1 -Wall -I ./include/ -L ./lib/ -lraylib -lopengl32 -lgdi32 -lwinmm;
 int main() {
 	const int screenWidth = 800;
 	const int screenHeight = 600;
@@ -23,6 +25,7 @@ int main() {
 	SetTargetFPS(60);	
 
 	Game game;
+	game._game = &game;
 	game.make_tree();
 
 	LevelEditor level_editor;
@@ -75,7 +78,6 @@ int main() {
 		EndDrawing();
 	}	
 
-	// UnloadShader(tree.shader);
 	CloseWindow();
 	return 0;
 }

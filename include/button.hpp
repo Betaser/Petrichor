@@ -1,20 +1,38 @@
+#ifndef BUTTON_H
+#define BUTTON_H
+
 #include <string>
 #include "mylib.hpp"
 #include <functional>
 #include "raylib.h"
-
-#ifndef BUTTON_H
-#define BUTTON_H
+#include "level_editor.hpp"
 
 // Add shader support later.
 class Button;
+class LevelEditor;
+struct Game;
+
+struct ButtonOwner {
+    union {
+        LevelEditor* level_editor;
+        Game* game;
+    } data;
+    enum Types {
+        LEVEL_EDITOR,
+        GAME
+    } type;
+};
 
 class Button {
     public:
 
-    struct Owner {};
+    // Destructor exists so we have polymorphic type metadata at runtime.
+    struct Owner {
+        virtual ~Owner() = default;
+    };
 
     Owner* owner;
+    ButtonOwner btn_owner;
     Vector2 pos;
     Vector2 dim;
     bool hovered;
