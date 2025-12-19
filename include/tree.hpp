@@ -7,11 +7,10 @@
 #include "raylib.h"
 #include <random>
 
-class Branch;
+struct Branch;
 using Tendrils = std::vector<std::vector<std::vector<Branch>>>;
 
-class Branch {
-    public:
+struct Branch {
     std::vector<Vector2> verts;
 
     Branch(std::vector<Vector2> verts);
@@ -40,6 +39,7 @@ class Tree {
     Vector2 top_rights[MAX];
 
     public:
+    size_t id;
     Shader shader;
     Rand rand;
     // Contains same branches as in tendrils

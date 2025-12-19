@@ -37,6 +37,7 @@ const Branch Branch::clone() const {
 }
 
 Tree::Tree() : rand(rand) {
+    id = 0;
     std::cout << "init tree\n";
 }
 
@@ -50,6 +51,7 @@ void Tree::init(std::vector<Branch> branches, Shader& shader, Rand& rand) {
 }
 
 Tree::Tree(std::vector<Branch> branches, Shader& shader, Rand& rand) : rand(rand) {
+    id = 0;
     std::cout << "init tree w/ args\n";
     init(branches, shader, rand);
 }
