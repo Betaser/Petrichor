@@ -1,8 +1,9 @@
-#include <string>
-#include "raylib.h"
-
 #ifndef MYLIB_H
 #define MYLIB_H
+
+#include <string>
+#include <random>
+#include "raylib.h"
 
 struct Vector2I {
     int x, y;

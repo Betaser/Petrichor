@@ -1,4 +1,7 @@
-#include "mylib.cpp"
+#ifndef TREE_H
+#define TREE_H
+
+#include "mylib.hpp"
 #include <array>
 #include <vector>
 #include "raylib.h"
@@ -31,22 +34,27 @@ class Tree {
     Vector2I texture_pos;
     // Hold onto tree_tex just to unload it.
     Texture2D blank_tex, tree_tex;
-    Shader shader;
     // std::array<std::array<Vector2, 4>, MAX> compressed_branches;
     Vector2 compressed_branches[4][MAX];
     Vector2 btm_lefts[MAX];
     Vector2 top_rights[MAX];
 
-
     public:
+    Shader shader;
     Rand rand;
     // Contains same branches as in tendrils
     std::vector<Branch> branches;
     Tendrils tendrils;
 
-    Tree(std::vector<Branch> branches, Shader shader, Rand& rand);
+    // Since we hold a shader resource, and that can't be freed when things are using it, uh???
+
+    Tree();
+    // Tree(const Tree&) = delete;
+    // Tree& operator=(const Tree&) = delete;
+    Tree(std::vector<Branch> branches, Shader& shader, Rand& rand);
     ~Tree();
 
+    void init(std::vector<Branch> branches, Shader& shader, Rand& rand);
     void unload_textures();
     void init_texture();
     void render();
@@ -56,3 +64,5 @@ class Tree {
     // Does not figure out how we want to render it.
     std::vector<std::vector<Branch>> random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS);
 };
+
+#endif

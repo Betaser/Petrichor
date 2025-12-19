@@ -36,16 +36,30 @@ const Branch Branch::clone() const {
     return Branch(vs);
 }
 
-Tree::Tree(std::vector<Branch> branches, Shader shader, Rand& rand) : rand(rand) {
+Tree::Tree() : rand(rand) {
+    std::cout << "init tree\n";
+}
+
+void Tree::init(std::vector<Branch> branches, Shader& shader, Rand& rand) {
     this->branches = branches;
     this->shader = shader;
+    this->rand = rand;
 
     this->tendrils = {};
 	tree_tex = LoadTexture("include/assets/tree_texture.png");
 }
 
+Tree::Tree(std::vector<Branch> branches, Shader& shader, Rand& rand) : rand(rand) {
+    std::cout << "init tree w/ args\n";
+    init(branches, shader, rand);
+}
+
 Tree::~Tree() {
+    std::cout << "deinit tree\n";
     unload_textures();
+    // CANNOT unload shaders here
+    std::cout << "unload shader!\n";
+    UnloadShader(shader);
 }
 
 void Tree::unload_textures() {
@@ -70,12 +84,12 @@ void Tree::init_texture() {
     }
     std::cout << "small " << small.x << ", " << small.y << "\n";
     std::cout << "big " << big.x << ", " << big.y << "\n";
+    texture_pos = Vector2I(small);
 
     auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
     blank_tex = LoadTextureFromImage(blank);
-    texture_pos = Vector2I(small);
-
 	tree_tex = LoadTexture("include/assets/tree_texture.png");
+
     int loc = GetShaderLocation(shader, "tex");
     SetShaderValueTexture(shader, loc, tree_tex);
 }

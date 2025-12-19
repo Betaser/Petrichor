@@ -1,11 +1,14 @@
+#include "main.hpp"
+#include "mylib.cpp"
 #include "tree.cpp"
 #include "petra.cpp"
-#include "main.hpp"
 #include "level_editor.cpp"
+#include "game.cpp"
 #include "button.cpp"
 #include "raylib.h"
 #include <sstream>
 #include <string>
+#include <memory>
 
 #if defined(PLATFORM_DESKTOP)
 	#define GLSL_VERSION 330
@@ -19,40 +22,25 @@ int main() {
 	InitWindow(screenWidth, screenHeight, "Raylib basic window");
 	SetTargetFPS(60);	
 
-	Petra petra;	
-
-	// shader setup
-	Shader tree_shader = LoadShader(0, TextFormat("include/tree_shader.fs", GLSL_VERSION));
-
 	// Try using randomly generated tendrils too
 	Vector2 start_location { 100, 100 };
 
-	Rand rand(69);
-	Tree tree({}, tree_shader, rand);
-	const auto gen_tendrils = [&tree, &start_location]() {
+	const auto gen_tendrils = [&start_location](Tree& tree) {
 		return tree.random_tendril_config(400, 20, 1.2, 0.1, start_location);
 	};
 
-	const auto set_tendrils = [&tree, &gen_tendrils]() {
-		Tendrils tendrils = { gen_tendrils() };
+	const auto set_tendrils = [&gen_tendrils](Tree& tree) {
+		Tendrils tendrils = { gen_tendrils(tree) };
 		tree.branches = Tree::branches_from_tendrils(tendrils);
 		tree.tendrils = tendrils;
 		tree.init_texture();
 	};
-	set_tendrils();
 
-	/*
-	std::vector<Button> buttons = {
-		Button({ screenWidth - 190, 110 }, { 80, 80 }, "Show debug keybinds", 
-			[](Button& b) {
-				std::stringstream ss; ss
-				<< "Right click = toggle branch placement mode\n"
-				<< "A = rotate counterclockwise\n"
-				<< "D = rotate clockwise";
-				b.text = ss.str();
-			})
-	};
-	*/
+	Game game;
+	game.make_tree();
+	Tree& tree = *game.trees[0];
+	set_tendrils(tree);
+
 	LevelEditor level_editor;
 	level_editor.initialize_ui();
 
@@ -60,14 +48,14 @@ int main() {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			tree.rand.set_seed(++tree.rand.seed);
 			Main::clicks++;
-			set_tendrils();
+			set_tendrils(tree);
 		}
 		if (IsKeyPressed(KEY_F)) {
-			set_tendrils();
+			set_tendrils(tree);
 		}
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
-		DrawText(petra.say_hello().c_str(), 200, 20, 20, GREEN);	
+		DrawText(game.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
 
 		tree.render();
 
@@ -80,7 +68,7 @@ int main() {
 		EndDrawing();
 	}	
 
-	UnloadShader(tree_shader);	
+	// UnloadShader(tree.shader);
 	CloseWindow();
 	return 0;
 }
