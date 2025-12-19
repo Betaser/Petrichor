@@ -12,6 +12,9 @@ class Button;
 class Button {
     public:
 
+    struct Owner {};
+
+    Owner* owner;
     Vector2 pos;
     Vector2 dim;
     bool hovered;
@@ -23,7 +26,7 @@ class Button {
 
     std::function<void(Button&)> on_hover;
 
-    Button(Vector2 pos, Vector2 dim, std::string text, std::function<void(Button&)> on_hover);
+    Button(Owner* owner, Vector2 pos, Vector2 dim, std::string text, std::function<void(Button&)> on_hover);
     ~Button();
     void take_input(Vector2 cursor);
     void render() const;

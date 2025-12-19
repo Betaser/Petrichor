@@ -1,6 +1,7 @@
 #include "tree.cpp"
 #include "petra.cpp"
 #include "main.hpp"
+#include "level_editor.cpp"
 #include "button.cpp"
 #include "raylib.h"
 #include <sstream>
@@ -40,6 +41,7 @@ int main() {
 	};
 	set_tendrils();
 
+	/*
 	std::vector<Button> buttons = {
 		Button({ screenWidth - 190, 110 }, { 80, 80 }, "Show debug keybinds", 
 			[](Button& b) {
@@ -50,6 +52,9 @@ int main() {
 				b.text = ss.str();
 			})
 	};
+	*/
+	LevelEditor level_editor;
+	level_editor.initialize_ui();
 
 	while (!WindowShouldClose()) {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -67,7 +72,7 @@ int main() {
 		tree.render();
 
 		const Vector2 mouse = GetMousePosition();
-		for (auto& button : buttons) {
+		for (auto& button : level_editor.buttons) {
 			button.take_input(mouse);
 			button.render();
 		}
