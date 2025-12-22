@@ -37,6 +37,7 @@ class LevelEditor : public Button::Owner {
     void update(Game& game);
 
     std::vector<TreeMetadata> tree_metadatas;
+
     private:
 };
 

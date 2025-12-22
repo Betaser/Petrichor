@@ -38,6 +38,7 @@ Vector2 operator / (const Vector2& v, const float& f);
 Vector2 operator - (const Vector2& v);
 Vector2 my_rotate(const Vector2& origin, const Vector2& pt, const float& amt);
 
+float direction_to_rotate(const Vector2& ahead, const Vector2& mobile);
 float my_angle(const Vector2& v);
 float dot(const Vector2& a, const Vector2& b);
 float my_angle_from(const Vector2& a, const Vector2& b);

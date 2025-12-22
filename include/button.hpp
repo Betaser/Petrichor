@@ -12,15 +12,21 @@ class Button;
 class LevelEditor;
 struct Game;
 
+// Is this better for a button owner than the classic interface? I think it could be?
 struct ButtonOwner {
-    union {
+    union Data {
         LevelEditor* level_editor;
         Game* game;
     } data;
-    enum Types {
-        LEVEL_EDITOR,
-        GAME
+    enum Type {
+        LevelEditorType,
+        GameType,
+        None
     } type;
+    ButtonOwner() {
+        type = None;
+    }
+    ButtonOwner(Data data, Type type) : data(data), type(type) {}
 };
 
 class Button {

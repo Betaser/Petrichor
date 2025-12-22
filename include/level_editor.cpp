@@ -62,9 +62,9 @@ void LevelEditor::initialize_ui() {
             if (level_editor == nullptr) {
                 std::cout << "success\n";
             }
-            // This will be warned against
+            // Warns if we haven't covered all cases
             switch (b.btn_owner.type) {
-                case ButtonOwner::LEVEL_EDITOR: std::cout << "forgot to cover cases\n";
+                case ButtonOwner::LevelEditorType: std::cout << "forgot to cover cases\n";
             }
             std::stringstream ss; ss
             << "Right click = toggle branch placement mode\n"
@@ -74,6 +74,5 @@ void LevelEditor::initialize_ui() {
             << "D = rotate clockwise";
             b.text = ss.str();
         });
-    debug_btn.btn_owner = { { this }, ButtonOwner::LEVEL_EDITOR };
     buttons.push_back(debug_btn);
 }

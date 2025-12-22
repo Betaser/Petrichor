@@ -47,7 +47,7 @@ void Tree::init(std::vector<Branch> branches, Shader& shader, Rand& rand) {
     this->rand = rand;
 
     this->tendrils = {};
-	tree_tex = LoadTexture("include/assets/tree_texture.png");
+	tree_tex = LoadTexture("assets/tree_texture.png");
 }
 
 Tree::Tree(std::vector<Branch> branches, Shader& shader, Rand& rand) : rand(rand) {
@@ -90,7 +90,7 @@ void Tree::init_texture() {
 
     auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
     blank_tex = LoadTextureFromImage(blank);
-	tree_tex = LoadTexture("include/assets/tree_texture.png");
+	tree_tex = LoadTexture("assets/tree_texture.png");
 
     int loc = GetShaderLocation(shader, "tex");
     SetShaderValueTexture(shader, loc, tree_tex);
@@ -224,7 +224,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
         return end_norm * rand.gen(0.5 * last_thickness, 1.2 * last_thickness);
     };
 
-    const auto& make_branch = [&start_thickness](Vector2 start, float rotation, float length, float front_thickness, float back_thickness) -> Branch {
+    const auto& make_branch = [](Vector2 start, float rotation, float length, float front_thickness, float back_thickness) -> Branch {
         const Vector2 mid_front = start + unit_vector(rotation) * length;
         const Vector2 perp_rotation = perp_rhr(unit_vector(rotation));
         Vector2 p1 = mid_front + perp_rotation * front_thickness;
@@ -234,7 +234,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
         return Branch({ p1, p2, p3, p4 });
     };
 
-    const auto& make_branch_from = [&make_branch, &length_used, &length_calc, &angle_calc, &thickness_calc](std::vector<Branch> tendril, Branch branch) -> Branch {
+    const auto& make_branch_from = [&make_branch, &length_calc, &angle_calc, &thickness_calc](std::vector<Branch> tendril, Branch branch) -> Branch {
         const Vector2 forward = branch.forward();
         const float angle = my_angle(forward);
 
