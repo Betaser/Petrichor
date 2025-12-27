@@ -90,6 +90,7 @@ void Tree::init_texture() {
 
     auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
     blank_tex = LoadTextureFromImage(blank);
+    UnloadImage(blank);
 	tree_tex = LoadTexture("assets/tree_texture.png");
 
     int loc = GetShaderLocation(shader, "tex");
@@ -117,10 +118,10 @@ void Tree::render() {
     // Create a texture for this branch.
     SetShaderValue(shader, color_loc, &white, SHADER_UNIFORM_VEC4);
 
-    int n_loc = GetShaderLocation(shader, "N");
+    int loc = GetShaderLocation(shader, "N");
     int size = branches.size();
 
-    SetShaderValue(shader, n_loc, &size, SHADER_UNIFORM_INT);
+    SetShaderValue(shader, loc, &size, SHADER_UNIFORM_INT);
 
     // std::cout << "bounds " << to_str(Vector2I(tex.width, tex.height).to_vec2(), 2) << "\n";
     // std::cout << "tex_pos " << to_str(texture_pos.to_vec2(), 4) << "\n";

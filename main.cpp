@@ -19,6 +19,7 @@
 // Goal: get this to work: clang++ main.cpp -o app.exe -O1 -Wall -g -I ./include/ -L ./lib/ -fsanitize=undefined -fsanitize=address -lraylib -lopengl32 -lgdi32 -lwinmm;
 // g++ main.cpp -o app.exe -O1 -Wall -I ./include/ -L ./lib/ -lraylib -lopengl32 -lgdi32 -lwinmm;
 int main() {
+	SetTraceLogLevel(LOG_ALL);
 	const int screenWidth = 800;
 	const int screenHeight = 600;
 	InitWindow(screenWidth, screenHeight, "Raylib basic window");
@@ -28,7 +29,7 @@ int main() {
 	game._game = &game;
 	game.make_tree();
 
-	LevelEditor level_editor;
+	LevelEditor level_editor(game);
 	level_editor.initialize_ui();
 
 	// Try using randomly generated tendrils too
@@ -74,6 +75,8 @@ int main() {
 			button.take_input(mouse);
 			button.render();
 		}
+
+		level_editor.render(game);
 
 		EndDrawing();
 	}	

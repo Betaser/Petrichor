@@ -30,6 +30,7 @@ class Rand {
 
 #endif
 
+void operator += (Vector2& a, const Vector2& b);
 Vector2 operator + (const Vector2& a, const Vector2& b);
 Vector2 operator * (const Vector2& v, const float& f);
 Vector2 operator - (const Vector2& a, const Vector2& b);
@@ -51,6 +52,7 @@ Vector2 unit_vector(const float& f);
 const std::string to_str(const Vector2& v, const int& decimal_pts);
 
 // Misc
+Texture2D load_dummy_tex();
 
 // Math, non vector
 const float snap(const float& f, const float& by);

@@ -27,18 +27,23 @@ class LevelEditor : public Button::Owner {
     public:
     std::vector<Button> buttons;
 
-    std::string blah = "blahhh";
-
-    LevelEditor();
+    LevelEditor(Game& game);
     ~LevelEditor();
 
     void initialize_ui();
     void update_rotation(Game& game);
     void update(Game& game);
+    void render(Game& game) const;
 
     std::vector<TreeMetadata> tree_metadatas;
+    size_t selected_index, last_selected_index;
+    Texture2D selected_tex;
+    float time;
 
     private:
+    Vector2 select_extra_bounds { 10, 10 };
+    Shader select_shader;
+    void load_selection_shader(Game& game);
 };
 
 #endif

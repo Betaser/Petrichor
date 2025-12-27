@@ -1,13 +1,28 @@
 #include <iostream>
 #include <sstream>
+#include <assert.h>
+#include "mylib.hpp"
 #include "level_editor.hpp"
+#include "constants.cpp"
 
-LevelEditor::LevelEditor() {
+LevelEditor::LevelEditor(Game& game) {
+    std::cout << "init level editor\n";
     initialize_ui();
+    time = 0;
+    selected_index = 0;
+    // Just to make sure last_selected_index is different from selected_index
+    last_selected_index = selected_index + 1;
+
+	Shader select_shader = LoadShader(0, TextFormat("assets/select.fs", Constants::glsl_version));
+    this->select_shader = select_shader;
+
+    selected_tex = load_dummy_tex();
 }
 
 LevelEditor::~LevelEditor() {
     std::cout << "deinit level editor\n";
+    UnloadTexture(selected_tex);
+    UnloadShader(select_shader);
 }
 
 void LevelEditor::update_rotation(Game& game) {
@@ -32,9 +47,11 @@ void LevelEditor::update_rotation(Game& game) {
     }
 
     selected->init_texture();
+    load_selection_shader(game);
 }
 
 void LevelEditor::update(Game& game) {
+    time += GetFrameTime();
     // Selected tree is not a thing yet.
     auto& selected = game.trees[0];
     float rotation_input = 0;
@@ -44,8 +61,39 @@ void LevelEditor::update(Game& game) {
         rotation_input = -0.05; 
     auto& meta = tree_metadatas[selected->id];
     meta.rotation = meta.rotation + rotation_input;
-    if (rotation_input != 0)
+    if (rotation_input != 0) {
+        // Selection shader has to resize.
         update_rotation(game);
+    }
+
+    if (last_selected_index != selected_index) {
+        load_selection_shader(game);
+        last_selected_index = selected_index;
+    }
+}
+
+// Selection is slightly larger than size of tree texture.
+void LevelEditor::load_selection_shader(Game& game) {
+    std::cout << "load selection shader\n";
+    // selected_tex should be set to something at first.
+    UnloadTexture(selected_tex);
+
+    auto& tree = game.trees[selected_index];
+    auto tree_tex_bounds = (Vector2I { tree->blank_tex.width, tree->blank_tex.height }).to_vec2();
+    tree_tex_bounds += select_extra_bounds;
+    auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
+    selected_tex = LoadTextureFromImage(blank);
+    UnloadImage(blank);
+}
+
+void LevelEditor::render(Game& game) const {
+    int loc = GetShaderLocation(select_shader, "time");
+    SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
+
+    BeginShaderMode(select_shader);
+    auto& tree = game.trees[selected_index];
+    Vector2I pos = Vector2I((tree->texture_pos).to_vec2() + select_extra_bounds / 2);
+    DrawTexture(selected_tex, pos.x, pos.y, WHITE);
 }
 
 void LevelEditor::initialize_ui() {
@@ -57,21 +105,12 @@ void LevelEditor::initialize_ui() {
         { 80, 80 }, 
         "Show debug keybinds",
         [](Button& b) {
-            // Accessing level_editor at runtime incorrectly will be null
-            auto level_editor = dynamic_cast<LevelEditor*>(b.owner);
-            if (level_editor == nullptr) {
-                std::cout << "success\n";
-            }
-            // Warns if we haven't covered all cases
-            switch (b.btn_owner.type) {
-                case ButtonOwner::LevelEditorType: std::cout << "forgot to cover cases\n";
-            }
+            // auto level_editor = dynamic_cast<LevelEditor*>(b.owner);
             std::stringstream ss; ss
-            << "Right click = toggle branch placement mode\n"
-            << "G = guidelines (editor add ons that are saved separate from level data)\n"
-            << "test " << level_editor->blah << "\n"
+            << "F = duplicate\n"
             << "A = rotate counterclockwise\n"
-            << "D = rotate clockwise";
+            << "D = rotate clockwise\n"
+            << "G = guidelines (editor add ons that are saved separate from level data)";
             b.text = ss.str();
         });
     buttons.push_back(debug_btn);

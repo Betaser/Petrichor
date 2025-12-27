@@ -30,9 +30,6 @@ class Tree {
     const float MAX_WIDTH = 300;
     const float MAX_HEIGHT = MAX_WIDTH;
 
-    Vector2I texture_pos;
-    // Hold onto tree_tex just to unload it.
-    Texture2D blank_tex, tree_tex;
     // std::array<std::array<Vector2, 4>, MAX> compressed_branches;
     Vector2 compressed_branches[4][MAX];
     Vector2 btm_lefts[MAX];
@@ -44,9 +41,10 @@ class Tree {
     Rand rand;
     // Contains same branches as in tendrils
     std::vector<Branch> branches;
+    Vector2I texture_pos;
     Tendrils tendrils;
-
-    // Since we hold a shader resource, and that can't be freed when things are using it, uh???
+    // Hold onto tree_tex just to unload it.
+    Texture2D blank_tex, tree_tex;
 
     Tree();
     // Tree(const Tree&) = delete;

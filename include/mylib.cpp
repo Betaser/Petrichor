@@ -36,6 +36,11 @@ const Vector2 Vector2I::to_vec2() {
     return Vector2 { (float) x, (float) y };
 }
 
+void operator += (Vector2& a, const Vector2& b) {
+    a.x += b.x;
+    a.y += b.y;
+}
+
 Vector2 operator + (const Vector2& a, const Vector2& b) {
     return Vector2 { a.x + b.x, a.y + b.y };
 }
@@ -128,4 +133,13 @@ const Color lerp(const Color& a, const Color& b, const float& amt) {
         (unsigned char) ((float(b.b) - float(a.b)) * amt + a.b),
         (unsigned char) ((float(b.a) - float(a.a)) * amt + a.a)
     };
+}
+
+Texture2D load_dummy_tex() {
+    // Replace with a better dummy texture;
+
+    // Maybe below is better? 
+    // auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
+    // return LoadTextureFromImage(blank);
+    return LoadTexture("assets/tree_texture.png");
 }
