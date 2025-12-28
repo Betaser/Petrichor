@@ -53,6 +53,7 @@ const std::string to_str(const Vector2& v, const int& decimal_pts);
 
 // Misc
 Texture2D load_dummy_tex();
+bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim);
 
 // Math, non vector
 const float snap(const float& f, const float& by);

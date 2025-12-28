@@ -14,6 +14,7 @@ const vec2 strokeRectDims = vec2(0.3, 0.05);
 
 // A default input
 uniform sampler2D texture0;
+uniform ivec2 dims;
 
 out vec4 finalColor;
 
@@ -45,7 +46,6 @@ vec2 getCenter(float pathX, float inMargin, float horzLength, float vertLength, 
 void main() {
     finalColor = vec4(0);
 
-    ivec2 dims = textureSize(texture0, 0);
     vec2 coord = fragTexCoord * vec2(dims);
 
     float smallerHalf = min(dims.x, dims.y) * 0.5;

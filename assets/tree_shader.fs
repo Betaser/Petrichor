@@ -13,6 +13,8 @@ uniform vec2 pt2s[MAX];
 uniform vec2 pt3s[MAX];
 uniform vec2 pt4s[MAX];
 
+// Do not trust textureSize().
+uniform ivec2 dims;
 uniform sampler2D tex;
 uniform vec2 btmLefts[MAX];
 uniform vec2 topRights[MAX];
@@ -38,6 +40,7 @@ float distPtFromLine(vec2 point, vec2 line[2]) {
 
 void main() {
     float x = fragTexCoord.x;
+    // finalColor = texture(tex, fragTexCoord);
     finalColor = vec4(0);
 
     for (int i = 0; i < N; i++) {
@@ -74,15 +77,17 @@ void main() {
             // Below is almost too extreme
             // xy.x = (asin(2.0 * (xy.x - 0.5)) / pi) + 0.5;
 
-            // vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
             // finalColor = mix(color, brown, xy.x);
             // finalColor = mix(finalColor, vec4(1.0, 0.0, 0.0, 1.0), xy.y);
             vec2 regionXy = (topRights[i] - btmLefts[i]) * xy + btmLefts[i];
             // finalColor = vec4(regionXy.x, regionXy.y, 0, 1);
 
-            ivec2 texelXy = ivec2(regionXy * textureSize(tex, 0));
+            // ivec2 texelXy = ivec2(regionXy * textureSize(tex, 0));
+            ivec2 texelXy = ivec2(regionXy * dims);
             finalColor = texelFetch(tex, texelXy, 0);
-            // finalColor = mix(finalColor, brown, xy.x);
+
+            // vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
+            // finalColor = mix(finalColor, brown, float(texelXy.x) / float(texSize.x));
             break;
         }
     }

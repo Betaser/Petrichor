@@ -12,6 +12,7 @@ struct Game;
 struct Game : Button::Owner {
     Petra petra;
 	std::vector<std::unique_ptr<Tree>> trees;
+    Font default_font;
 
     // Not preferred due to lack of clarity, but for testing.
     static Game* _game;

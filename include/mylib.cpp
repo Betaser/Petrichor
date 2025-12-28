@@ -33,7 +33,7 @@ const float Rand::gen(float a, float b) {
 }
 
 const Vector2 Vector2I::to_vec2() {
-    return Vector2 { (float) x, (float) y };
+    return { (float) x, (float) y };
 }
 
 void operator += (Vector2& a, const Vector2& b) {
@@ -42,27 +42,27 @@ void operator += (Vector2& a, const Vector2& b) {
 }
 
 Vector2 operator + (const Vector2& a, const Vector2& b) {
-    return Vector2 { a.x + b.x, a.y + b.y };
+    return { a.x + b.x, a.y + b.y };
 }
 
 Vector2 operator * (const Vector2& v, const float& f) {
-    return Vector2 { v.x * f, v.y * f };
+    return { v.x * f, v.y * f };
 }
 
 Vector2 operator - (const Vector2& a, const Vector2& b) {
-    return Vector2 { a.x - b.x, a.y - b.y };
+    return { a.x - b.x, a.y - b.y };
 }
 
 Vector2 operator - (const Vector2& v) {
-    return Vector2 { -v.x, -v.y };
+    return { -v.x, -v.y };
 }
 
 Vector2 operator / (const Vector2& a, const Vector2& b) {
-    return Vector2 { a.x / b.x, a.y / b.y };
+    return { a.x / b.x, a.y / b.y };
 }
 
 Vector2 operator / (const Vector2& v, const float& f) {
-    return Vector2 { v.x / f, v.y / f };
+    return { v.x / f, v.y / f };
 }
 
 Vector2 my_rotate(const Vector2& origin, const Vector2& pt, const float& amt) {
@@ -103,17 +103,17 @@ float my_length(const Vector2& v) {
 
 Vector2 my_normalize(const Vector2& v) {
     const float length = my_length(v);
-    return Vector2 { v.x / length, v.y / length };
+    return { v.x / length, v.y / length };
 }
 
 Vector2 perp_rhr(const Vector2& v) {
     const float vx = -v.y;
     const float vy = v.x;
-    return Vector2 { vx, vy };
+    return { vx, vy };
 }
 
 Vector2 unit_vector(const float& f) {
-    return Vector2 { cosf(f), sinf(f) };
+    return { cosf(f), sinf(f) };
 }
 
 const std::string to_str(const Vector2& v, const int& decimal_pts) {
@@ -142,4 +142,9 @@ Texture2D load_dummy_tex() {
     // auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
     // return LoadTextureFromImage(blank);
     return LoadTexture("assets/tree_texture.png");
+}
+
+bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim) {
+    return pos.x <= pt.x && pt.x <= pos.x + dim.x &&
+           pos.y <= pt.y && pt.y <= pos.y + dim.y;
 }

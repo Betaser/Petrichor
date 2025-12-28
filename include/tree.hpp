@@ -23,8 +23,8 @@ struct Branch {
     const Branch clone() const;
 };
 
-// Might have to ifndef this
-class Tree {
+// TODO: make branches
+struct Tree {
     private:
     static const int MAX = 100;
     const float MAX_WIDTH = 300;
@@ -45,6 +45,7 @@ class Tree {
     Tendrils tendrils;
     // Hold onto tree_tex just to unload it.
     Texture2D blank_tex, tree_tex;
+    void bounding_box(Vector2& small, Vector2& big);
 
     Tree();
     // Tree(const Tree&) = delete;

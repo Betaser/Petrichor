@@ -69,13 +69,9 @@ void Tree::unload_textures() {
     UnloadTexture(tree_tex);
 }
 
-// Will be out of date if branch verts are changed.
-void Tree::init_texture() {
-    unload_textures();
-
-    // Bounding box it
-    Vector2 small { 9999, 9999 };
-    Vector2 big { -9999, -9999 };
+void Tree::bounding_box(Vector2& small, Vector2& big) {
+    small.x = small.y = 9999;
+    big.x = big.y = -9999;
     for (const auto& branch : branches) {
         for (int i = 0; i < 4; i++) {
             small.x = fmin(small.x, branch.verts[i].x);
@@ -84,13 +80,23 @@ void Tree::init_texture() {
             big.y = fmax(big.y, branch.verts[i].y);
         }
     }
-    std::cout << "small " << small.x << ", " << small.y << "\n";
-    std::cout << "big " << big.x << ", " << big.y << "\n";
+}
+
+// Will be out of date if branch verts are changed.
+void Tree::init_texture() {
+    unload_textures();
+
+    // Bounding box it
+    Vector2 small, big;
+    bounding_box(small, big);
+    // std::cout << "small " << small.x << ", " << small.y << "\n";
+    // std::cout << "big " << big.x << ", " << big.y << "\n";
     texture_pos = Vector2I(small);
 
     auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
     blank_tex = LoadTextureFromImage(blank);
     UnloadImage(blank);
+
 	tree_tex = LoadTexture("assets/tree_texture.png");
 
     int loc = GetShaderLocation(shader, "tex");
@@ -114,17 +120,17 @@ std::vector<Branch> Tree::branches_from_tendrils(Tendrils tendrils) {
 void Tree::render() {
     int color_loc = GetShaderLocation(shader, "color");
     Vector4 white { 1.0, 1.0, 1.0, 1.0 };
-
-    // Create a texture for this branch.
+    // Create a color for this branch.
     SetShaderValue(shader, color_loc, &white, SHADER_UNIFORM_VEC4);
 
     int loc = GetShaderLocation(shader, "N");
     int size = branches.size();
-
     SetShaderValue(shader, loc, &size, SHADER_UNIFORM_INT);
 
-    // std::cout << "bounds " << to_str(Vector2I(tex.width, tex.height).to_vec2(), 2) << "\n";
-    // std::cout << "tex_pos " << to_str(texture_pos.to_vec2(), 4) << "\n";
+    int dims_loc = GetShaderLocation(shader, "dims");
+    Vector2I dims { tree_tex.width, tree_tex.height };
+    SetShaderValue(shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
+
     for (int n_i = 0; n_i < size; n_i++) {
         const auto& branch = branches[n_i];
         // Set the really big vertices array of the shader that doesn't exist yet
@@ -157,9 +163,9 @@ void Tree::render() {
                 const float height = fmodf(my_length(branch.forward()) / MAX_HEIGHT, 1.0);
 
                 // Might be out of bounds of (1,1), in which case wrap it.
-                btm_lefts[branch_i] = Vector2 { left_bound, btm_height };
+                btm_lefts[branch_i] = { left_bound, btm_height };
                 btm_height = fmodf(btm_height + height, 1.0);
-                top_rights[branch_i] = Vector2 { left_bound + branch_width, btm_height };
+                top_rights[branch_i] = { left_bound + branch_width, btm_height };
 
                 branch_i++;
             }
@@ -292,7 +298,8 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
                 auto end_branch = make_branch(start, new_angle, length, new_thickness, thickness);
                 curr_tendril.push_back(end_branch);
                 length_used = total_length;
-            } else {
+            }
+            else {
                 curr_tendril.push_back(new_branch);
             }
         }

@@ -8,11 +8,16 @@
 struct TreeMetadata {
     // Rotation affects all tendrils
     std::vector<Branch> branches;
+    Vector2 offset;
     float rotation;
 
-    TreeMetadata(float rotation, Tree& tree) {
+    static TreeMetadata zero() {
+        return {};
+    }
+    TreeMetadata(float rotation, Vector2 offset, Tree& tree) {
         std::cout << "init tree metadata\n";
         this->rotation = rotation;
+        this->offset = offset;
 
         branches.reserve(tree.branches.size());
         for (auto& branch : tree.branches)
@@ -21,29 +26,35 @@ struct TreeMetadata {
     ~TreeMetadata() {
         std::cout << "deinit tree metadata\n";
     }
+    private:
+    TreeMetadata() {}
 };
 
-class LevelEditor : public Button::Owner {
-    public:
+struct LevelEditor : public Button::Owner {
     std::vector<Button> buttons;
-
-    LevelEditor(Game& game);
-    ~LevelEditor();
-
-    void initialize_ui();
-    void update_rotation(Game& game);
-    void update(Game& game);
-    void render(Game& game) const;
-
+    Button* debug_button;
     std::vector<TreeMetadata> tree_metadatas;
     size_t selected_index, last_selected_index;
     Texture2D selected_tex;
+    Vector2 selection_offset;
     float time;
+    bool using_ui;
+
+    LevelEditor();
+    ~LevelEditor();
+
+    void make_initialized_tree(Game& game, const TreeMetadata& metadata);
+    void initialize_ui();
+    void randomize_tendrils(Game& game);
+    void update_selected_verts(Game& game);
+    void load_selection_shader(Game& game);
+    void update(Game& game);
+    void render(Game& game) const;
 
     private:
+    bool show_instructions;
     Vector2 select_extra_bounds { 10, 10 };
     Shader select_shader;
-    void load_selection_shader(Game& game);
 };
 
 #endif
