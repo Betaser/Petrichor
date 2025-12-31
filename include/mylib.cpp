@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <math.h>
 #include "mylib.hpp"
+#include <iostream>
+#include <format>
 
 Vector2I::Vector2I(Vector2 v) {
     this->x = v.x;
@@ -27,12 +29,12 @@ void Rand::set_seed(int seed) {
     int_gen = std::mt19937(seed);
 }
 
-const float Rand::gen(float a, float b) {
+float Rand::gen(float a, float b) {
     const float norm = dist(int_gen);
     return norm * (b - a) + a;
 }
 
-const Vector2 Vector2I::to_vec2() {
+Vector2 Vector2I::to_vec2() {
     return { (float) x, (float) y };
 }
 
@@ -116,17 +118,15 @@ Vector2 unit_vector(const float& f) {
     return { cosf(f), sinf(f) };
 }
 
-const std::string to_str(const Vector2& v, const int& decimal_pts) {
-    char buf[100];
-    sprintf(buf, "(%f, %f)", v.x, v.y);
-    return std::string(buf);
+std::string to_str(const Vector2& v, const int& decimal_pts) {
+    return std::format("({:.{}f}, {:.{}f})", v.x, decimal_pts, v.y, decimal_pts);
 }
 
-const float snap(const float& f, const float& by) {
+float snap(const float& f, const float& by) {
     return int(f * by) / by;
 }
 
-const Color lerp(const Color& a, const Color& b, const float& amt) {
+Color lerp(const Color& a, const Color& b, const float& amt) {
     return {
         (unsigned char) ((float(b.r) - float(a.r)) * amt + a.r),
         (unsigned char) ((float(b.g) - float(a.g)) * amt + a.g),
@@ -141,6 +141,7 @@ Texture2D load_dummy_tex() {
     // Maybe below is better? 
     // auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
     // return LoadTextureFromImage(blank);
+    std::cout << "tree img exists? " << FileExists("assets/tree_texture.png") << "\n";
     return LoadTexture("assets/tree_texture.png");
 }
 

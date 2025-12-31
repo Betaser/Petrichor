@@ -15,12 +15,12 @@ struct Branch {
 
     Branch(std::vector<Vector2> verts);
 
-    const Vector2 forward() const;
-    const Vector2 front() const;
-    const Vector2 back() const;
-    const float front_thickness() const;
-    const float back_thickness() const;
-    const Branch clone() const;
+    Vector2 forward() const;
+    Vector2 front() const;
+    Vector2 back() const;
+    float front_thickness() const;
+    float back_thickness() const;
+    Branch clone() const;
 };
 
 // TODO: make branches

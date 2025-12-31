@@ -11,7 +11,7 @@ struct Vector2I {
     Vector2I(int x, int y);
     Vector2I();
 
-    const Vector2 to_vec2();
+    Vector2 to_vec2();
 };
 
 class Rand {
@@ -25,7 +25,7 @@ class Rand {
     int seed;
 
     void set_seed(int seed);
-    const float gen(float a, float b);
+    float gen(float a, float b);
 };
 
 #endif
@@ -49,12 +49,12 @@ Vector2 perp_rhr(const Vector2& v);
 Vector2 unit_vector(const float& f);
 
 // Debug
-const std::string to_str(const Vector2& v, const int& decimal_pts);
+std::string to_str(const Vector2& v, const int& decimal_pts);
 
 // Misc
 Texture2D load_dummy_tex();
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim);
 
 // Math, non vector
-const float snap(const float& f, const float& by);
-const Color lerp(const Color& a, const Color& b, const float& amt);
+float snap(const float& f, const float& by);
+Color lerp(const Color& a, const Color& b, const float& amt);

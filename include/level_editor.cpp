@@ -15,7 +15,8 @@ LevelEditor::LevelEditor() {
 	using_ui = false;
     // Just to make sure last_selected_index is different from selected_index
     last_selected_index = selected_index + 1;
-    selection_offset = { 0 };
+    // This zeroes our struct.
+    selection_offset = {};
 
 	Shader select_shader = LoadShader(0, TextFormat("assets/select.fs", Constants::glsl_version));
     this->select_shader = select_shader;
@@ -94,7 +95,7 @@ void LevelEditor::update_selected_verts(Game& game) {
 
 // Selection is slightly larger than size of tree texture.
 void LevelEditor::load_selection_shader(Game& game) {
-    std::cout << "load selection shader\n";
+    std::cout << "\nload selection shader\n";
     UnloadTexture(selected_tex);
 
     auto& tree = game.trees[selected_index];
@@ -129,14 +130,14 @@ void LevelEditor::update(Game& game) {
 		}
 	}
 
-	// Duplicate. Means we should copy over metadata
+	// Duplicate. Means we copy over metadata
 	if (IsKeyPressed(KEY_F)) {
 		// Make sure we do this first.
-		std::cout << "dup " << selected->id << "\n";
+		// std::cout << "dup " << selected->id << "\n";
 		const auto& meta = tree_metadatas[selected->id];
 		selected_index = game.trees.size();
 		make_initialized_tree(game, meta);
-		std::cout << "newest " << game.trees.back()->id << "\n";
+		// std::cout << "newest " << game.trees.back()->id << "\n";
 
 		// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
 		return;
@@ -217,6 +218,7 @@ void LevelEditor::render(Game& game) const {
 		<< "R = randomize seed\n"
         << "A = rotate counterclockwise\n"
         << "D = rotate clockwise\n"
+        << "Mouse scroll = change depth\n"
         << "G = guidelines (editor add ons.\n"
         << "which are saved separate from level data)";
         unsigned char opacity = 255 * (0.3 * (0.5 * sin(time * 3.0) + 0.5) + 0.7);

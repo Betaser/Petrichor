@@ -1,3 +1,8 @@
+// You can package images in c files: https://github.com/raysan5/raylib/blob/master/examples/others/embedded_files_loading.c
+
+// Is probably a given.
+#define PLATFORM_DESKTOP
+
 #include "main.hpp"
 #include "mylib.cpp"
 #include "tree.cpp"
@@ -18,7 +23,7 @@
 #endif
 
 int main() {
-	SetTraceLogLevel(LOG_WARNING);
+	// SetTraceLogLevel(LOG_WARNING);
 	const int screenWidth = 800;
 	const int screenHeight = 600;
 	InitWindow(screenWidth, screenHeight, "Raylib basic window");

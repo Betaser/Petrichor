@@ -8,8 +8,9 @@
 struct TreeMetadata {
     // Rotation affects all tendrils
     std::vector<Branch> branches;
-    Vector2 offset;
-    float rotation;
+    // I don't trust the zero-initialization
+    Vector2 offset = {};
+    float rotation = 0;
 
     static TreeMetadata zero() {
         return {};

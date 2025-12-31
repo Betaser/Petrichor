@@ -8,27 +8,27 @@ Branch::Branch(std::vector<Vector2> verts) {
     this->verts = verts;
 }
 
-const Vector2 Branch::front() const {
+Vector2 Branch::front() const {
     return (verts[0] + verts[1]) / 2;
 }
 
-const Vector2 Branch::back() const {
+Vector2 Branch::back() const {
     return (verts[2] + verts[3]) / 2;
 }
 
-const Vector2 Branch::forward() const { 
+Vector2 Branch::forward() const { 
     return front() - back();
 }
 
-const float Branch::front_thickness() const {
+float Branch::front_thickness() const {
     return my_length(verts[0] - verts[1]) / 2;
 }
 
-const float Branch::back_thickness() const {
+float Branch::back_thickness() const {
     return my_length(verts[2] - verts[3]) / 2;
 }
 
-const Branch Branch::clone() const {
+Branch Branch::clone() const {
     std::vector<Vector2> vs;
     for (auto vert : verts) {
         vs.push_back(vert);
@@ -59,7 +59,6 @@ Tree::Tree(std::vector<Branch> branches, Shader& shader, Rand& rand) : rand(rand
 Tree::~Tree() {
     std::cout << "deinit tree\n";
     unload_textures();
-    // CANNOT unload shaders here
     std::cout << "unload shader!\n";
     UnloadShader(shader);
 }
@@ -73,7 +72,7 @@ void Tree::bounding_box(Vector2& small, Vector2& big) {
     small.x = small.y = 9999;
     big.x = big.y = -9999;
     for (const auto& branch : branches) {
-        for (int i = 0; i < 4; i++) {
+        for (size_t i = 0; i < 4; i++) {
             small.x = fmin(small.x, branch.verts[i].x);
             small.y = fmin(small.y, branch.verts[i].y);
             big.x = fmax(big.x, branch.verts[i].x);
@@ -89,8 +88,8 @@ void Tree::init_texture() {
     // Bounding box it
     Vector2 small, big;
     bounding_box(small, big);
-    // std::cout << "small " << small.x << ", " << small.y << "\n";
-    // std::cout << "big " << big.x << ", " << big.y << "\n";
+    // std::cout << "\nsmall " << small.x << ", " << small.y << "\n";
+    // std::cout << "\nbig " << big.x << ", " << big.y << "\n";
     texture_pos = Vector2I(small);
 
     auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
@@ -195,6 +194,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
     float length_used = 0;
 
     const auto& length_calc = [this, &total_length, &length_used](std::vector<Branch> subtendril) -> float {
+        (void) subtendril;
         // for now just go with it being independent of tendril.
         float rand_length = rand.gen(total_length * 0.04, total_length * 0.13);
         float ret = fmin(total_length - length_used, rand_length);

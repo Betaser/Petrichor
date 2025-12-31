@@ -1,5 +1,3 @@
-// For now we just make the area go from a color input to brown
-
 #version 330
 
 // in vec3 vertexPos;
