@@ -17,20 +17,22 @@ struct Button {
     struct Owner {
         virtual ~Owner() = default;
     };
-    Owner* owner;
-    Vector2 pos;
-    Vector2 dim;
-    bool hovered;
-    bool last_hit;
-    // Set hit when trying to run on_hit.
-    bool hit;
-    Color background_color;
-    Color text_color;
-    std::string text;
+    struct State {
+        Owner* owner;
+        Vector2 pos;
+        Vector2 dim;
+        bool hovered;
+        bool last_hit;
+        // Set hit when trying to run on_hit.
+        bool hit;
+        Color background_color;
+        Color text_color;
+        std::string text;
+    } state;
 
     // This is good enough for hovering/not hovering, but we will need another state for pressing or not.
     // For now, just make pressing not require another state.
-    Button* idle_state;
+    State idle_state;
 
     std::function<void(Button&)> on_hover;
     std::function<void(Button&)> on_hit;

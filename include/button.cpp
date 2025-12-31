@@ -4,40 +4,45 @@
 Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text, 
     std::function<void(Button&)> on_hover,
     std::function<void(Button&)> on_hit) {
-    this->hovered = false;
-    this->last_hit = false;
-    this->hit = false;
-    this->owner = owner;
-    idle_state = nullptr;
+    state.hovered = false;
+    state.last_hit = false;
+    state.hit = false;
+    state.owner = owner;
     
     std::cout << "created button\n";
-    this->pos = pos;
-    this->dim = dim;
-    this->text = text;
+    state.pos = pos;
+    state.dim = dim;
+    state.text = text;
     this->on_hover = on_hover;
     this->on_hit = on_hit;
 
     // Default values
-    background_color = YELLOW;
-    background_color.a = 100;
-    text_color = BLACK;
+    state.background_color = YELLOW;
+    state.background_color.a = 100;
+    state.text_color = BLACK;
+
+    idle_state = state;
 }
 
 Button::~Button() {
     std::cout << "deinit button\n";
-    delete this->idle_state;
 }
 
 void Button::take_input(Vector2 cursor) {
+    auto& pos = state.pos;
+    auto& hit = state.hit;
+    auto& last_hit = state.last_hit;
+    auto& dim = state.dim;
+    auto& hovered = state.hovered;
+
     bool horz = pos.x < cursor.x && cursor.x < pos.x + dim.x;
     bool vert = pos.y < cursor.y && cursor.y < pos.y + dim.y;
     bool new_hovered = horz && vert;
 
     if (new_hovered && !hovered) {
         // Save idle state, aka this state
-        std::cout << "free button\n";
-        free(idle_state);
-        idle_state = new Button(owner, pos, dim, text, on_hover, on_hit);
+        std::cout << "copy constructor button\n";
+        idle_state = state;
         on_hover(*this);
     }
     if (hit && !last_hit) {
@@ -45,16 +50,7 @@ void Button::take_input(Vector2 cursor) {
         hit = false;
     }
     if (!new_hovered && hovered) {
-        if (idle_state != nullptr) {
-            // Restore idle state
-            std::swap(pos, idle_state->pos);
-            std::swap(dim, idle_state->dim);
-            std::swap(text, idle_state->text);
-            std::swap(background_color, idle_state->background_color);
-            std::swap(text_color, idle_state->text_color);
-            std::swap(on_hover, idle_state->on_hover);
-            std::swap(on_hit, idle_state->on_hit);
-        }
+        state = idle_state;
     }
 
     hovered = new_hovered;
@@ -62,6 +58,13 @@ void Button::take_input(Vector2 cursor) {
 }
 
 void Button::render() const {
+    auto& background_color = state.background_color;
+    auto& hovered = state.hovered;
+    auto& dim = state.dim;
+    auto& pos = state.pos;
+    auto& text = state.text;
+    auto& text_color = state.text_color;
+
     auto color = background_color;
     if (hovered) {
         color = lerp(background_color, BLACK, 0.4);

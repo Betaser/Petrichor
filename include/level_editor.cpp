@@ -46,10 +46,10 @@ void LevelEditor::initialize_ui() {
         { 80, 80 }, 
         "Show debug keybinds",
         [](Button& b) {
-            b.text = "Press me to toggle instructions";
+            b.state.text = "Press me to toggle instructions";
         },
         [](Button& b) {
-            auto owner = dynamic_cast<LevelEditor*>(b.owner);
+            auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
             owner->show_instructions = !owner->show_instructions;
         });
     buttons.push_back(debug_btn);
@@ -160,9 +160,9 @@ void LevelEditor::update(Game& game) {
 
     // Yes, let's eventually move this button checking bounds to a designated class
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		using_ui = pt_in_rect(GetMousePosition(), debug_button->pos, debug_button->dim);
+		using_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
 		if (using_ui) {
-			debug_button->hit = true;
+			debug_button->state.hit = true;
 		} 
 		else { 
 			selection_offset = GetMousePosition() - meta.offset;
