@@ -6,54 +6,54 @@
 #include "constants.cpp"
 
 LevelEditor::LevelEditor() {
-    debug_button = nullptr;
-    show_instructions = false;
-    std::cout << "init level editor\n";
-    initialize_ui();
-    time = 0;
-    selected_index = 0;
-	using_ui = false;
-    // Just to make sure last_selected_index is different from selected_index
-    last_selected_index = selected_index + 1;
-    // This zeroes our struct.
-    selection_offset = {};
+	debug_button = nullptr;
+	show_instructions = false;
+	std::cout << "init level editor\n";
+	initialize_ui();
+	time = 0;
+	selected_index = 0;
+	using_depth_ui = false;
+	// Just to make sure last_selected_index is different from selected_index
+	last_selected_index = selected_index + 1;
 
 	Shader select_shader = LoadShader(0, TextFormat("assets/select.fs", Constants::glsl_version));
-    this->select_shader = select_shader;
+	this->select_shader = select_shader;
 
-    selected_tex = load_dummy_tex();
+	selected_tex = load_dummy_tex();
 }
 
 LevelEditor::~LevelEditor() {
-    std::cout << "deinit level editor\n";
-    UnloadTexture(selected_tex);
-    UnloadShader(select_shader);
+	std::cout << "deinit level editor\n";
+	UnloadTexture(selected_tex);
+	UnloadShader(select_shader);
 }
 
-void LevelEditor::make_initialized_tree(Game& game, const TreeMetadata& metadata) {
-	game.make_tree();
+void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata) {
+	tree_maker();
 	auto& tree = *game.trees.back();
-	tree_metadatas.push_back(TreeMetadata(metadata.rotation, metadata.offset, tree));
+	TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, tree.id));
+	std::cout << "make meta " << to_str({temp.mark.x, temp.mark.y }, 2) << "\n";
+	tree_metadatas.push_back(temp);
 	randomize_tendrils(game);
 }
 
 void LevelEditor::initialize_ui() {
-    buttons.clear();
-    int screenWidth = 800;
-    auto debug_btn = Button(
-        this,
-        { (float) screenWidth - 190, 110 }, 
-        { 80, 80 }, 
-        "Show debug keybinds",
-        [](Button& b) {
-            b.state.text = "Press me to toggle instructions";
-        },
-        [](Button& b) {
-            auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
-            owner->show_instructions = !owner->show_instructions;
-        });
-    buttons.push_back(debug_btn);
-    debug_button = &buttons[0];
+	buttons.clear();
+	int screenWidth = 800;
+	auto debug_btn = Button(
+		this,
+		{ (float) screenWidth - 190, 110 }, 
+		{ 80, 80 }, 
+		"Show debug keybinds",
+		[](Button& b) {
+			b.state.text = "Press me to toggle instructions";
+		},
+		[](Button& b) {
+			auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
+			owner->show_instructions = !owner->show_instructions;
+		});
+	buttons.push_back(debug_btn);
+	debug_button = &buttons[0];
 }
 
 void LevelEditor::randomize_tendrils(Game& game) {
@@ -61,12 +61,12 @@ void LevelEditor::randomize_tendrils(Game& game) {
 	Vector2 start_location { 100, 100 };
 
 	auto& tree = game.trees[selected_index];
-	Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location, 5) };
+	Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
 	tree->branches = Tree::branches_from_tendrils(tendrils);
 	tree->tendrils = tendrils;
 
 	auto& meta = tree_metadatas[tree->id];
-	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, *tree);
+	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, *tree, meta.mark);
 	update_selected_verts(game);
 
 	tree->init_texture();
@@ -74,8 +74,8 @@ void LevelEditor::randomize_tendrils(Game& game) {
 }
 
 void LevelEditor::update_selected_verts(Game& game) {
-    auto& selected = game.trees[selected_index];
-    auto& meta = tree_metadatas[selected->id];
+	auto& selected = game.trees[selected_index];
+	auto& meta = tree_metadatas[selected->id];
 	const auto& branches = meta.branches;
 	if (branches.size() != selected->branches.size())
 		std::cerr << "metadata branches size " << branches.size() << " selected branches size " << selected->branches.size() << "\n";
@@ -95,23 +95,48 @@ void LevelEditor::update_selected_verts(Game& game) {
 
 // Selection is slightly larger than size of tree texture.
 void LevelEditor::load_selection_shader(Game& game) {
-    std::cout << "\nload selection shader\n";
-    UnloadTexture(selected_tex);
+	std::cout << "\nload selection shader\n";
+	UnloadTexture(selected_tex);
 
-    auto& tree = game.trees[selected_index];
-    auto tree_tex_bounds = (Vector2I { tree->blank_tex.width, tree->blank_tex.height }).to_vec2();
-    tree_tex_bounds += select_extra_bounds;
-    auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
-    selected_tex = LoadTextureFromImage(blank);
-    UnloadImage(blank);
+	auto& tree = game.trees[selected_index];
+	auto tree_tex_bounds = (Vector2I { tree->blank_tex.width, tree->blank_tex.height }).to_vec2();
+	tree_tex_bounds += select_extra_bounds;
+	auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
+	selected_tex = LoadTextureFromImage(blank);
+	UnloadImage(blank);
 }
 
 void LevelEditor::update(Game& game) {
-    time += GetFrameTime();
+	time += GetFrameTime();
 
-    // Selected tree is not a thing yet.
-    auto& selected = game.trees[selected_index];
-    auto& meta = tree_metadatas[selected->id];
+	// Selected tree is not a thing yet.
+	auto& selected = game.trees[selected_index];
+	auto& meta = tree_metadatas[selected->id];
+
+	// Change depth, by clicking close enough to the mark and moving your mouse while holding click
+	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+		Rectangle r = meta.mark;
+		// Grow r a bit
+		float margin = 5;
+		r.x -= margin;
+		r.y -= margin;
+		r.width += 2 * margin;
+		r.height += 2 * margin;
+		if (pt_in_rect(GetMousePosition(), { r.x, r.y }, { r.width, r.height })) {
+			using_depth_ui = true;
+		}
+	} else {
+		using_depth_ui = false;
+	}
+	if (using_depth_ui) {
+		// Then make depth move to your mouse, and call update
+		// I suppose we make the depth go from 0 at the top to like 100 at the bottom?
+		const float MAX_DEPTH = 100;
+		float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(0.0f, GetMousePosition().y));
+		selected->depth = (clamped_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
+
+		meta.mark = update_tree_for_depth_ui(game, selected->id);
+	}
 
 	// Right click to select, chooses closest tree
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
@@ -134,96 +159,161 @@ void LevelEditor::update(Game& game) {
 	if (IsKeyPressed(KEY_F)) {
 		// Make sure we do this first.
 		// std::cout << "dup " << selected->id << "\n";
+		// Depth is stored on tree, so it differs from treemetadata
+		auto& selected = game.trees[selected_index];
+		// Don't use selected directly after make_initialized_tree, because it gets deleted as the vector reallocates
+		const float depth = selected->depth;
 		const auto& meta = tree_metadatas[selected->id];
 		selected_index = game.trees.size();
-		make_initialized_tree(game, meta);
-		// std::cout << "newest " << game.trees.back()->id << "\n";
+		make_initialized_tree([&game, &depth]() { 
+			game.make_tree();
+			auto& tree = *game.trees.back();
+			tree.depth = depth;
+		}, game, meta);
+		// And re-run update_tree_for_depth_ui explicitly
+		std::cout << "copied depth " << depth << "\n";
+
+		std::cout << "newest " << game.trees.back()->id << "\n";
 
 		// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
 		return;
 	}
 
-    // rotation
-    float rotation_input = 0;
-    if (IsKeyDown(KEY_A))
-        rotation_input = 0.05;
-    if (IsKeyDown(KEY_D))
-        rotation_input = -0.05; 
+	// rotation
+	float rotation_input = 0;
+	if (IsKeyDown(KEY_A))
+		rotation_input = 0.05;
+	if (IsKeyDown(KEY_D))
+		rotation_input = -0.05; 
 
-    meta.rotation = meta.rotation + rotation_input;
-    if (rotation_input != 0) {
+	meta.rotation = meta.rotation + rotation_input;
+	if (rotation_input != 0) {
 		update_selected_verts(game);
 
 		selected->init_texture();
 		load_selection_shader(game);
-    }
+	}
 
-    // Yes, let's eventually move this button checking bounds to a designated class
+	bool using_ui = using_depth_ui;
+
+	// Yes, let's eventually move this button checking bounds to a designated class
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		using_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
-		if (using_ui) {
+		bool using_debug_btn_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
+		using_ui |= using_debug_btn_ui;
+		if (using_debug_btn_ui) {
 			debug_button->state.hit = true;
 		} 
 		else { 
 			selection_offset = GetMousePosition() - meta.offset;
 		}
-    }
+	}
 
 	// Adapted from main's while loop
 	if (IsKeyPressed(KEY_R)) {
 		selected->rand.set_seed(++selected->rand.seed);
 		randomize_tendrils(game);
 
-		std::cout << to_str(tree_metadatas[selected->id].offset, 3) << "\n";
+		// std::cout << to_str(tree_metadatas[selected->id].offset, 3) << "\n";
 	}
 
-    // offset
-    if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-        meta.offset = GetMousePosition() - selection_offset;
+	// offset
+	if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+		meta.offset = GetMousePosition() - selection_offset;
 
 		update_selected_verts(game);
 		// just translate it instead of reloading shaders.
 		Vector2 small, big;
 		selected->bounding_box(small, big);
 		selected->texture_pos = Vector2I(small);
-        // selected->init_texture();
+		// selected->init_texture();
 		auto tree_tex_bounds = (Vector2I { selected->blank_tex.width, selected->blank_tex.height }).to_vec2();
 		tree_tex_bounds += select_extra_bounds;
-    }
+	}
 
-    if (last_selected_index != selected_index) {
-        load_selection_shader(game);
-        last_selected_index = selected_index;
-    }
+	if (last_selected_index != selected_index) {
+		load_selection_shader(game);
+		last_selected_index = selected_index;
+	}
 }
 
 void LevelEditor::render(Game& game) const {
-    int dims_locs = GetShaderLocation(select_shader, "dims");
-    Vector2I dims { selected_tex.width, selected_tex.height };
-    SetShaderValue(select_shader, dims_locs, &dims, SHADER_UNIFORM_IVEC2);
+	int dims_locs = GetShaderLocation(select_shader, "dims");
+	Vector2I dims { selected_tex.width, selected_tex.height };
+	SetShaderValue(select_shader, dims_locs, &dims, SHADER_UNIFORM_IVEC2);
 
-    int loc = GetShaderLocation(select_shader, "time");
-    SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
+	int loc = GetShaderLocation(select_shader, "time");
+	SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
 
-    BeginShaderMode(select_shader);
-    auto& tree = game.trees[selected_index];
-    Vector2I pos = Vector2I(tree->texture_pos.to_vec2() + select_extra_bounds / 2);
-    DrawTexture(selected_tex, pos.x, pos.y, WHITE);
-    EndShaderMode();
+	BeginShaderMode(select_shader);
+	auto& tree = game.trees[selected_index];
+	Vector2I pos = Vector2I(tree->texture_pos.to_vec2() + select_extra_bounds / 2);
+	DrawTexture(selected_tex, pos.x, pos.y, WHITE);
+	EndShaderMode();
 
-    if (show_instructions) {
-        std::stringstream ss; ss
-        << "F = duplicate\n"
+	if (show_instructions) {
+		std::stringstream ss; ss
+		<< "F = duplicate\n"
 		<< "Right click to select\n"
 		<< "R = randomize seed\n"
-        << "A = rotate counterclockwise\n"
-        << "D = rotate clockwise\n"
-        << "Mouse scroll = change depth\n"
-        << "G = guidelines (editor add ons.\n"
-        << "which are saved separate from level data)";
-        unsigned char opacity = 255 * (0.3 * (0.5 * sin(time * 3.0) + 0.5) + 0.7);
+		<< "A = rotate counterclockwise\n"
+		<< "D = rotate clockwise\n"
+		<< "Mouse scroll = change depth\n"
+		<< "G = guidelines (editor add ons.\n"
+		<< "which are saved separate from level data)";
+		std::string s_str = ss.str();
+		unsigned char opacity = 255 * (0.3 * (0.5 * sin(time * 3.0) + 0.5) + 0.7);
 		const int font_size = 30;
-        int text_size = MeasureText(ss.str().c_str(), font_size);
-        DrawText(ss.str().c_str(), 400 - text_size / 2, 80, font_size, { 255, 70, 70, opacity });
-    }
+		int text_size = MeasureText(s_str.c_str(), font_size);
+		DrawText(s_str.c_str(), 400 - text_size / 2, 80, font_size, { 255, 70, 70, opacity });
+	}
+
+	render_depth_ui(game.trees[selected_index]->id);
+}
+
+Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, size_t tree_index) {
+	depth_ui.height = (float) game.screen_height - 2 * depth_ui.SPACING;
+	depth_ui.top_left = {
+		(float) game.screen_width - depth_ui.WIDTH - depth_ui.SPACING,
+		depth_ui.SPACING
+	};
+
+	std::vector<float> depths(game.trees.size());
+	for (size_t i = 0; i < game.trees.size(); i++)
+		depths[i] = game.trees[i]->depth;
+	
+	std::sort(depths.begin(), depths.end());
+
+	const float min_depth = std::min(0.0f, depths[0]);
+	const float max_depth = std::max(depth_ui.MAX_DEPTH, depths.back());
+
+	const float depth = game.trees[tree_index]->depth;
+	const int spacing = -5;
+	const int height = 5;
+
+	float percent = (depth - min_depth) / (max_depth - min_depth);
+	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - height / 2;
+	depth_ui.y_pos = y_pos;
+
+	return { 
+		.x = depth_ui.top_left.x + spacing, 
+		.y = y_pos, 
+		.width = depth_ui.WIDTH - 2 * spacing, 
+		.height = height 
+	};
+}
+
+void LevelEditor::render_depth_ui(size_t selected_id) const {
+	DrawRectangle(depth_ui.top_left.x, depth_ui.top_left.y, 
+		depth_ui.WIDTH, depth_ui.height, depth_ui.BACKGROUND_COLOR);
+
+	for (size_t i = 0; i < tree_metadatas.size(); i++) {
+		Rectangle r = tree_metadatas[i].mark;
+		// For now, color differently. Could use a shader maybe.
+		if (i == selected_id) {
+			DrawRectangle(r.x, r.y, r.width, r.height, lerp(ORANGE, depth_ui.MARK_COLOR, 0.7));
+		} 
+		else {
+			DrawRectangle(r.x, r.y, r.width, r.height, depth_ui.MARK_COLOR);
+		}
+	}
 }

@@ -8,7 +8,7 @@
 #endif
 
 namespace Constants {
-    static int glsl_version = GLSL_VERSION;
+	static int glsl_version = GLSL_VERSION;
 }
 
 #endif

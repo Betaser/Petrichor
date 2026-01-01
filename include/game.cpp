@@ -2,6 +2,18 @@
 #include "constants.cpp"
 #include "game.hpp"
 
+Game::Game(const int screen_width, const int screen_height, const int fps) {
+	this->screen_width = screen_width;
+	this->screen_height = screen_height;	
+
+	set_fps(fps);
+}
+
+void Game::set_fps(int fps) {
+	this->fps = fps;
+	SetTargetFPS(fps);
+}
+
 Game* Game::get() {
 	std::cout << "using game.get\n";
 	return Game::_game;

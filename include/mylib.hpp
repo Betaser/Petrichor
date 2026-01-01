@@ -6,26 +6,26 @@
 #include "raylib.h"
 
 struct Vector2I {
-    int x, y;
-    Vector2I(Vector2 v);
-    Vector2I(int x, int y);
-    Vector2I();
+	int x, y;
+	Vector2I(Vector2 v);
+	Vector2I(int x, int y);
+	Vector2I();
 
-    Vector2 to_vec2();
+	Vector2 to_vec2();
 };
 
 class Rand {
-    private:
-    std::mt19937 int_gen;
-    std::uniform_real_distribution<double> dist;
+	private:
+	std::mt19937 int_gen;
+	std::uniform_real_distribution<double> dist;
 
-    public:
-    Rand(int seed); 
+	public:
+	Rand(int seed); 
 
-    int seed;
+	int seed;
 
-    void set_seed(int seed);
-    float gen(float a, float b);
+	void set_seed(int seed);
+	float gen(float a, float b);
 };
 
 #endif

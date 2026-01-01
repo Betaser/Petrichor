@@ -43,7 +43,8 @@ void main() {
 
     for (int i = 0; i < N; i++) {
         // check if pixel in trapezoid
-        vec2 pts[4] = { pt1s[i], pt2s[i], pt3s[i], pt4s[i] };
+        // C style initialization is not well supported by default on linux
+        vec2 pts[4] = vec2[4](pt1s[i], pt2s[i], pt3s[i], pt4s[i]);
 
         bool inBranch = true;
         for (int j = 0; j < 4; j++) {

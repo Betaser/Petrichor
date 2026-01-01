@@ -2,8 +2,8 @@
 #define MAIN_H
 
 class Main {
-    public:
-    static int clicks;
+	public:
+	static int clicks;
 };
 
 // ???

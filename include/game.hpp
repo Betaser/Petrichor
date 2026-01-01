@@ -10,15 +10,20 @@
 struct Game;
 
 struct Game : Button::Owner {
-    Petra petra;
+	Petra petra;
 	std::vector<std::unique_ptr<Tree>> trees;
-    Font default_font;
+	int screen_width = 0;
+	int screen_height = 0;
+	int fps = 0;
 
-    // Not preferred due to lack of clarity, but for testing.
-    static Game* _game;
-    static Game* get();
+	Game(const int screen_width, const int screen_height, const int fps);
 
-    void make_tree();
+	// Not preferred due to lack of clarity, but for testing.
+	static Game* _game;
+	static Game* get();
+
+	void make_tree();
+	void set_fps(int fps);
 };
 
 Game* Game::_game = nullptr;

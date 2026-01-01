@@ -1,11 +1,12 @@
 #ifndef PETRA_H
 #define PETRA_H
 
-#include <string>
-
-class Petra {
-    public:
-    std::string say_hello();
+#include <iostream>
+struct Petra {
+	std::string say_hello();
+	Petra() { 
+		std::cout << "initialized Petra\n";
+	}
 };
 
 #endif
