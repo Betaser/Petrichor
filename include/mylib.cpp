@@ -1,8 +1,48 @@
 #include <cstdio>
 #include <math.h>
-#include "mylib.hpp"
 #include <iostream>
 #include <format>
+
+#include "constants.cpp"
+#include "mylib.hpp"
+
+void unload_shader(ShaderWithCheck& shader_with) {
+	shader_with.load_unloads--;
+	UnloadShader(shader_with);
+}
+
+void load_shader(ShaderWithCheck& shader_with, const char* filename) {
+	shader_with.load_unloads++;
+	Shader shader = LoadShader(0, TextFormat(filename, Constants::glsl_version));
+	// Sus
+	shader_with.id = shader.id;
+	shader_with.locs = shader.locs;
+}
+
+void unload_texture(TextureWithCheck& texture_with) {
+	texture_with.load_unloads--;
+	UnloadTexture(texture_with);
+}
+
+void load_texture(TextureWithCheck& texture_with, const char* filename) {
+	texture_with.load_unloads++;
+	Texture2D tex = LoadTexture(filename);
+	texture_with.format = tex.format;
+	texture_with.height = tex.height;
+	texture_with.id = tex.id;
+	texture_with.mipmaps = tex.mipmaps;
+	texture_with.width = tex.width;
+}
+
+void load_texture_from_image(TextureWithCheck& texture_with, Image image) {
+	texture_with.load_unloads++;
+	Texture2D tex = LoadTextureFromImage(image);
+	texture_with.format = tex.format;
+	texture_with.height = tex.height;
+	texture_with.id = tex.id;
+	texture_with.mipmaps = tex.mipmaps;
+	texture_with.width = tex.width;
+}
 
 Vector2I::Vector2I(Vector2 v) {
 	this->x = v.x;
@@ -133,16 +173,6 @@ Color lerp(const Color& a, const Color& b, const float& amt) {
 		(unsigned char) ((float(b.b) - float(a.b)) * amt + a.b),
 		(unsigned char) ((float(b.a) - float(a.a)) * amt + a.a)
 	};
-}
-
-Texture2D load_dummy_tex() {
-	// Replace with a better dummy texture;
-
-	// Maybe below is better? 
-	// auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
-	// return LoadTextureFromImage(blank);
-	std::cout << "tree img exists? " << FileExists("assets/tree_texture.png") << "\n";
-	return LoadTexture("assets/tree_texture.png");
 }
 
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim) {

@@ -38,7 +38,8 @@ struct LevelEditor : public Button::Owner {
 	std::vector<TreeMetadata> tree_metadatas;
 	size_t selected_index = 0;
 	size_t last_selected_index = 0;
-	Texture2D selected_tex;
+	std::vector<size_t> deleted_tree_ids;
+	TextureWithCheck selected_tex;
 	Vector2 selection_offset {};
 	float time = 0;
 	bool using_depth_ui = 0;
@@ -71,11 +72,13 @@ struct LevelEditor : public Button::Owner {
 	private:
 	bool show_instructions = false;
 	Vector2 select_extra_bounds { 10, 10 };
-	Shader select_shader;
+	ShaderWithCheck select_shader;
 
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_tree_for_depth_ui(Game& game, size_t tree_index);
 	void render_depth_ui(size_t selected_id) const;
+	bool is_selecting(Game& game) const;
+	void invalidate_selected_index(Game& game);
 };
 
 #endif

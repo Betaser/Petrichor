@@ -17,6 +17,7 @@ struct Game : Button::Owner {
 	int fps = 0;
 
 	Game(const int screen_width, const int screen_height, const int fps);
+	~Game();
 
 	// Not preferred due to lack of clarity, but for testing.
 	static Game* _game;

@@ -13,27 +13,36 @@ LevelEditor::LevelEditor() {
 	time = 0;
 	selected_index = 0;
 	using_depth_ui = false;
-	// Just to make sure last_selected_index is different from selected_index
-	last_selected_index = selected_index + 1;
+	last_selected_index = selected_index;
 
-	Shader select_shader = LoadShader(0, TextFormat("assets/select.fs", Constants::glsl_version));
-	this->select_shader = select_shader;
-
-	selected_tex = load_dummy_tex();
+	load_shader(select_shader, "assets/select.fs");
+	load_texture_from_image(selected_tex, GenImageColor(1, 1, BLANK));
 }
 
 LevelEditor::~LevelEditor() {
 	std::cout << "deinit level editor\n";
-	UnloadTexture(selected_tex);
-	UnloadShader(select_shader);
+	unload_texture(selected_tex);
+	unload_shader(select_shader);
+	std::cout << "select shader w/ id " << select_shader.id << " loads/unloads " << select_shader.load_unloads << "\n";
+	std::cout << "selected_tex w/ id " << selected_tex.id << " loads/unloads " << selected_tex.load_unloads << "\n";
 }
 
 void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata) {
 	tree_maker();
 	auto& tree = *game.trees.back();
-	TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, tree.id));
-	std::cout << "make meta " << to_str({temp.mark.x, temp.mark.y }, 2) << "\n";
-	tree_metadatas.push_back(temp);
+	std::cout << "make tree w/ id " << tree.id << "\n";
+	bool ids_available = !deleted_tree_ids.empty();
+	if (ids_available) {
+		size_t popped_id = deleted_tree_ids[0];
+		deleted_tree_ids.erase(deleted_tree_ids.begin());
+		tree.id = popped_id;
+	}
+	TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, game.trees.size() - 1));
+	if (ids_available)
+		tree_metadatas[tree.id] = temp;
+	else
+		tree_metadatas.emplace_back(temp);
+
 	randomize_tendrils(game);
 }
 
@@ -96,47 +105,20 @@ void LevelEditor::update_selected_verts(Game& game) {
 // Selection is slightly larger than size of tree texture.
 void LevelEditor::load_selection_shader(Game& game) {
 	std::cout << "\nload selection shader\n";
-	UnloadTexture(selected_tex);
+	unload_texture(selected_tex);
 
 	auto& tree = game.trees[selected_index];
 	auto tree_tex_bounds = (Vector2I { tree->blank_tex.width, tree->blank_tex.height }).to_vec2();
 	tree_tex_bounds += select_extra_bounds;
 	auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
-	selected_tex = LoadTextureFromImage(blank);
+	load_texture_from_image(selected_tex, blank);
 	UnloadImage(blank);
 }
 
 void LevelEditor::update(Game& game) {
 	time += GetFrameTime();
 
-	// Selected tree is not a thing yet.
-	auto& selected = game.trees[selected_index];
-	auto& meta = tree_metadatas[selected->id];
-
-	// Change depth, by clicking close enough to the mark and moving your mouse while holding click
-	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-		Rectangle r = meta.mark;
-		// Grow r a bit
-		float margin = 5;
-		r.x -= margin;
-		r.y -= margin;
-		r.width += 2 * margin;
-		r.height += 2 * margin;
-		if (pt_in_rect(GetMousePosition(), { r.x, r.y }, { r.width, r.height })) {
-			using_depth_ui = true;
-		}
-	} else {
-		using_depth_ui = false;
-	}
-	if (using_depth_ui) {
-		// Then make depth move to your mouse, and call update
-		// I suppose we make the depth go from 0 at the top to like 100 at the bottom?
-		const float MAX_DEPTH = 100;
-		float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(0.0f, GetMousePosition().y));
-		selected->depth = (clamped_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
-
-		meta.mark = update_tree_for_depth_ui(game, selected->id);
-	}
+	const bool selecting = is_selecting(game);
 
 	// Right click to select, chooses closest tree
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
@@ -155,100 +137,162 @@ void LevelEditor::update(Game& game) {
 		}
 	}
 
-	// Duplicate. Means we copy over metadata
-	if (IsKeyPressed(KEY_F)) {
-		// Make sure we do this first.
-		// std::cout << "dup " << selected->id << "\n";
-		// Depth is stored on tree, so it differs from treemetadata
-		auto& selected = game.trees[selected_index];
-		// Don't use selected directly after make_initialized_tree, because it gets deleted as the vector reallocates
-		const float depth = selected->depth;
-		const auto& meta = tree_metadatas[selected->id];
-		selected_index = game.trees.size();
-		make_initialized_tree([&game, &depth]() { 
-			game.make_tree();
-			auto& tree = *game.trees.back();
-			tree.depth = depth;
-		}, game, meta);
-		// And re-run update_tree_for_depth_ui explicitly
-		std::cout << "copied depth " << depth << "\n";
-
-		std::cout << "newest " << game.trees.back()->id << "\n";
-
-		// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
-		return;
-	}
-
-	// rotation
-	float rotation_input = 0;
-	if (IsKeyDown(KEY_A))
-		rotation_input = 0.05;
-	if (IsKeyDown(KEY_D))
-		rotation_input = -0.05; 
-
-	meta.rotation = meta.rotation + rotation_input;
-	if (rotation_input != 0) {
-		update_selected_verts(game);
-
-		selected->init_texture();
-		load_selection_shader(game);
-	}
-
 	bool using_ui = using_depth_ui;
+	bool using_debug_btn_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
 
 	// Yes, let's eventually move this button checking bounds to a designated class
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		bool using_debug_btn_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
 		using_ui |= using_debug_btn_ui;
-		if (using_debug_btn_ui) {
+		if (using_debug_btn_ui)
 			debug_button->state.hit = true;
-		} 
-		else { 
+	}
+
+	if (selecting) {
+		// Selected tree is not a thing yet.
+		auto& selected = game.trees[selected_index];
+		auto& meta = tree_metadatas[selected->id];
+
+		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !using_debug_btn_ui) {
 			selection_offset = GetMousePosition() - meta.offset;
 		}
-	}
 
-	// Adapted from main's while loop
-	if (IsKeyPressed(KEY_R)) {
-		selected->rand.set_seed(++selected->rand.seed);
-		randomize_tendrils(game);
+		// Debug testing
+		if (IsKeyPressed(KEY_TAB)) {
+			// Delete all but the first tree
+			const size_t selected_id = selected->id;
+			game.trees.erase(game.trees.begin() + 1, game.trees.end());
+			deleted_tree_ids.emplace_back(selected_id);
+			invalidate_selected_index(game);
+			return;
+		}
 
-		// std::cout << to_str(tree_metadatas[selected->id].offset, 3) << "\n";
-	}
+		// Deletion, should be tough
+		if (IsKeyPressed(KEY_BACKSPACE) && game.trees.size() > 1) {
+			const size_t selected_id = selected->id;
+			// Make sure to extract everything you need from selected BEFORE erasing it
+			game.trees.erase(game.trees.begin() + selected_index);
+			deleted_tree_ids.emplace_back(selected_id);
 
-	// offset
-	if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-		meta.offset = GetMousePosition() - selection_offset;
+			std::cout << "deleted ids are: ";
+			for (auto id : deleted_tree_ids)
+				std::cout << id << " ";
+			std::cout << "\n";
 
-		update_selected_verts(game);
-		// just translate it instead of reloading shaders.
-		Vector2 small, big;
-		selected->bounding_box(small, big);
-		selected->texture_pos = Vector2I(small);
-		// selected->init_texture();
-		auto tree_tex_bounds = (Vector2I { selected->blank_tex.width, selected->blank_tex.height }).to_vec2();
-		tree_tex_bounds += select_extra_bounds;
-	}
+			// Do NOT delete tree_metadatas, it gets reused.
+			invalidate_selected_index(game);
 
-	if (last_selected_index != selected_index) {
-		load_selection_shader(game);
-		last_selected_index = selected_index;
+			std::cout << "deleted " << selected_id << "\n";
+			for (auto& tree : game.trees)
+				std::cout << "id " << tree->id << "\n";
+			return;
+		}
+
+		// Change depth, by clicking close enough to the mark and moving your mouse while holding click
+		if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+			Rectangle r = meta.mark;
+			// Grow r a bit
+			float margin = 5;
+			r.x -= margin;
+			r.y -= margin;
+			r.width += 2 * margin;
+			r.height += 2 * margin;
+			if (pt_in_rect(GetMousePosition(), { r.x, r.y }, { r.width, r.height })) {
+				using_depth_ui = true;
+			}
+		} else {
+			using_depth_ui = false;
+		}
+		if (using_depth_ui) {
+			// Then make depth move to your mouse, and call update
+			// I suppose we make the depth go from 0 at the top to like 100 at the bottom?
+			const float MAX_DEPTH = 100;
+			float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(0.0f, GetMousePosition().y));
+			selected->depth = (clamped_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
+
+			meta.mark = update_tree_for_depth_ui(game, selected_index);
+		}
+
+		// Duplicate. Means we copy over metadata
+		if (IsKeyPressed(KEY_F)) {
+			// Make sure we do this first.
+			// std::cout << "dup " << selected->id << "\n";
+			// Depth is stored on tree, so it differs from treemetadata
+			auto& selected = game.trees[selected_index];
+			// Don't use selected directly after make_initialized_tree, because it gets deleted as the vector reallocates
+			const float depth = selected->depth;
+			const auto& meta = tree_metadatas[selected->id];
+
+			std::cout << "\nsize of metadata " << tree_metadatas.size() << "\n";
+
+			selected_index = game.trees.size();
+
+			make_initialized_tree([&game, &depth]() { 
+				game.make_tree();
+				auto& tree = *game.trees.back();
+				tree.depth = depth;
+			}, game, meta);
+
+			// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
+			return;
+		}
+
+		// rotation
+		float rotation_input = 0;
+		if (IsKeyDown(KEY_A))
+			rotation_input = 0.05;
+		if (IsKeyDown(KEY_D))
+			rotation_input = -0.05; 
+
+		meta.rotation = meta.rotation + rotation_input;
+		if (rotation_input != 0) {
+			update_selected_verts(game);
+
+			selected->init_texture();
+			load_selection_shader(game);
+		}
+
+		// Adapted from main's while loop
+		if (IsKeyPressed(KEY_R)) {
+			selected->rand.set_seed(++selected->rand.seed);
+			randomize_tendrils(game);
+		}
+
+		// offset
+		if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+			meta.offset = GetMousePosition() - selection_offset;
+
+			update_selected_verts(game);
+			// just translate it instead of reloading shaders.
+			Vector2 small, big;
+			selected->bounding_box(small, big);
+			selected->texture_pos = Vector2I(small);
+			// selected->init_texture();
+			auto tree_tex_bounds = (Vector2I { selected->blank_tex.width, selected->blank_tex.height }).to_vec2();
+			tree_tex_bounds += select_extra_bounds;
+		}
+
+		if (last_selected_index != selected_index) {
+			load_selection_shader(game);
+			last_selected_index = selected_index;
+		}
 	}
 }
 
 void LevelEditor::render(Game& game) const {
-	int dims_locs = GetShaderLocation(select_shader, "dims");
-	Vector2I dims { selected_tex.width, selected_tex.height };
-	SetShaderValue(select_shader, dims_locs, &dims, SHADER_UNIFORM_IVEC2);
+	if (is_selecting(game)) {
+		int dims_locs = GetShaderLocation(select_shader, "dims");
+		Vector2I dims(selected_tex.width, selected_tex.height);
+		SetShaderValue(select_shader, dims_locs, &dims, SHADER_UNIFORM_IVEC2);
 
-	int loc = GetShaderLocation(select_shader, "time");
-	SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
+		int loc = GetShaderLocation(select_shader, "time");
+		SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
 
-	BeginShaderMode(select_shader);
-	auto& tree = game.trees[selected_index];
-	Vector2I pos = Vector2I(tree->texture_pos.to_vec2() + select_extra_bounds / 2);
-	DrawTexture(selected_tex, pos.x, pos.y, WHITE);
-	EndShaderMode();
+		BeginShaderMode(select_shader);
+		auto& tree = game.trees[selected_index];
+		Vector2I pos(tree->texture_pos.to_vec2() + select_extra_bounds / 2);
+		DrawTexture(selected_tex, pos.x, pos.y, WHITE);
+		EndShaderMode();
+	}
 
 	if (show_instructions) {
 		std::stringstream ss; ss
@@ -257,6 +301,7 @@ void LevelEditor::render(Game& game) const {
 		<< "R = randomize seed\n"
 		<< "A = rotate counterclockwise\n"
 		<< "D = rotate clockwise\n"
+		<< "Backspace = delete\n"
 		<< "Mouse scroll = change depth\n"
 		<< "G = guidelines (editor add ons.\n"
 		<< "which are saved separate from level data)";
@@ -267,7 +312,8 @@ void LevelEditor::render(Game& game) const {
 		DrawText(s_str.c_str(), 400 - text_size / 2, 80, font_size, { 255, 70, 70, opacity });
 	}
 
-	render_depth_ui(game.trees[selected_index]->id);
+	size_t id = is_selecting(game) ? game.trees[selected_index]->id : selected_index;
+	render_depth_ui(id);
 }
 
 Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, size_t tree_index) {
@@ -306,7 +352,17 @@ void LevelEditor::render_depth_ui(size_t selected_id) const {
 	DrawRectangle(depth_ui.top_left.x, depth_ui.top_left.y, 
 		depth_ui.WIDTH, depth_ui.height, depth_ui.BACKGROUND_COLOR);
 
+	std::vector<size_t> tree_ids = deleted_tree_ids;
+	std::sort(tree_ids.begin(), tree_ids.end());
+	size_t id_i = 0;
+
 	for (size_t i = 0; i < tree_metadatas.size(); i++) {
+		// We need to figure out what parts of tree_metadatas are not in use.
+		if (0 <= id_i && id_i < tree_ids.size() && tree_ids[id_i] == i) {
+			id_i++;
+			continue;
+		}
+
 		Rectangle r = tree_metadatas[i].mark;
 		// For now, color differently. Could use a shader maybe.
 		if (i == selected_id) {
@@ -316,4 +372,12 @@ void LevelEditor::render_depth_ui(size_t selected_id) const {
 			DrawRectangle(r.x, r.y, r.width, r.height, depth_ui.MARK_COLOR);
 		}
 	}
+}
+
+bool LevelEditor::is_selecting(Game& game) const {
+	return selected_index < game.trees.size();
+}
+
+void LevelEditor::invalidate_selected_index(Game& game) {
+	selected_index = game.trees.size();
 }

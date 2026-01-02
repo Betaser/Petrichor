@@ -2,6 +2,8 @@
 #include "constants.cpp"
 #include "game.hpp"
 
+Game::~Game() {}
+
 Game::Game(const int screen_width, const int screen_height, const int fps) {
 	this->screen_width = screen_width;
 	this->screen_height = screen_height;	
@@ -15,16 +17,17 @@ void Game::set_fps(int fps) {
 }
 
 Game* Game::get() {
-	std::cout << "using game.get\n";
+	// std::cout << "using game.get\n";
 	return Game::_game;
 }
 
 void Game::make_tree() {
 	Rand rand(69);
-	Shader tree_shader = LoadShader(0, TextFormat("assets/tree_shader.fs", Constants::glsl_version));
+	ShaderWithCheck shader;
+	load_shader(shader, "assets/tree_shader.fs");
 
 	// Black magic that is required to ensure trees are not created and copied, even though that would be fine.
-	auto t = std::unique_ptr<Tree>(new Tree({}, tree_shader, rand));
+	auto t = std::unique_ptr<Tree>(new Tree({}, shader, rand));
 	t->id = trees.size();
-	trees.push_back(std::move(t));
+	trees.emplace_back(std::move(t));
 }

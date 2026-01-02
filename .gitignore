@@ -1,6 +1,8 @@
 raylib.h
 raymath.h
 app.exe
+test*
+cubes_panning.fs
 /lib
 /raylib*
 /.vscode

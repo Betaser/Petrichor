@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <random>
+
 #include "tree.hpp"
 #include "../main.hpp"
 
@@ -36,21 +37,19 @@ Branch Branch::clone() const {
 	return Branch(vs);
 }
 
-Tree::Tree() : rand(69) {
-	id = 0;
-	std::cout << "init tree\n";
-}
-
-void Tree::init(std::vector<Branch> branches, Shader& shader, Rand& rand) {
+void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand) {
 	this->branches = branches;
 	this->shader = shader;
 	this->rand = rand;
 
 	this->tendrils = {};
-	tree_tex = LoadTexture("assets/tree_texture.png");
+	tree_tex = static_tree_tex;
+	auto img = GenImageColor(1, 1, BLANK);
+	load_texture_from_image(blank_tex, img);
+	UnloadImage(img);
 }
 
-Tree::Tree(std::vector<Branch> branches, Shader& shader, Rand& rand) : rand(rand) {
+Tree::Tree(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand) : rand(rand) {
 	id = 0;
 	std::cout << "init tree w/ args\n";
 	init(branches, shader, rand);
@@ -60,13 +59,14 @@ Tree::~Tree() {
 	std::cout << "deinit tree\n";
 	unload_textures();
 	std::cout << "unload shader!\n";
-	UnloadShader(shader);
-
-	UnloadTexture(tree_tex);
+	unload_shader(shader);
+	std::cout << "tree shader w/ id " << shader.id << " loads/unloads " << shader.load_unloads << "\n";
+	std::cout << "tree blank tex w/ id " << blank_tex.id << " loads/unloads " << blank_tex.load_unloads << "\n";
 }
 
 void Tree::unload_textures() {
-	UnloadTexture(blank_tex);
+	std::cout << "unload texs\n";
+	unload_texture(blank_tex);
 }
 
 void Tree::bounding_box(Vector2& small, Vector2& big) {
@@ -84,6 +84,7 @@ void Tree::bounding_box(Vector2& small, Vector2& big) {
 
 // Will be out of date if branch verts are changed.
 void Tree::init_texture() {
+	std::cout << "init tree texture\n";
 	unload_textures();
 
 	// Bounding box it
@@ -93,11 +94,9 @@ void Tree::init_texture() {
 	// std::cout << "\nbig " << big.x << ", " << big.y << "\n";
 	texture_pos = Vector2I(small);
 
-	auto blank = GenImageColor(int(big.x - small.x), int(big.y - small.y), BLANK);
-	blank_tex = LoadTextureFromImage(blank);
+	auto blank = GenImageColor(big.x - small.x, big.y - small.y, BLANK);
+	load_texture_from_image(blank_tex, blank);
 	UnloadImage(blank);
-
-	// tree_tex = LoadTexture("assets/tree_texture.png");
 
 	int loc = GetShaderLocation(shader, "tex");
 	SetShaderValueTexture(shader, loc, tree_tex);

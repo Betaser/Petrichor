@@ -3,7 +3,23 @@
 
 #include <string>
 #include <random>
-#include "raylib.h"
+#include <raylib.h>
+
+// Typedef it with shader if we are sure there's no issues
+struct ShaderWithCheck : Shader {
+	int load_unloads = 0;
+};
+
+void unload_shader(ShaderWithCheck& shader_with); 
+void load_shader(ShaderWithCheck& shader_with, const char* filename);
+
+struct TextureWithCheck : Texture2D {
+	int load_unloads = 0;
+};
+
+void unload_texture(TextureWithCheck& texture_with);
+void load_texture(TextureWithCheck& texture_with, const char* filename);
+void load_texture_from_image(TextureWithCheck& texture_with, Image image);
 
 struct Vector2I {
 	int x, y;
@@ -14,21 +30,18 @@ struct Vector2I {
 	Vector2 to_vec2();
 };
 
-class Rand {
-	private:
-	std::mt19937 int_gen;
-	std::uniform_real_distribution<double> dist;
-
-	public:
+struct Rand {
 	Rand(int seed); 
 
 	int seed;
 
 	void set_seed(int seed);
 	float gen(float a, float b);
-};
 
-#endif
+	private:
+	std::mt19937 int_gen;
+	std::uniform_real_distribution<double> dist;
+};
 
 void operator += (Vector2& a, const Vector2& b);
 Vector2 operator + (const Vector2& a, const Vector2& b);
@@ -52,9 +65,10 @@ Vector2 unit_vector(const float& f);
 std::string to_str(const Vector2& v, const int& decimal_pts);
 
 // Misc
-Texture2D load_dummy_tex();
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim);
 
 // Math, non vector
 float snap(const float& f, const float& by);
 Color lerp(const Color& a, const Color& b, const float& amt);
+
+#endif

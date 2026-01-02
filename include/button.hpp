@@ -2,9 +2,10 @@
 #define BUTTON_H
 
 #include <string>
-#include "mylib.hpp"
 #include <functional>
-#include "raylib.h"
+#include <raylib.h>
+
+#include "mylib.hpp"
 #include "level_editor.hpp"
 
 // Add shader support later.

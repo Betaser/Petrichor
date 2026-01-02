@@ -9,15 +9,15 @@
 #include <string>
 #include <memory>
 
-#include "main.hpp"
 #include "mylib.cpp"
-#include "tree.cpp"
+#include "main.hpp"
 #include "petra.cpp"
 #include "level_editor.cpp"
+#include "tree.cpp"
 #include "button.cpp"
 #include "game.cpp"
 
-#include "raylib.h"
+#include <raylib.h>
 
 // TODO: Reuse the same buffer of textures and just use DrawTextureEx with the scale option. Of course, I hope that works alongside the tree shader.
 // Or the dumb solution of making textures the size of the screen and just specifying a boundary as uniform
@@ -31,7 +31,8 @@
 #endif
 
 int main() {
-	// SetTraceLogLevel(LOG_WARNING);
+	SetTraceLogLevel(LOG_WARNING);
+
 	const int screen_width = 800;
 	const int screen_height = 600;
 	const int fps = 60;
@@ -39,15 +40,21 @@ int main() {
 
 	// To check that the scope of all variables is treated as expected
 	{
+		auto img = GenImageColor(1, 1, BLANK);
+		load_texture_from_image(Main::dummy_tex, img);
+		UnloadImage(img);
+
 		Game game(screen_width, screen_height, fps);
 		game._game = &game;
+
+		// Trying to load tree tex once
+		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
 
 		LevelEditor level_editor;
 		level_editor.initialize_ui();
 		auto metadata_zero = TreeMetadata::zero();
+		// limit test haha
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
-		auto& m = level_editor.tree_metadatas.back();
-		std::cout << "calced, meta rect " << to_str({ m.mark.x, m.mark.y }, 2) << "\n";
 
 		while (!WindowShouldClose()) {
 			BeginDrawing();
@@ -77,6 +84,11 @@ int main() {
 		// do a bad, this is indeed caught by ubuntu -fsanitize=leak
 		// void* volatile blah = malloc(1);
 		// (void) blah;
+		unload_texture(Tree::static_tree_tex);
+		unload_texture(Main::dummy_tex);
+
+		std::cout << "static tree tex w/ id " << Tree::static_tree_tex.id << " loads/unloads " << Tree::static_tree_tex.load_unloads << "\n";
+		std::cout << "dummy tex w/ id " << Main::dummy_tex.id << " loads/unloads " << Main::dummy_tex.load_unloads << "\n";
 	}
 
 	CloseWindow();

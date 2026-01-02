@@ -18,7 +18,7 @@ Write-Output "mode = $mode, staticLinking = $staticLinking"
 
 # Check out warnings at https://clang.llvm.org/docs/DiagnosticsReference.html
 $compiler = "C:\msys64\clang64\bin\clang++.exe"
-$warningFlags = "-Wall -Wextra -Werror -Wuninitialized -Wimplicit-fallthrough -Wimplicit-int-float-conversion -Wmissing-designated-field-initializers"
+$warningFlags = "-Wall -Wextra -Werror -Wuninitialized -Wimplicit-fallthrough -Wimplicit-int-float-conversion -Wmissing-designated-field-initializers -fsanitize=unsigned-integer-overflow"
 
 # Static linking doesn't support fsanitize debugging
 if ($staticLinking -eq "true") {
