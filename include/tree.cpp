@@ -61,11 +61,12 @@ Tree::~Tree() {
 	unload_textures();
 	std::cout << "unload shader!\n";
 	UnloadShader(shader);
+
+	UnloadTexture(tree_tex);
 }
 
 void Tree::unload_textures() {
 	UnloadTexture(blank_tex);
-	UnloadTexture(tree_tex);
 }
 
 void Tree::bounding_box(Vector2& small, Vector2& big) {
@@ -96,7 +97,7 @@ void Tree::init_texture() {
 	blank_tex = LoadTextureFromImage(blank);
 	UnloadImage(blank);
 
-	tree_tex = LoadTexture("assets/tree_texture.png");
+	// tree_tex = LoadTexture("assets/tree_texture.png");
 
 	int loc = GetShaderLocation(shader, "tex");
 	SetShaderValueTexture(shader, loc, tree_tex);
