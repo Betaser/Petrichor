@@ -52,10 +52,9 @@ int main() {
 
 		LevelEditor level_editor;
 		auto metadata_zero = TreeMetadata::zero();
-		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 		// limit test haha
 		for (size_t i = 0; i < 5; i++)
-			level_editor.duplicate_selected_tree(game);
+			level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 
 		while (!WindowShouldClose()) {
 			BeginDrawing();

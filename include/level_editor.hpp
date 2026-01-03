@@ -64,7 +64,7 @@ struct LevelEditor : public Button::Owner {
 	// if not sure about tree_maker, use game.make_tree();
 	void make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata);
 	void initialize_ui();
-	void randomize_tendrils(Game& game);
+	void randomize_tendrils(Game& game, size_t tree_index);
 	void update_selected_verts(Game& game);
 	void load_selection_shader(Game& game);
 	void update(Game& game);

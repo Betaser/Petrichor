@@ -43,7 +43,7 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 	else
 		tree_metadatas.emplace_back(temp);
 
-	randomize_tendrils(game);
+	randomize_tendrils(game, game.trees.size() - 1);
 }
 
 void LevelEditor::initialize_ui() {
@@ -65,11 +65,11 @@ void LevelEditor::initialize_ui() {
 	debug_button = &buttons[0];
 }
 
-void LevelEditor::randomize_tendrils(Game& game) {
+void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	// Try using randomly generated tendrils too
 	Vector2 start_location { 100, 100 };
 
-	auto& tree = game.trees[selected_index];
+	auto& tree = game.trees[tree_index];
 	Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
 	tree->branches = Tree::branches_from_tendrils(tendrils);
 	tree->tendrils = tendrils;
@@ -242,7 +242,7 @@ void LevelEditor::update(Game& game) {
 		// Adapted from main's while loop
 		if (IsKeyPressed(KEY_R)) {
 			selected->rand.set_seed(++selected->rand.seed);
-			randomize_tendrils(game);
+			randomize_tendrils(game, selected_index);
 		}
 
 		// offset
