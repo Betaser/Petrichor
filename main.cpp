@@ -51,10 +51,11 @@ int main() {
 		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
 
 		LevelEditor level_editor;
-		level_editor.initialize_ui();
 		auto metadata_zero = TreeMetadata::zero();
-		// limit test haha
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
+		// limit test haha
+		for (size_t i = 0; i < 5; i++)
+			level_editor.duplicate_selected_tree(game);
 
 		while (!WindowShouldClose()) {
 			BeginDrawing();

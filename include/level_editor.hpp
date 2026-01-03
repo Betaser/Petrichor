@@ -23,11 +23,12 @@ struct TreeMetadata {
 
 		branches.reserve(tree.branches.size());
 		for (auto& branch : tree.branches)
-			branches.push_back(branch);
+			branches.emplace_back(branch);
 	}
 	~TreeMetadata() {
 		std::cout << "deinit tree metadata\n";
 	}
+
 	private:
 	TreeMetadata() {}
 };
@@ -68,6 +69,8 @@ struct LevelEditor : public Button::Owner {
 	void load_selection_shader(Game& game);
 	void update(Game& game);
 	void render(Game& game) const;
+
+	void duplicate_selected_tree(Game& game);
 
 	private:
 	bool show_instructions = false;

@@ -9,7 +9,6 @@ LevelEditor::LevelEditor() {
 	debug_button = nullptr;
 	show_instructions = false;
 	std::cout << "init level editor\n";
-	initialize_ui();
 	time = 0;
 	selected_index = 0;
 	using_depth_ui = false;
@@ -17,6 +16,7 @@ LevelEditor::LevelEditor() {
 
 	load_shader(select_shader, "assets/select.fs");
 	load_texture_from_image(selected_tex, GenImageColor(1, 1, BLANK));
+	initialize_ui();
 }
 
 LevelEditor::~LevelEditor() {
@@ -61,7 +61,7 @@ void LevelEditor::initialize_ui() {
 			auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
 			owner->show_instructions = !owner->show_instructions;
 		});
-	buttons.push_back(debug_btn);
+	buttons.emplace_back(debug_btn);
 	debug_button = &buttons[0];
 }
 
@@ -138,21 +138,26 @@ void LevelEditor::update(Game& game) {
 	}
 
 	bool using_ui = using_depth_ui;
-	bool using_debug_btn_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
+	const bool using_debug_btn_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
+	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+		using_ui |= using_debug_btn_ui;
 
 	// Yes, let's eventually move this button checking bounds to a designated class
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		using_ui |= using_debug_btn_ui;
 		if (using_debug_btn_ui)
 			debug_button->state.hit = true;
 	}
 
 	if (selecting) {
+		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
+			std::cout << "todo: save trees to " << Constants::test_level_path << "\n";
+		}
+
 		// Selected tree is not a thing yet.
 		auto& selected = game.trees[selected_index];
 		auto& meta = tree_metadatas[selected->id];
 
-		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !using_debug_btn_ui) {
+		if (!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 			selection_offset = GetMousePosition() - meta.offset;
 		}
 
@@ -214,24 +219,7 @@ void LevelEditor::update(Game& game) {
 
 		// Duplicate. Means we copy over metadata
 		if (IsKeyPressed(KEY_F)) {
-			// Make sure we do this first.
-			// std::cout << "dup " << selected->id << "\n";
-			// Depth is stored on tree, so it differs from treemetadata
-			auto& selected = game.trees[selected_index];
-			// Don't use selected directly after make_initialized_tree, because it gets deleted as the vector reallocates
-			const float depth = selected->depth;
-			const auto& meta = tree_metadatas[selected->id];
-
-			std::cout << "\nsize of metadata " << tree_metadatas.size() << "\n";
-
-			selected_index = game.trees.size();
-
-			make_initialized_tree([&game, &depth]() { 
-				game.make_tree();
-				auto& tree = *game.trees.back();
-				tree.depth = depth;
-			}, game, meta);
-
+			duplicate_selected_tree(game);
 			// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
 			return;
 		}
@@ -302,8 +290,9 @@ void LevelEditor::render(Game& game) const {
 		<< "A = rotate counterclockwise\n"
 		<< "D = rotate clockwise\n"
 		<< "Backspace = delete\n"
-		<< "Mouse scroll = change depth\n"
-		<< "G = guidelines (editor add ons.\n"
+		<< "Click on marks on sidebar to change depth\n"
+		<< "Ctrl + S = save to " << Constants::test_level_path << "\n"
+		<< "TODO: G = guidelines (editor add ons.\n"
 		<< "which are saved separate from level data)";
 		std::string s_str = ss.str();
 		unsigned char opacity = 255 * (0.3 * (0.5 * sin(time * 3.0) + 0.5) + 0.7);
@@ -380,4 +369,24 @@ bool LevelEditor::is_selecting(Game& game) const {
 
 void LevelEditor::invalidate_selected_index(Game& game) {
 	selected_index = game.trees.size();
+}
+
+void LevelEditor::duplicate_selected_tree(Game& game) {
+	// Make sure we do this first.
+	// std::cout << "dup " << selected->id << "\n";
+	// Depth is stored on tree, so it differs from treemetadata
+	auto& selected = game.trees[selected_index];
+	// Don't use selected directly after make_initialized_tree, because it gets deleted as the vector reallocates
+	const float depth = selected->depth;
+	const auto& meta = tree_metadatas[selected->id];
+
+	std::cout << "\nsize of metadata " << tree_metadatas.size() << "\n";
+
+	selected_index = game.trees.size();
+
+	make_initialized_tree([&game, &depth]() { 
+		game.make_tree();
+		auto& tree = *game.trees.back();
+		tree.depth = depth;
+	}, game, meta);
 }
