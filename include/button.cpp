@@ -3,7 +3,9 @@
 
 Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text, 
 	std::function<void(Button&)> on_hover,
-	std::function<void(Button&)> on_hit) {
+	std::function<void(Button&)> on_hit,
+	Color background_color,
+	Color text_color) {
 	state.hovered = false;
 	state.last_hit = false;
 	state.hit = false;
@@ -17,9 +19,8 @@ Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text,
 	this->on_hit = on_hit;
 
 	// Default values
-	state.background_color = YELLOW;
-	state.background_color.a = 100;
-	state.text_color = BLACK;
+	state.background_color = background_color;
+	state.text_color = text_color;
 
 	idle_state = state;
 }
@@ -67,7 +68,7 @@ void Button::render() const {
 
 	auto color = background_color;
 	if (hovered) {
-		color = lerp(background_color, BLACK, 0.4);
+		color = ColorLerp(background_color, BLACK, 0.4);
 	}
 	DrawRectangle(pos.x, pos.y, dim.x, dim.y, color);
 

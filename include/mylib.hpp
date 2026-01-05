@@ -69,6 +69,5 @@ bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim);
 
 // Math, non vector
 float snap(const float& f, const float& by);
-Color lerp(const Color& a, const Color& b, const float& amt);
 
 #endif

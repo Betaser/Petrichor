@@ -166,15 +166,6 @@ float snap(const float& f, const float& by) {
 	return (float) int(f * by) / by;
 }
 
-Color lerp(const Color& a, const Color& b, const float& amt) {
-	return {
-		(unsigned char) ((float(b.r) - float(a.r)) * amt + a.r),
-		(unsigned char) ((float(b.g) - float(a.g)) * amt + a.g),
-		(unsigned char) ((float(b.b) - float(a.b)) * amt + a.b),
-		(unsigned char) ((float(b.a) - float(a.a)) * amt + a.a)
-	};
-}
-
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim) {
 	return pos.x <= pt.x && pt.x <= pos.x + dim.x &&
 		   pos.y <= pt.y && pt.y <= pos.y + dim.y;

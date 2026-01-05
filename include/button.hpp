@@ -40,7 +40,9 @@ struct Button {
 
 	Button(Owner* owner, Vector2 pos, Vector2 dim, std::string text, 
 		std::function<void(Button&)> on_hover,
-		std::function<void(Button&)> on_hit);
+		std::function<void(Button&)> on_hit,
+		Color background_color = { 253, 249, 0, 100 },
+		Color text_color = { 0, 0, 0, 255 });
 	~Button();
 	void take_input(Vector2 cursor);
 	void render() const;

@@ -1,6 +1,8 @@
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <assert.h>
+
 #include "mylib.hpp"
 #include "level_editor.hpp"
 #include "constants.cpp"
@@ -67,7 +69,7 @@ void LevelEditor::initialize_ui() {
 
 void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	// Try using randomly generated tendrils too
-	Vector2 start_location { 100, 100 };
+	const Vector2 start_location { 100, 100 };
 
 	auto& tree = game.trees[tree_index];
 	Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
@@ -138,11 +140,11 @@ void LevelEditor::update(Game& game) {
 	}
 
 	bool using_ui = using_depth_ui;
-	const bool using_debug_btn_ui = pt_in_rect(GetMousePosition(), debug_button->state.pos, debug_button->state.dim);
+	// Yes, let's eventually move this button checking bounds to a designated class
+	const bool using_debug_btn_ui = debug_button->state.hovered;
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 		using_ui |= using_debug_btn_ui;
 
-	// Yes, let's eventually move this button checking bounds to a designated class
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		if (using_debug_btn_ui)
 			debug_button->state.hit = true;
@@ -151,6 +153,13 @@ void LevelEditor::update(Game& game) {
 	if (selecting) {
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
 			std::cout << "todo: save trees to " << Constants::test_level_path << "\n";
+
+			// Move to a function probably
+			auto repr = convert_trees_to_chars(game.trees);
+			std::ofstream file;
+			file.open(Constants::test_level_path);
+			file << repr;
+			file.close();
 		}
 
 		// Selected tree is not a thing yet.
@@ -162,7 +171,7 @@ void LevelEditor::update(Game& game) {
 		}
 
 		// Debug testing
-		if (IsKeyPressed(KEY_TAB)) {
+		if (IsKeyPressed(KEY_Q)) {
 			// Delete all but the first tree
 			const size_t selected_id = selected->id;
 			game.trees.erase(game.trees.begin() + 1, game.trees.end());
@@ -187,7 +196,7 @@ void LevelEditor::update(Game& game) {
 			invalidate_selected_index(game);
 
 			std::cout << "deleted " << selected_id << "\n";
-			for (auto& tree : game.trees)
+			for (const auto& tree : game.trees)
 				std::cout << "id " << tree->id << "\n";
 			return;
 		}
@@ -355,7 +364,7 @@ void LevelEditor::render_depth_ui(size_t selected_id) const {
 		Rectangle r = tree_metadatas[i].mark;
 		// For now, color differently. Could use a shader maybe.
 		if (i == selected_id) {
-			DrawRectangle(r.x, r.y, r.width, r.height, lerp(ORANGE, depth_ui.MARK_COLOR, 0.7));
+			DrawRectangle(r.x, r.y, r.width, r.height, ColorLerp(ORANGE, depth_ui.MARK_COLOR, 0.7));
 		} 
 		else {
 			DrawRectangle(r.x, r.y, r.width, r.height, depth_ui.MARK_COLOR);
@@ -389,4 +398,18 @@ void LevelEditor::duplicate_selected_tree(Game& game) {
 		auto& tree = *game.trees.back();
 		tree.depth = depth;
 	}, game, meta);
+}
+
+std::string LevelEditor::convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const {
+	std::string ret = "";
+	for (const auto& tree : trees) {
+		auto& meta = tree_metadatas[tree->id];
+		ret = std::format(
+			"{}"
+			"rotation:{:.6f}\n"
+			"offset:{:.6f} {:.6f}\n"
+			"seed:{}\n"
+			"depth:{:.6f}\n", ret, meta.rotation, meta.offset.x, meta.offset.y, tree->rand.seed, tree->depth);
+	}
+	return ret;
 }

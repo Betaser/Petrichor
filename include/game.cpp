@@ -17,7 +17,7 @@ void Game::set_fps(int fps) {
 }
 
 Game* Game::get() {
-	// std::cout << "using game.get\n";
+	std::cout << "using game.get\n";
 	return Game::_game;
 }
 

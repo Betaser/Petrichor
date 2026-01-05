@@ -22,7 +22,7 @@ struct TreeMetadata {
 		this->mark = mark;
 
 		branches.reserve(tree.branches.size());
-		for (auto& branch : tree.branches)
+		for (const auto& branch : tree.branches)
 			branches.emplace_back(branch);
 	}
 	~TreeMetadata() {
@@ -69,6 +69,7 @@ struct LevelEditor : public Button::Owner {
 	void load_selection_shader(Game& game);
 	void update(Game& game);
 	void render(Game& game) const;
+	void invalidate_selected_index(Game& game);
 
 	void duplicate_selected_tree(Game& game);
 
@@ -81,7 +82,7 @@ struct LevelEditor : public Button::Owner {
 	Rectangle update_tree_for_depth_ui(Game& game, size_t tree_index);
 	void render_depth_ui(size_t selected_id) const;
 	bool is_selecting(Game& game) const;
-	void invalidate_selected_index(Game& game);
+	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
 };
 
 #endif
