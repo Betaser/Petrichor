@@ -1,8 +1,6 @@
 #version 330
 
-// in vec3 vertexPos;
 in vec2 fragTexCoord;
-// in vec4 fragColor;
 
 const int MAX = 100;
 uniform int N;

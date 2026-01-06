@@ -33,7 +33,7 @@
 #endif
 
 int main() {
-	SetTraceLogLevel(LOG_WARNING);
+	SetTraceLogLevel(LOG_ALL);
 
 	const int screen_width = 800;
 	const int screen_height = 600;
@@ -127,7 +127,7 @@ int main() {
 									}
 								}
 
-								tree->init_texture();
+								tree->update_texture();
 							}
 						}
 						file.close();

@@ -44,9 +44,10 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand
 
 	this->tendrils = {};
 	tree_tex = static_tree_tex;
-	auto img = GenImageColor(1, 1, BLANK);
-	load_texture_from_image(blank_tex, img);
-	UnloadImage(img);
+	// auto img = GenImageColor(1, 1, BLANK);
+	// load_texture_from_image(blank_tex, img);
+	// UnloadImage(img);
+	init_texture();
 }
 
 Tree::Tree(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand) : rand(rand) {
@@ -85,16 +86,12 @@ void Tree::bounding_box(Vector2& small, Vector2& big) {
 // Will be out of date if branch verts are changed.
 void Tree::init_texture() {
 	std::cout << "init tree texture\n";
-	unload_textures();
+	// unload_textures();
 
 	// Bounding box it
-	Vector2 small, big;
-	bounding_box(small, big);
-	// std::cout << "\nsmall " << small.x << ", " << small.y << "\n";
-	// std::cout << "\nbig " << big.x << ", " << big.y << "\n";
-	texture_pos = Vector2I(small);
+	update_texture();
 
-	auto blank = GenImageColor(big.x - small.x, big.y - small.y, BLANK);
+	auto blank = GenImageColor(blank_tex_dims.x, blank_tex_dims.y, BLANK);
 	load_texture_from_image(blank_tex, blank);
 	UnloadImage(blank);
 
@@ -116,6 +113,13 @@ std::vector<Branch> Tree::branches_from_tendrils(Tendrils tendrils) {
 	return branches;
 }
 
+// Needed to reposition texture.
+void Tree::update_texture() {
+	Vector2 pos, _;
+	bounding_box(pos, _);
+	texture_pos = Vector2I(pos);
+}
+
 void Tree::render() {
 	int color_loc = GetShaderLocation(shader, "color");
 	Vector4 white { 1.0, 1.0, 1.0, 1.0 };
@@ -123,19 +127,22 @@ void Tree::render() {
 	SetShaderValue(shader, color_loc, &white, SHADER_UNIFORM_VEC4);
 
 	int loc = GetShaderLocation(shader, "N");
-	int size = branches.size();
+	size_t size = branches.size();
 	SetShaderValue(shader, loc, &size, SHADER_UNIFORM_INT);
 
 	int dims_loc = GetShaderLocation(shader, "dims");
 	Vector2I dims { tree_tex.width, tree_tex.height };
 	SetShaderValue(shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
 
-	for (int n_i = 0; n_i < size; n_i++) {
+	Vector2 small, big;
+	bounding_box(small, big);
+
+	for (size_t n_i = 0; n_i < size; n_i++) {
 		const auto& branch = branches[n_i];
 		// Set the really big vertices array of the shader that doesn't exist yet
-		for (int branch_i = 0; branch_i < 4; branch_i++) {
+		for (size_t branch_i = 0; branch_i < 4; branch_i++) {
 			auto pt = branch.verts[branch_i];
-			auto tex_size = Vector2I(blank_tex.width, blank_tex.height).to_vec2();
+			auto tex_size = Vector2I(big - small).to_vec2();
 			Vector2 norm = (pt - texture_pos.to_vec2()) / tex_size;
 			compressed_branches[branch_i][n_i] = norm;
 			// std::cout << "pt " << to_str(pt, 4) << " norm " << to_str(norm, 4) << "\n";
@@ -184,7 +191,26 @@ void Tree::render() {
 	SetShaderValueV(shader, GetShaderLocation(shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
 
 	BeginShaderMode(shader);
-	DrawTexture(blank_tex, texture_pos.x, texture_pos.y, WHITE);
+	// DrawTexture(blank_tex, texture_pos.x, texture_pos.y, WHITE);
+	DrawTexturePro(
+		blank_tex,
+		// source rect
+		{ 
+			.x = 0, 
+			.y = 0,
+			.width = (float) blank_tex.width,
+			.height = (float) blank_tex.height,
+		},
+		// dest rect, I think its the whole screen
+		{
+			.x = (float) texture_pos.x,
+			.y = (float) texture_pos.y,
+			.width = (big - small).x,
+			.height = (big - small).y,
+		},
+		{},
+		0,
+		WHITE);
 	EndShaderMode();
 }
 

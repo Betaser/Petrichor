@@ -35,6 +35,11 @@ struct Tree {
 	Vector2 compressed_branches[4][MAX] {};
 	Vector2 btm_lefts[MAX] {};
 	Vector2 top_rights[MAX] {};
+	// Default to this resolution, it might not matter what this really is.
+	const Vector2I blank_tex_dims { 10, 10 };
+
+	void init_texture();
+	void unload_textures();
 
 	public:
 	float depth = 0;
@@ -57,8 +62,7 @@ struct Tree {
 
 	void bounding_box(Vector2& small, Vector2& big);
 	void init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand);
-	void unload_textures();
-	void init_texture();
+	void update_texture();
 	void render();
 
 	static std::vector<Branch> branches_from_tendrils(Tendrils tendrils);

@@ -66,7 +66,7 @@ struct LevelEditor : public Button::Owner {
 	void initialize_ui();
 	void randomize_tendrils(Game& game, size_t tree_index);
 	void update_selected_verts(Game& game);
-	void load_selection_shader(Game& game);
+	void init_selection_texture();
 	void update(Game& game);
 	void render(Game& game) const;
 	void invalidate_selected_index(Game& game);

@@ -17,7 +17,7 @@ LevelEditor::LevelEditor() {
 	last_selected_index = selected_index;
 
 	load_shader(select_shader, "assets/select.fs");
-	load_texture_from_image(selected_tex, GenImageColor(1, 1, BLANK));
+	init_selection_texture();
 	initialize_ui();
 }
 
@@ -80,8 +80,7 @@ void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, *tree, meta.mark);
 	update_selected_verts(game);
 
-	tree->init_texture();
-	load_selection_shader(game);
+	tree->update_texture();
 }
 
 void LevelEditor::update_selected_verts(Game& game) {
@@ -105,14 +104,10 @@ void LevelEditor::update_selected_verts(Game& game) {
 }
 
 // Selection is slightly larger than size of tree texture.
-void LevelEditor::load_selection_shader(Game& game) {
-	std::cout << "\nload selection shader\n";
-	unload_texture(selected_tex);
+void LevelEditor::init_selection_texture() {
+	std::cout << "init selection texture\n";
 
-	auto& tree = game.trees[selected_index];
-	auto tree_tex_bounds = (Vector2I { tree->blank_tex.width, tree->blank_tex.height }).to_vec2();
-	tree_tex_bounds += select_extra_bounds;
-	auto blank = GenImageColor(tree_tex_bounds.x, tree_tex_bounds.y, BLANK);
+	auto blank = GenImageColor(10, 10, BLANK);
 	load_texture_from_image(selected_tex, blank);
 	UnloadImage(blank);
 }
@@ -236,16 +231,15 @@ void LevelEditor::update(Game& game) {
 		// rotation
 		float rotation_input = 0;
 		if (IsKeyDown(KEY_A))
-			rotation_input = 0.05;
+			rotation_input = -0.05;
 		if (IsKeyDown(KEY_D))
-			rotation_input = -0.05; 
+			rotation_input = 0.05; 
 
 		meta.rotation = meta.rotation + rotation_input;
 		if (rotation_input != 0) {
 			update_selected_verts(game);
 
-			selected->init_texture();
-			load_selection_shader(game);
+			selected->update_texture();
 		}
 
 		// Adapted from main's while loop
@@ -263,31 +257,50 @@ void LevelEditor::update(Game& game) {
 			Vector2 small, big;
 			selected->bounding_box(small, big);
 			selected->texture_pos = Vector2I(small);
-			// selected->init_texture();
 			auto tree_tex_bounds = (Vector2I { selected->blank_tex.width, selected->blank_tex.height }).to_vec2();
 			tree_tex_bounds += select_extra_bounds;
 		}
 
-		if (last_selected_index != selected_index) {
-			load_selection_shader(game);
+		if (last_selected_index != selected_index)
 			last_selected_index = selected_index;
-		}
 	}
 }
 
 void LevelEditor::render(Game& game) const {
 	if (is_selecting(game)) {
-		int dims_locs = GetShaderLocation(select_shader, "dims");
-		Vector2I dims(selected_tex.width, selected_tex.height);
-		SetShaderValue(select_shader, dims_locs, &dims, SHADER_UNIFORM_IVEC2);
-
 		int loc = GetShaderLocation(select_shader, "time");
 		SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
 
-		BeginShaderMode(select_shader);
 		auto& tree = game.trees[selected_index];
-		Vector2I pos(tree->texture_pos.to_vec2() + select_extra_bounds / 2);
-		DrawTexture(selected_tex, pos.x, pos.y, WHITE);
+		Vector2 pos { tree->texture_pos.to_vec2() - select_extra_bounds / 2 };
+		Vector2 small, big;
+		tree->bounding_box(small, big);
+		Vector2 dims = big - small + select_extra_bounds;
+
+		int dims_locs = GetShaderLocation(select_shader, "dims");
+		auto dims_i = Vector2I(dims);
+		SetShaderValue(select_shader, dims_locs, &dims_i, SHADER_UNIFORM_IVEC2);
+
+		BeginShaderMode(select_shader);
+		DrawTexturePro(
+			selected_tex,
+			// source rect
+			{
+				.x = 0,
+				.y = 0,
+				.width = (float) selected_tex.width,
+				.height = (float) selected_tex.height
+			},
+			// dest rect
+			{
+				.x = pos.x,
+				.y = pos.y,
+				.width = dims.x,
+				.height = dims.y
+			},
+			{},
+			0,
+			WHITE);
 		EndShaderMode();
 	}
 
