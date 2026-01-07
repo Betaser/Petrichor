@@ -120,7 +120,7 @@ void Tree::update_texture() {
 	texture_pos = Vector2I(pos);
 }
 
-void Tree::render() {
+void Tree::send_vals_to_shader() {
 	int color_loc = GetShaderLocation(shader, "color");
 	Vector4 white { 1.0, 1.0, 1.0, 1.0 };
 	// Create a color for this branch.
@@ -134,7 +134,6 @@ void Tree::render() {
 	Vector2I dims { tree_tex.width, tree_tex.height };
 	SetShaderValue(shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
 
-	Vector2 small, big;
 	bounding_box(small, big);
 
 	for (size_t n_i = 0; n_i < size; n_i++) {
@@ -189,7 +188,10 @@ void Tree::render() {
 	SetShaderValueV(shader, GetShaderLocation(shader, "pt2s"), compressed_branches[1], SHADER_UNIFORM_VEC2, size);
 	SetShaderValueV(shader, GetShaderLocation(shader, "pt3s"), compressed_branches[2], SHADER_UNIFORM_VEC2, size);
 	SetShaderValueV(shader, GetShaderLocation(shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
+}
 
+void Tree::render() {
+	send_vals_to_shader();
 	BeginShaderMode(shader);
 	// DrawTexture(blank_tex, texture_pos.x, texture_pos.y, WHITE);
 	DrawTexturePro(
@@ -212,6 +214,23 @@ void Tree::render() {
 		0,
 		WHITE);
 	EndShaderMode();
+}
+
+void Tree::render(Cam camera, Rectangle clip) {
+	send_vals_to_shader();
+	Rectangle src {
+		.x = 0,
+		.y = 0,
+		.width = (float) blank_tex.width,
+		.height = (float) blank_tex.height
+	};
+	Rectangle dest {
+		.x = (float) texture_pos.x,
+		.y = (float) texture_pos.y,
+		.width = (big - small).x,
+		.height = (big - small).y
+	};
+	camera.draw_texture(shader, clip, blank_tex, src, dest);
 }
 
 std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS) {

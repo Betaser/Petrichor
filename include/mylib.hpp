@@ -66,6 +66,7 @@ std::string to_str(const Vector2& v, const int& decimal_pts);
 
 // Misc
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim);
+bool is_overlap(const Rectangle& r1, const Rectangle& r2);
 
 // Math, non vector
 float snap(const float& f, const float& by);

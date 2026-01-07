@@ -7,19 +7,7 @@ Cam Cam::clone() const {
     };
 }
 
-void Cam::draw_texture(Shader& shader, int screen_width, int screen_height, Texture2D& texture, Rectangle src, Rectangle dest) {
-	Vector2 dims { 500, 300 };
-	Rectangle clip {
-		.x = ((float) screen_width - dims.x) / 2,
-		.y = ((float) screen_height - dims.y) / 2,
-		.width = dims.x,
-		.height = dims.y
-	};
-	// Step 0: Overlay a gray color over everything to separate previous tree renders from current.
-	// DrawRectangle(0, 0, screen_width, screen_height, { 0, 0, 0, 200 });
-	// Step 1: Render out some transparent overlay to show where the clip is
-	// DrawRectangleRec(clip, { 255, 0, 0, 100 });
-
+void Cam::draw_texture(Shader& shader, Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest) {
 	BeginShaderMode(shader);
 	draw_texture(
 		clip,
@@ -30,7 +18,6 @@ void Cam::draw_texture(Shader& shader, int screen_width, int screen_height, Text
 }
 
 void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest) {
-	(void) clip;
 	// Step 2: Call this function such that a tree's render call is mimiced
 	/*
 	DrawTexturePro(
@@ -42,7 +29,10 @@ void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectan
 		WHITE);
 	*/
 	// Step 3: Call this function with some clipping
-	// For now, assume there is in fact overlap.
+	// Step 4: Figure out when there is a full clip and then return early
+	if (!is_overlap(clip, dest))
+		return;
+
 	auto rect_overlap = [](Rectangle r1, Rectangle r2) -> Rectangle {
 		float left = std::max(r1.x, r2.x);
 		float right = std::min(r1.x + r1.width, r2.x + r2.width);
@@ -65,10 +55,6 @@ void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectan
 		.width = (clipped_dest.width / dest.width) * src.width,
 		.height = (clipped_dest.height / dest.height) * src.height
 	};
-	// std::cout << "clipped_src_pos " << to_str(clipped_src_pos, 2) << "\n";
-	// std::cout << "clipped_src dims " << to_str({ clipped_src.width, clipped_src.height }, 2) << "\n";
-
-	// std::cout << "src dims " << to_str({ src.width, src.height }, 2) << "\n";
 
 	DrawTexturePro(
 		texture,

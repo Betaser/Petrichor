@@ -170,3 +170,11 @@ bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim) {
 	return pos.x <= pt.x && pt.x <= pos.x + dim.x &&
 		   pos.y <= pt.y && pt.y <= pos.y + dim.y;
 }
+
+bool is_overlap(const Rectangle& r1, const Rectangle& r2) {
+	bool r1x_less = r1.x <= r2.x && r2.x <= r1.x + r1.width;
+	bool r2x_less = r2.x <= r1.x && r1.x <= r2.x + r2.width;
+	bool r1y_less = r1.y <= r2.y && r2.y <= r1.y + r1.height;
+	bool r2y_less = r2.y <= r1.y && r1.y <= r2.y + r2.height;
+	return (r1x_less || r2x_less) && (r1y_less || r2y_less);
+}

@@ -12,12 +12,21 @@ void Level::update(Game& game) {
 	for (auto& v : vs)
 		std::cout << to_str(v, 2) << "\n";
 	*/
+
+	/*
 	Vector2 dims { 500, 300 };
 	Rectangle clip {
 		.x = ((float) game.screen_width - dims.x) / 2,
 		.y = ((float) game.screen_height - dims.y) / 2,
 		.width = dims.x,
 		.height = dims.y
+	};
+	*/
+	Rectangle clip {
+		.x = 300,
+		.y = 200,
+		.width = 100,
+		.height = 100
 	};
 	// Step 0: Overlay a gray color over everything to separate previous tree renders from current.
 	DrawRectangle(0, 0, game.screen_width, game.screen_height, { 0, 0, 0, 200 });
@@ -26,6 +35,8 @@ void Level::update(Game& game) {
 
 	for (const auto& tree_ptr : game.trees) {
 		auto& tree = *tree_ptr;
+		tree.render(camera, clip);
+		/*
 		auto tex = tree.blank_tex;
 		Rectangle src {
 			.x = 0,
@@ -42,5 +53,6 @@ void Level::update(Game& game) {
 			.height = (big - small).y
 		}; 
 		camera.draw_texture(tree.shader, game.screen_width, game.screen_height, tex, src, dest);
+		*/
 	}
 }

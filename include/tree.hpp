@@ -1,11 +1,13 @@
 #ifndef TREE_H
 #define TREE_H
 
-#include "mylib.hpp"
 #include <array>
 #include <vector>
 #include <raylib.h>
 #include <random>
+
+#include "mylib.hpp"
+#include "camera.hpp"
 
 struct Branch;
 struct Game;
@@ -37,6 +39,8 @@ struct Tree {
 	Vector2 top_rights[MAX] {};
 	// Default to this resolution, it might not matter what this really is.
 	const Vector2I blank_tex_dims { 10, 10 };
+	Vector2 small {};
+	Vector2 big {};
 
 	void init_texture();
 	void unload_textures();
@@ -63,7 +67,9 @@ struct Tree {
 	void bounding_box(Vector2& small, Vector2& big);
 	void init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand);
 	void update_texture();
+	void send_vals_to_shader();
 	void render();
+	void render(Cam camera, Rectangle clip);
 
 	static std::vector<Branch> branches_from_tendrils(Tendrils tendrils);
 

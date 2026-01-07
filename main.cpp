@@ -133,8 +133,10 @@ int main() {
 						file.close();
 					}
 
+					/*
 					for (const auto& tree : game.trees)
 						tree->render();
+					*/
 
 					game.level.update(game);
 				} 
