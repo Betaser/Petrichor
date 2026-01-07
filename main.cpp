@@ -18,6 +18,8 @@
 #include "button.cpp"
 #include "game.cpp"
 #include "pause_menu.cpp"
+#include "level.cpp"
+#include "camera.cpp"
 
 #include <raylib.h>
 
@@ -33,7 +35,7 @@
 #endif
 
 int main() {
-	SetTraceLogLevel(LOG_ALL);
+	SetTraceLogLevel(LOG_WARNING);
 
 	const int screen_width = 800;
 	const int screen_height = 600;
@@ -51,14 +53,12 @@ int main() {
 
 		PauseMenu pause_menu(game);
 
-		// Trying to load tree tex once
+		// Load tree tex once
 		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
 
 		LevelEditor level_editor;
 		auto metadata_zero = TreeMetadata::zero();
-		// limit test haha
-		for (size_t i = 0; i < 1; i++)
-			level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
+		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 
 		while (!WindowShouldClose()) {
 			BeginDrawing();
@@ -66,7 +66,7 @@ int main() {
 			DrawRectangle(0, 0, 1, 1, BLANK);
 
 			ClearBackground({ 200, 200, 200, 255 });
-			DrawText(game.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
+			DrawText(game.level.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
 
 			pause_menu.update();
 			pause_menu.render(game.screen_width, game.screen_height);
@@ -135,6 +135,8 @@ int main() {
 
 					for (const auto& tree : game.trees)
 						tree->render();
+
+					game.level.update(game);
 				} 
 				break;
 				case EditLevel: {
