@@ -9,7 +9,9 @@ struct Level {
 	Petra petra;
     Cam camera;
 
+    Level();
     void update(Game& game);
+    void render(Game& game);
 };
 
 #endif

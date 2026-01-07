@@ -2,11 +2,19 @@
 #define PETRA_H
 
 #include <iostream>
+#include <raylib.h>
+
+struct Level;
+struct Game;
+
 struct Petra {
+	Vector2 pos {};
+	float depth = 0;
 	std::string say_hello();
-	Petra() { 
-		std::cout << "initialized Petra\n";
-	}
+
+	Petra();
+
+	void update(Level* level, Game& game);
 };
 
 #endif

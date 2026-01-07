@@ -3,7 +3,9 @@
 Cam Cam::clone() const {
     return {
         .pos = pos,
-        .scale = scale
+		.screen_offset = screen_offset,
+        .scale = scale,
+		.lens_mult = lens_mult,
     };
 }
 
@@ -18,18 +20,15 @@ void Cam::draw_texture(Shader& shader, Rectangle clip, Texture2D& texture, Recta
 }
 
 void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest) {
-	// Step 2: Call this function such that a tree's render call is mimiced
-	/*
-	DrawTexturePro(
-		texture,
-		src,
-		dest,
-		{},
-		0,
-		WHITE);
-	*/
-	// Step 3: Call this function with some clipping
-	// Step 4: Figure out when there is a full clip and then return early
+	// transform dest automatically
+	Vector2 dest_top_left { dest.x, dest.y };
+	Vector2 dest_btm_right { dest.x + dest.width, dest.y + dest.height };
+	transform({ &dest_top_left, &dest_btm_right });
+	dest.x = dest_top_left.x;
+	dest.y = dest_top_left.y;
+	dest.width = dest_btm_right.x - dest_top_left.x;
+	dest.height = dest_btm_right.y - dest_top_left.y;
+
 	if (!is_overlap(clip, dest))
 		return;
 
@@ -65,11 +64,11 @@ void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectan
 		WHITE);
 }
 
-void Cam::transform(std::vector<Vector2*>& vec_refs) const {
+void Cam::transform(std::vector<Vector2*> vec_refs) const {
     // Does this work? I'm actually not sure yet.
 	for (auto& vec : vec_refs) {
-		// blah
-		vec->x += 1;
-		vec->y += 1;
+		auto v = (*vec - pos) * scale + screen_offset;
+		vec->x = v.x;
+		vec->y = v.y;
 	}
 }

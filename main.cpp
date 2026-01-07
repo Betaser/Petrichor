@@ -12,11 +12,11 @@
 
 #include "mylib.cpp"
 #include "main.hpp"
-#include "petra.cpp"
 #include "level_editor.cpp"
 #include "tree.cpp"
 #include "button.cpp"
 #include "game.cpp"
+#include "petra.cpp"
 #include "pause_menu.cpp"
 #include "level.cpp"
 #include "camera.cpp"
@@ -139,6 +139,7 @@ int main() {
 					*/
 
 					game.level.update(game);
+					game.level.render(game);
 				} 
 				break;
 				case EditLevel: {
