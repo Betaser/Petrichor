@@ -9,6 +9,8 @@ Game::Game(const int screen_width, const int screen_height, const int fps) {
 	this->screen_width = screen_width;
 	this->screen_height = screen_height;	
 
+	level.init(screen_width, screen_height);
+
 	set_fps(fps);
 }
 
@@ -25,7 +27,7 @@ Game* Game::get() {
 void Game::make_tree() {
 	Rand rand(69);
 	ShaderWithCheck shader;
-	load_shader(shader, "assets/tree_shader.fs");
+	load_shader(shader, "assets/tree.fs");
 
 	// Black magic that is required to ensure trees are not created and copied, even though that would be fine.
 	auto t = std::unique_ptr<Tree>(new Tree({}, shader, rand));

@@ -216,21 +216,16 @@ void Tree::render() {
 	EndShaderMode();
 }
 
-void Tree::render(Cam camera, Rectangle clip) {
+void Tree::render_with_cam_begin_end(Cam camera, Rectangle clip) {
 	send_vals_to_shader();
-	Rectangle src {
-		.x = 0,
-		.y = 0,
-		.width = (float) blank_tex.width,
-		.height = (float) blank_tex.height
-	};
+	auto src = full_texture(blank_tex);
 	Rectangle dest {
 		.x = (float) texture_pos.x,
 		.y = (float) texture_pos.y,
 		.width = (big - small).x,
 		.height = (big - small).y
 	};
-	camera.draw_texture(shader, clip, blank_tex, src, dest);
+	camera.draw_texture_begin_end(shader, clip, blank_tex, src, dest);
 }
 
 std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS) {

@@ -18,7 +18,7 @@ struct Cam {
     void transform(std::vector<Vector2*> vec_refs) const;
 
 	// Let's achieve the same thing that tree.render() does 
-    void draw_texture(Shader& shader, Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest);
+    void draw_texture_begin_end(Shader& shader, Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest);
     void draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest);
 };
 

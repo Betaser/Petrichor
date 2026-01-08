@@ -9,7 +9,7 @@ Cam Cam::clone() const {
     };
 }
 
-void Cam::draw_texture(Shader& shader, Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest) {
+void Cam::draw_texture_begin_end(Shader& shader, Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest) {
 	BeginShaderMode(shader);
 	draw_texture(
 		clip,
@@ -65,7 +65,6 @@ void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectan
 }
 
 void Cam::transform(std::vector<Vector2*> vec_refs) const {
-    // Does this work? I'm actually not sure yet.
 	for (auto& vec : vec_refs) {
 		auto v = (*vec - pos) * scale + screen_offset;
 		vec->x = v.x;

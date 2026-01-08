@@ -61,15 +61,7 @@ int main() {
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 
 		while (!WindowShouldClose()) {
-			BeginDrawing();
-			// We need to do some kind of draw call apparently before textures work.
-			DrawRectangle(0, 0, 1, 1, BLANK);
-
-			ClearBackground({ 200, 200, 200, 255 });
-			DrawText(game.level.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
-
 			pause_menu.update();
-			pause_menu.render(game.screen_width, game.screen_height);
 
 			switch (game.state) {
 				case PlayLevel: {
@@ -133,13 +125,7 @@ int main() {
 						file.close();
 					}
 
-					/*
-					for (const auto& tree : game.trees)
-						tree->render();
-					*/
-
 					game.level.update(game);
-					game.level.render(game);
 				} 
 				break;
 				case EditLevel: {
@@ -158,7 +144,24 @@ int main() {
 					const Vector2 mouse = GetMousePosition();
 					for (auto& button : level_editor.buttons) 
 						button.take_input(mouse);
+				}
+				break;
+				case Credits: break;
+			}
 
+			BeginDrawing();
+			// We need to do some kind of draw call apparently before textures work.
+			DrawRectangle(0, 0, 1, 1, BLANK);
+			ClearBackground({ 200, 200, 200, 255 });
+			DrawText(game.level.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
+			pause_menu.render(game.screen_width, game.screen_height);
+
+			switch (game.state) {
+				case PlayLevel: {
+					game.level.render(game);
+				}
+				break;
+				case EditLevel: {
 					for (const auto& tree : game.trees)
 						tree->render();
 
@@ -170,10 +173,9 @@ int main() {
 				break;
 				case Credits: break;
 			}
+			EndDrawing();
 
 			game.last_state = game.state;
-
-			EndDrawing();
 		}	
 
 		// do a bad, this is indeed caught by ubuntu -fsanitize=leak

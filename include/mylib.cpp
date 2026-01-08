@@ -178,3 +178,12 @@ bool is_overlap(const Rectangle& r1, const Rectangle& r2) {
 	bool r2y_less = r2.y <= r1.y && r1.y <= r2.y + r2.height;
 	return (r1x_less || r2x_less) && (r1y_less || r2y_less);
 }
+
+Rectangle full_texture(const Texture2D& tex) {
+	return {
+		.x = 0,
+		.y = 0,
+		.width = (float) tex.width,
+		.height = (float) tex.height
+	};
+}
