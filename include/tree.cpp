@@ -44,7 +44,8 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand
 
 	this->tendrils = {};
 	tree_tex = static_tree_tex;
-	target = LoadRenderTexture(100, 100);
+	// This resolution actually matters. It seems like 1000x1000 is practically perfect
+	target = LoadRenderTexture(1000, 1000);
 	init_texture();
 }
 
@@ -221,7 +222,8 @@ void Tree::render_to_target() {
 
 	send_vals_to_shader();
 	auto src = full_texture(blank_tex);
-	auto dest = full_texture(target.texture); 
+	auto dest = full_texture(target.texture);
+	src.height *= -1;
 	BeginShaderMode(shader);
 	DrawTexturePro(
 		blank_tex,

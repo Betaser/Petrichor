@@ -59,7 +59,14 @@ void Level::render(Game& game) {
 	EndShaderMode();
 	*/
 
-	for (const auto& tree_ptr : game.trees) {
+	// Render in reverse depth order
+	std::vector<Tree*> trees(game.trees.size());
+	for (size_t i = 0; i < game.trees.size(); i++)
+		trees[i] = game.trees[i].get();
+	std::sort(trees.begin(), trees.end(), 
+		[](Tree* t1, Tree* t2) { return t1->depth > t2->depth; });
+
+	for (const auto& tree_ptr : trees) {
 		auto& tree = *tree_ptr;
 
 		// We are past it then.
@@ -92,16 +99,9 @@ void Level::render_trees_to_target(Game& game) {
 	camera.pos = petra.pos;
 	camera.screen_offset = { (float) game.screen_width / 2, (float) game.screen_height / 2 };
 
-	// Render in reverse depth order
-	std::vector<Tree*> trees(game.trees.size());
-	for (size_t i = 0; i < game.trees.size(); i++)
-		trees[i] = game.trees[i].get();
-	std::sort(trees.begin(), trees.end(), 
-		[](Tree* t1, Tree* t2) { return t1->depth > t2->depth; });
-
 	// BeginTextureMode(trees_target);
 	// ClearBackground(BLANK);
-	for (const auto& tree_ptr : trees) {
+	for (const auto& tree_ptr : game.trees) {
 		auto& tree = *tree_ptr;
 		// We are past it then.
 		const float epsilon = 0;
