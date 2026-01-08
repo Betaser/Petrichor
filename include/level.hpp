@@ -12,6 +12,7 @@ struct Level {
     ShaderWithCheck fog_shader;
     ShaderWithCheck tree_foggy_blur_shader;
     RenderTexture2D trees_target;
+    RenderTexture2D blur_target;
 
     Level();
     ~Level();
@@ -19,7 +20,7 @@ struct Level {
     void init(int screen_width, int screen_height);
     void update(Game& game);
     void render(Game& game);
-    void render_tree_to_target(Game& game);
+    void render_trees_to_target(Game& game);
     void render_fog(Game& game);
 };
 
