@@ -54,7 +54,11 @@ void Level::render(Game& game) {
 	// Indicate the center of where zooming happens
 	DrawRectangleV(camera.screen_offset, { 10, 10 }, { 45, 20, 45, 255 });
 
-	DrawTexture(blur_target.texture, 0, 0, WHITE);
+	// DrawTexture(blur_target.texture, 0, 0, WHITE);
+	// Apply tree_foggy_blur
+	BeginShaderMode(tree_foggy_blur_shader);
+	DrawTexture(trees_target.texture, 0, 0, WHITE);
+	EndShaderMode();
 
 	render_fog(game);
 }
@@ -107,7 +111,8 @@ void Level::render_trees_to_target(Game& game) {
 	Vector2 s_dims { (float) game.screen_width, (float) game.screen_height };
 	int loc = GetShaderLocation(tree_foggy_blur_shader, "dims");
 	SetShaderValue(tree_foggy_blur_shader, loc, &s_dims, SHADER_UNIFORM_VEC2);
-	
+
+	/*
 	BeginTextureMode(blur_target);
 	ClearBackground(BLANK);
 	// Apply tree_foggy_blur
@@ -116,6 +121,7 @@ void Level::render_trees_to_target(Game& game) {
 	EndShaderMode();
 	// DrawTexture(trees_target.texture, 0, 0, WHITE);
 	EndTextureMode();
+	*/
 }
 
 void Level::render_fog(Game& game) {

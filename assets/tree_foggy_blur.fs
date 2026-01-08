@@ -9,11 +9,6 @@ out vec4 finalColor;
 uniform sampler2D texture0;
 uniform vec2 dims;
 
-void notmain() {
-	finalColor = texture(texture0, fragTexCoord);
-	finalColor.g *= 2.0;
-}
-
 void main() {
 	float weights3x3[9] = float[9](1, 2, 1, 2, 4, 2, 1, 2, 1);
 	for (int i = 0; i < 9; i++) {
