@@ -44,9 +44,7 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand
 
 	this->tendrils = {};
 	tree_tex = static_tree_tex;
-	// auto img = GenImageColor(1, 1, BLANK);
-	// load_texture_from_image(blank_tex, img);
-	// UnloadImage(img);
+	target = LoadRenderTexture(100, 100);
 	init_texture();
 }
 
@@ -63,6 +61,7 @@ Tree::~Tree() {
 	unload_shader(shader);
 	std::cout << "tree shader w/ id " << shader.id << " loads/unloads " << shader.load_unloads << "\n";
 	std::cout << "tree blank tex w/ id " << blank_tex.id << " loads/unloads " << blank_tex.load_unloads << "\n";
+	UnloadRenderTexture(target);
 }
 
 void Tree::unload_textures() {
@@ -216,16 +215,24 @@ void Tree::render() {
 	EndShaderMode();
 }
 
-void Tree::render_with_cam_begin_end(Cam camera, Rectangle clip) {
+void Tree::render_to_target() {
+	BeginTextureMode(target);
+	ClearBackground(BLANK);
+
 	send_vals_to_shader();
 	auto src = full_texture(blank_tex);
-	Rectangle dest {
-		.x = (float) texture_pos.x,
-		.y = (float) texture_pos.y,
-		.width = (big - small).x,
-		.height = (big - small).y
-	};
-	camera.draw_texture_begin_end(shader, clip, blank_tex, src, dest);
+	auto dest = full_texture(target.texture); 
+	BeginShaderMode(shader);
+	DrawTexturePro(
+		blank_tex,
+		src,
+		dest,
+		{},
+		0,
+		WHITE);
+	EndShaderMode();
+
+	EndTextureMode();
 }
 
 std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS) {

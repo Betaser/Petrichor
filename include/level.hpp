@@ -11,8 +11,6 @@ struct Level {
     TextureWithCheck fog_texture;
     ShaderWithCheck fog_shader;
     ShaderWithCheck tree_foggy_blur_shader;
-    RenderTexture2D trees_target;
-    RenderTexture2D blur_target;
 
     Level();
     ~Level();

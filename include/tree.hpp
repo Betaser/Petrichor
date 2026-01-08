@@ -50,6 +50,7 @@ struct Tree {
 	size_t id = 0;
 	ShaderWithCheck shader;
 	Rand rand;
+	RenderTexture2D target;
 	// Contains same branches as in tendrils
 	std::vector<Branch> branches;
 	Vector2I texture_pos {};
@@ -69,7 +70,7 @@ struct Tree {
 	void update_texture();
 	void send_vals_to_shader();
 	void render();
-	void render_with_cam_begin_end(Cam camera, Rectangle clip);
+	void render_to_target();
 
 	static std::vector<Branch> branches_from_tendrils(Tendrils tendrils);
 

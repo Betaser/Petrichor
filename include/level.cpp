@@ -17,8 +17,8 @@ Level::Level() {
 }
 
 void Level::init(int screen_width, int screen_height) {
-	trees_target = LoadRenderTexture(screen_width, screen_height);
-	blur_target = LoadRenderTexture(screen_width, screen_height);
+	(void) screen_width;
+	(void) screen_height;
 }
 
 Level::~Level() {
@@ -28,8 +28,6 @@ Level::~Level() {
 	std::cout << "ambient fog shader loads/unloads " << fog_shader.load_unloads << "\n";
 	unload_shader(tree_foggy_blur_shader);
 	std::cout << "tree foggy blur shader loads/unloads " << tree_foggy_blur_shader.load_unloads << "\n";
-	UnloadRenderTexture(trees_target);
-	UnloadRenderTexture(blur_target);
 }
 
 void Level::update(Game& game) {
@@ -54,24 +52,43 @@ void Level::render(Game& game) {
 	// Indicate the center of where zooming happens
 	DrawRectangleV(camera.screen_offset, { 10, 10 }, { 45, 20, 45, 255 });
 
-	// DrawTexture(blur_target.texture, 0, 0, WHITE);
+	/*
 	// Apply tree_foggy_blur
 	BeginShaderMode(tree_foggy_blur_shader);
 	DrawTexture(trees_target.texture, 0, 0, WHITE);
 	EndShaderMode();
+	*/
+
+	for (const auto& tree_ptr : game.trees) {
+		auto& tree = *tree_ptr;
+
+		// We are past it then.
+		const float epsilon = 0;
+		if (petra.depth > tree.depth + epsilon)
+			continue;
+
+		int loc = GetShaderLocation(tree_foggy_blur_shader, "distFromCam");
+		float dist_from_cam = tree.depth - petra.depth;
+		SetShaderValue(tree_foggy_blur_shader, loc, &dist_from_cam, SHADER_UNIFORM_FLOAT);
+
+		Cam depth_cam = camera.clone();
+		depth_cam.scale = 1.0 / ((tree.depth - petra.depth) * depth_cam.lens_mult);
+
+		Rectangle dest {
+			.x = (float) tree.texture_pos.x,
+			.y = (float) tree.texture_pos.y,
+			.width = (tree.big - tree.small).x,
+			.height = (tree.big - tree.small).y
+		};
+		BeginShaderMode(tree_foggy_blur_shader);
+		depth_cam.draw_texture(clip, tree.target.texture, full_texture(tree.target.texture), dest);
+		EndShaderMode();
+	}
 
 	render_fog(game);
 }
 
 void Level::render_trees_to_target(Game& game) {
-	Vector2 dims { 500, 300 };
-	Rectangle clip {
-		.x = ((float) game.screen_width - dims.x) / 2,
-		.y = ((float) game.screen_height - dims.y) / 2,
-		.width = dims.x,
-		.height = dims.y
-	};
-
 	camera.pos = petra.pos;
 	camera.screen_offset = { (float) game.screen_width / 2, (float) game.screen_height / 2 };
 
@@ -82,22 +99,21 @@ void Level::render_trees_to_target(Game& game) {
 	std::sort(trees.begin(), trees.end(), 
 		[](Tree* t1, Tree* t2) { return t1->depth > t2->depth; });
 
-	BeginTextureMode(trees_target);
-	ClearBackground(BLANK);
+	// BeginTextureMode(trees_target);
+	// ClearBackground(BLANK);
 	for (const auto& tree_ptr : trees) {
 		auto& tree = *tree_ptr;
-		Cam depth_cam = camera.clone();
-		depth_cam.scale = 1.0 / ((tree.depth - petra.depth) * depth_cam.lens_mult);
-
 		// We are past it then.
 		const float epsilon = 0;
 		if (petra.depth > tree.depth + epsilon)
 			continue;
 
-		// tree.render_with_cam(depth_cam, clip);
+		Cam depth_cam = camera.clone();
+		depth_cam.scale = 1.0 / ((tree.depth - petra.depth) * depth_cam.lens_mult);
+
+		tree.render_to_target();
 		
-		tree.render_with_cam_begin_end(depth_cam, clip);
-		
+		/*
 		Rectangle dest {
 			.x = (float) tree.texture_pos.x,
 			.y = (float) tree.texture_pos.y,
@@ -105,22 +121,14 @@ void Level::render_trees_to_target(Game& game) {
 			.height = (tree.big - tree.small).y
 		};
 		depth_cam.draw_texture(clip, tree.blank_tex, full_texture(tree.blank_tex), dest);
+		*/
 	}
-	EndTextureMode();
+	// EndTextureMode();
 
+	/*
 	Vector2 s_dims { (float) game.screen_width, (float) game.screen_height };
 	int loc = GetShaderLocation(tree_foggy_blur_shader, "dims");
 	SetShaderValue(tree_foggy_blur_shader, loc, &s_dims, SHADER_UNIFORM_VEC2);
-
-	/*
-	BeginTextureMode(blur_target);
-	ClearBackground(BLANK);
-	// Apply tree_foggy_blur
-	BeginShaderMode(tree_foggy_blur_shader);
-	DrawTexture(trees_target.texture, 0, 0, WHITE);
-	EndShaderMode();
-	// DrawTexture(trees_target.texture, 0, 0, WHITE);
-	EndTextureMode();
 	*/
 }
 
