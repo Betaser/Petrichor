@@ -6,6 +6,7 @@
 #include "game.hpp"
 
 struct Level {
+    float collision_dist = 60;
 	Petra petra;
     Cam camera;
     TextureWithCheck fog_texture;
@@ -20,6 +21,9 @@ struct Level {
     void render(Game& game);
     void render_trees_to_target(Game& game);
     void render_fog(Game& game);
+
+    private:
+    constexpr float dist_from_cam(Tree& tree);
 };
 
 #endif

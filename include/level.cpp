@@ -52,13 +52,6 @@ void Level::render(Game& game) {
 	// Indicate the center of where zooming happens
 	DrawRectangleV(camera.screen_offset, { 10, 10 }, { 45, 20, 45, 255 });
 
-	/*
-	// Apply tree_foggy_blur
-	BeginShaderMode(tree_foggy_blur_shader);
-	DrawTexture(trees_target.texture, 0, 0, WHITE);
-	EndShaderMode();
-	*/
-
 	// Render in reverse depth order
 	std::vector<Tree*> trees(game.trees.size());
 	for (size_t i = 0; i < game.trees.size(); i++)
@@ -74,12 +67,24 @@ void Level::render(Game& game) {
 		if (petra.depth > tree.depth + epsilon)
 			continue;
 
-		int loc = GetShaderLocation(tree_foggy_blur_shader, "distFromCam");
-		float dist_from_cam = tree.depth - petra.depth;
-		SetShaderValue(tree_foggy_blur_shader, loc, &dist_from_cam, SHADER_UNIFORM_FLOAT);
+		const float dist = dist_from_cam(tree);
+		
+		const int dfc_loc = GetShaderLocation(tree_foggy_blur_shader, "distFromCam");
+		SetShaderValue(tree_foggy_blur_shader, dfc_loc, &dist, SHADER_UNIFORM_FLOAT);
+
+		const int cd_loc = GetShaderLocation(tree_foggy_blur_shader, "collisionDist");
+		SetShaderValue(tree_foggy_blur_shader, cd_loc, &collision_dist, SHADER_UNIFORM_FLOAT);
 
 		Cam depth_cam = camera.clone();
-		depth_cam.scale = 1.0 / ((tree.depth - petra.depth) * depth_cam.lens_mult);
+		depth_cam.scale = 1.0 / (dist * depth_cam.lens_mult);
+		// Change depth_cam if the tree is past the collision point
+		// You know what? This basic linear transition is not so bad
+		if (dist < collision_dist) {
+			Vector2 outwards = my_normalize(camera.pos - tree.branches[0].back());
+			float norm = (collision_dist - dist) / collision_dist;
+			Vector2 cam_offset = outwards * norm * std::max((float) game.screen_width, (float) game.screen_height);
+			depth_cam.pos += cam_offset;
+		}
 
 		Rectangle dest {
 			.x = (float) tree.texture_pos.x,
@@ -109,27 +114,10 @@ void Level::render_trees_to_target(Game& game) {
 			continue;
 
 		Cam depth_cam = camera.clone();
-		depth_cam.scale = 1.0 / ((tree.depth - petra.depth) * depth_cam.lens_mult);
+		depth_cam.scale = 1.0 / (dist_from_cam(tree) * depth_cam.lens_mult);
 
 		tree.render_to_target();
-		
-		/*
-		Rectangle dest {
-			.x = (float) tree.texture_pos.x,
-			.y = (float) tree.texture_pos.y,
-			.width = (tree.big - tree.small).x,
-			.height = (tree.big - tree.small).y
-		};
-		depth_cam.draw_texture(clip, tree.blank_tex, full_texture(tree.blank_tex), dest);
-		*/
 	}
-	// EndTextureMode();
-
-	/*
-	Vector2 s_dims { (float) game.screen_width, (float) game.screen_height };
-	int loc = GetShaderLocation(tree_foggy_blur_shader, "dims");
-	SetShaderValue(tree_foggy_blur_shader, loc, &s_dims, SHADER_UNIFORM_VEC2);
-	*/
 }
 
 void Level::render_fog(Game& game) {
@@ -151,4 +139,8 @@ void Level::render_fog(Game& game) {
 		fog_texture,
 		full_texture(fog_texture),
 		screen_rect);
+}
+
+constexpr float Level::dist_from_cam(Tree& tree) {
+	return tree.depth - petra.depth;
 }

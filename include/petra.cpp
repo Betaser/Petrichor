@@ -24,6 +24,12 @@ void Petra::update(Level* level, Game& game) {
 	if (scroll != 0) {
 		depth += scroll;
 	}
+	else {
+		if (IsKeyDown(KEY_UP))
+			depth -= 1;
+		if (IsKeyDown(KEY_DOWN))
+			depth += 1;
+	}
 }
 
 std::string Petra::say_hello() {

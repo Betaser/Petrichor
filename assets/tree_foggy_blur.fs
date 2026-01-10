@@ -9,6 +9,7 @@ out vec4 finalColor;
 uniform sampler2D texture0;
 uniform vec2 dims;
 uniform float distFromCam;
+uniform float collisionDist;
 const float MAX_DIST_FROM_CAM = 150;
 
 void main() {
@@ -23,9 +24,12 @@ void main() {
 	}
 
 	// Suppose 60 is the collision dist
-	float distRatio = min(1, max(0, distFromCam - 60) / MAX_DIST_FROM_CAM);
-
-	float blurDist = mix(0.0, 0.03, distRatio);
+	float distRatio = min(1, max(0, distFromCam - collisionDist) / MAX_DIST_FROM_CAM);
+	float blurDist = mix(0.0, 0.05, distRatio);
+	// Make a few percent before the distRatio "pop"
+	if (distRatio < 0.15) {
+		distRatio = 0;
+	}
 
 	// Square shaped sample? idk
 	vec4 total = vec4(0);
