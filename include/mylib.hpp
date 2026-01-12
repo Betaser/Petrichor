@@ -22,7 +22,8 @@ void load_texture(TextureWithCheck& texture_with, const char* filename);
 void load_texture_from_image(TextureWithCheck& texture_with, Image image);
 
 struct Vector2I {
-	int x, y;
+	int x = 0;
+	int y = 0;
 	Vector2I(Vector2 v);
 	Vector2I(int x, int y);
 	Vector2I();
@@ -33,7 +34,7 @@ struct Vector2I {
 struct Rand {
 	Rand(int seed); 
 
-	int seed;
+	int seed = 0;
 
 	void set_seed(int seed);
 	float gen(float a, float b);
@@ -41,6 +42,11 @@ struct Rand {
 	private:
 	std::mt19937 int_gen;
 	std::uniform_real_distribution<double> dist;
+};
+
+struct Circle {
+	Vector2 pos {};
+	float radius = 0;
 };
 
 void operator += (Vector2& a, const Vector2& b);

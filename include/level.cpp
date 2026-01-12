@@ -31,7 +31,7 @@ Level::~Level() {
 }
 
 void Level::update(Game& game) {
-	petra.update(this, game);
+	petra.update();
 
 	render_trees_to_target(game);
 }
@@ -98,6 +98,8 @@ void Level::render(Game& game) {
 	}
 
 	render_fog(game);
+
+	petra.render(game, *this);
 }
 
 void Level::render_trees_to_target(Game& game) {
@@ -113,8 +115,8 @@ void Level::render_trees_to_target(Game& game) {
 		if (petra.depth > tree.depth + epsilon)
 			continue;
 
-		Cam depth_cam = camera.clone();
-		depth_cam.scale = 1.0 / (dist_from_cam(tree) * depth_cam.lens_mult);
+		// Cam depth_cam = camera.clone();
+		// depth_cam.scale = 1.0 / (dist_from_cam(tree) * depth_cam.lens_mult);
 
 		tree.render_to_target();
 	}

@@ -21,9 +21,7 @@ struct Level {
     void render(Game& game);
     void render_trees_to_target(Game& game);
     void render_fog(Game& game);
-
-    private:
-    constexpr float dist_from_cam(Tree& tree);
+	constexpr float dist_from_cam(Tree& tree);
 };
 
 #endif
