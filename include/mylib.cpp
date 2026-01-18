@@ -127,6 +127,67 @@ float dot(const Vector2& a, const Vector2& b) {
 	return a.x * b.x + a.y * b.y;
 }
 
+Vector3 v2_to_v3(const Vector2& v, const float z) {
+	return { v.x, v.y, z };
+}
+
+Vector3 cross(const Vector3& a, const Vector3& b) {
+	return {
+		a.y * b.z - a.z * b.y,
+		a.z * b.x - a.x * b.z,
+		a.x * b.y - a.y * b.x
+	};
+}
+
+float dist_pt_from_line(const Vector2& pt, const std::array<const Vector2, 2>& line) {
+	Vector2 to_point = line[0] - pt;
+	Vector2 out_v = perp_rhr(line[1] - line[0]);
+	return std::abs(dot(to_point, out_v) / my_length(out_v));
+}
+
+bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon) {
+	for (size_t i = 0; i < polygon.size(); i++) {
+		Vector2 a = polygon[i];
+		Vector2 b = polygon[(i + 1) % polygon.size()];
+		Vector3 v1 = v2_to_v3(a - b, 0);
+		Vector3 v2 = v2_to_v3(b - pt, 0);
+		bool rhr = cross(v1, v2).z > 0;
+		if (!rhr)
+			return false;
+	}
+	return true;
+}
+
+bool right_side(const Vector2& pt, const std::array<const Vector2, 2>& line) {
+	return
+		(line[1].x - line[0].x) * (pt.y - line[0].y) > (line[1].y - line[0].y) * (pt.x - line[0].x);
+}
+
+float dist_from_pt_to_polygon(const Vector2& pt, const std::vector<Vector2>& polygon) {
+	if (pt_in_polygon(pt, polygon))
+		return -1;
+
+	for (size_t i = 0; i < polygon.size(); i++) {
+		Vector2 a = polygon[i];
+		Vector2 b = polygon[(i + 1) % polygon.size()];
+
+		// Ensure that sidedness is correct
+		if (right_side(pt, { a, b }))
+			continue;
+
+		Vector2 proj = project_pt(pt, { a, b });
+		if (std::max(my_length(proj - a), my_length(proj - b)) > my_length(a - b))
+			continue;
+
+		return dist_pt_from_line(pt, { a, b });
+	}
+	float dist = INFINITY;
+	for (size_t i = 0; i < polygon.size(); i++)
+		dist = std::min(my_length(pt - polygon[i]), dist);
+	return dist;
+}
+
+
 // Indicates direction to rotate towards, either -1 or 1
 float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
 	// Use cross product to figure out if we are on the left or right side
@@ -156,6 +217,12 @@ Vector2 perp_rhr(const Vector2& v) {
 
 Vector2 unit_vector(const float& f) {
 	return { cosf(f), sinf(f) };
+}
+
+Vector2 project_pt(const Vector2& pt, const std::array<const Vector2, 2>& onto) {
+	Vector2 a = onto[1] - onto[0];
+	Vector2 b = pt - onto[0];
+	return a * dot(b, a) / (pow(my_length(a), 2)) + onto[0];
 }
 
 std::string to_str(const Vector2& v, const int& decimal_pts) {

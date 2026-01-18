@@ -31,7 +31,7 @@ Level::~Level() {
 }
 
 void Level::update(Game& game) {
-	petra.update();
+	petra.update(*this, game.trees);
 
 	render_trees_to_target(game);
 }

@@ -31,10 +31,9 @@ float Branch::back_thickness() const {
 
 Branch Branch::clone() const {
 	std::vector<Vector2> vs;
-	for (auto vert : verts) {
+	for (auto vert : verts)
 		vs.push_back(vert);
-	}
-	return Branch(vs);
+	return { vs };
 }
 
 void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand) {
@@ -233,7 +232,6 @@ void Tree::render_to_target() {
 		0,
 		WHITE);
 	EndShaderMode();
-
 	EndTextureMode();
 }
 
@@ -283,11 +281,18 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 	const auto& make_branch = [](Vector2 start, float rotation, float length, float front_thickness, float back_thickness) -> Branch {
 		const Vector2 mid_front = start + unit_vector(rotation) * length;
 		const Vector2 perp_rotation = perp_rhr(unit_vector(rotation));
+		// Trying to swap to ccw orientation.
+		/*
 		Vector2 p1 = mid_front + perp_rotation * front_thickness;
 		Vector2 p2 = mid_front - perp_rotation * front_thickness;
 		Vector2 p3 = start - perp_rotation * back_thickness;
 		Vector2 p4 = start + perp_rotation * back_thickness;
-		return Branch({ p1, p2, p3, p4 });
+		*/
+		Vector2 p1 = mid_front - perp_rotation * front_thickness;
+		Vector2 p2 = mid_front + perp_rotation * front_thickness;
+		Vector2 p3 = start + perp_rotation * back_thickness;
+		Vector2 p4 = start - perp_rotation * back_thickness;
+		return {{ p1, p2, p3, p4 }};
 	};
 
 	const auto& make_branch_from = [&make_branch, &length_calc, &angle_calc, &thickness_calc](std::vector<Branch> tendril, Branch branch) -> Branch {
