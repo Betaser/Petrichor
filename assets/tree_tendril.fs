@@ -59,15 +59,10 @@ void main() {
 
 		if (inBranch) {
 			// Then we get the normalized x and y for the trapezoid
-			vec2 arr[2];
-			arr[0] = pts[0]; arr[1] = pts[1];
-			float s0Dist = distPtFromLine(fragTexCoord.xy, arr);
-			arr[0] = pts[0]; arr[1] = pts[3];
-			float s1Dist = distPtFromLine(fragTexCoord.xy, arr);
-			arr[0] = pts[2]; arr[1] = pts[3];
-			float s2Dist = distPtFromLine(fragTexCoord.xy, arr);
-			arr[0] = pts[1]; arr[1] = pts[2];
-			float s3Dist = distPtFromLine(fragTexCoord.xy, arr);
+			float s0Dist = distPtFromLine(fragTexCoord.xy, vec2[2](pts[0], pts[1]));
+			float s1Dist = distPtFromLine(fragTexCoord.xy, vec2[2](pts[0], pts[3]));
+			float s2Dist = distPtFromLine(fragTexCoord.xy, vec2[2](pts[2], pts[3]));
+			float s3Dist = distPtFromLine(fragTexCoord.xy, vec2[2](pts[1], pts[2]));
 
 			vec2 xy = vec2(s1Dist / (s1Dist + s3Dist), s0Dist / (s0Dist + s2Dist));
 
@@ -85,8 +80,9 @@ void main() {
 			finalColor = texelFetch(tex, texelXy, 0);
 
 			// vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
-			// finalColor = mix(finalColor, brown, float(texelXy.x) / float(texSize.x));
+			// finalColor = mix(finalColor, brown, float(texelXy.y) / float(dims.y));
 			break;
 		}
 	}
 }
+

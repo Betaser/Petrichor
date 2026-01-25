@@ -5,6 +5,7 @@
 
 #include "mylib.hpp"
 #include "level_editor.hpp"
+#include <format>
 #include "constants.cpp"
 
 LevelEditor::LevelEditor() {
@@ -46,6 +47,20 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 		tree_metadatas.emplace_back(temp);
 
 	randomize_tendrils(game, game.trees.size() - 1);
+	// Now we're gonna add the trunk.
+	TrunkSegment segment {
+		.top {
+			.depth = 0,
+			.position { 300, 300 },
+			.radius = 20
+		},
+		.bottom {
+			.depth = 100,
+			.position { 300, 200 },
+			.radius = 15
+		}
+	};
+	tree.trunk.segments.emplace_back(segment);
 }
 
 void LevelEditor::initialize_ui() {
@@ -223,7 +238,7 @@ void LevelEditor::update(Game& game) {
 
 		// Duplicate. Means we copy over metadata
 		if (IsKeyPressed(KEY_F)) {
-			duplicate_selected_tree(game);
+			duplicate_selected_tendril(game);
 			// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
 			return;
 		}
@@ -277,9 +292,9 @@ void LevelEditor::render(Game& game) const {
 		tree->bounding_box(small, big);
 		Vector2 dims = big - small + select_extra_bounds;
 
-		int dims_locs = GetShaderLocation(select_shader, "dims");
+		int dims_loc = GetShaderLocation(select_shader, "dims");
 		auto dims_i = Vector2I(dims);
-		SetShaderValue(select_shader, dims_locs, &dims_i, SHADER_UNIFORM_IVEC2);
+		SetShaderValue(select_shader, dims_loc, &dims_i, SHADER_UNIFORM_IVEC2);
 
 		BeginShaderMode(select_shader);
 		DrawTexturePro(
@@ -393,7 +408,7 @@ void LevelEditor::invalidate_selected_index(Game& game) {
 	selected_index = game.trees.size();
 }
 
-void LevelEditor::duplicate_selected_tree(Game& game) {
+void LevelEditor::duplicate_selected_tendril(Game& game) {
 	// Make sure we do this first.
 	// std::cout << "dup " << selected->id << "\n";
 	// Depth is stored on tree, so it differs from treemetadata

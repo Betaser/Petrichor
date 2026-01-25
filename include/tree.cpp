@@ -36,9 +36,10 @@ Branch Branch::clone() const {
 	return { vs };
 }
 
-void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand) {
+void Tree::init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand) {
 	this->branches = branches;
-	this->shader = shader;
+	this->tendril_shader = tendril_shader;
+	this->trunk_shader = trunk_shader;
 	this->rand = rand;
 
 	this->tendrils = {};
@@ -48,18 +49,21 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand
 	init_texture();
 }
 
-Tree::Tree(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand) : rand(rand) {
+Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
 	id = 0;
-	std::cout << "init tree w/ args\n";
-	init(branches, shader, rand);
+	std::cout << "init tree\n";
+	ShaderWithCheck tendril_shader;
+	load_shader(tendril_shader, "assets/tree_tendril.fs");
+
+	init(branches, tendril_shader, tendril_shader, rand);
 }
 
 Tree::~Tree() {
 	std::cout << "deinit tree\n";
 	unload_textures();
 	std::cout << "unload shader!\n";
-	unload_shader(shader);
-	std::cout << "tree shader w/ id " << shader.id << " loads/unloads " << shader.load_unloads << "\n";
+	unload_shader(tendril_shader);
+	std::cout << "tree shader w/ id " << tendril_shader.id << " loads/unloads " << tendril_shader.load_unloads << "\n";
 	std::cout << "tree blank tex w/ id " << blank_tex.id << " loads/unloads " << blank_tex.load_unloads << "\n";
 	UnloadRenderTexture(target);
 }
@@ -94,8 +98,8 @@ void Tree::init_texture() {
 	load_texture_from_image(blank_tex, blank);
 	UnloadImage(blank);
 
-	int loc = GetShaderLocation(shader, "tex");
-	SetShaderValueTexture(shader, loc, tree_tex);
+	int loc = GetShaderLocation(tendril_shader, "tex");
+	SetShaderValueTexture(tendril_shader, loc, tree_tex);
 }
 
 std::vector<Branch> Tree::branches_from_tendrils(Tendrils tendrils) {
@@ -120,18 +124,19 @@ void Tree::update_texture() {
 }
 
 void Tree::send_vals_to_shader() {
-	int color_loc = GetShaderLocation(shader, "color");
+	int color_loc = GetShaderLocation(tendril_shader, "color");
 	Vector4 white { 1.0, 1.0, 1.0, 1.0 };
 	// Create a color for this branch.
-	SetShaderValue(shader, color_loc, &white, SHADER_UNIFORM_VEC4);
+	SetShaderValue(tendril_shader, color_loc, &white, SHADER_UNIFORM_VEC4);
 
-	int loc = GetShaderLocation(shader, "N");
+	int loc = GetShaderLocation(tendril_shader, "N");
 	size_t size = branches.size();
-	SetShaderValue(shader, loc, &size, SHADER_UNIFORM_INT);
+	SetShaderValue(tendril_shader, loc, &size, SHADER_UNIFORM_INT);
 
-	int dims_loc = GetShaderLocation(shader, "dims");
+	int dims_loc = GetShaderLocation(tendril_shader, "dims");
 	Vector2I dims { tree_tex.width, tree_tex.height };
-	SetShaderValue(shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
+	// std::cout << "dims are " << to_str(dims.to_vec2(), 2) << "\n";
+	SetShaderValue(tendril_shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
 
 	bounding_box(small, big);
 
@@ -177,21 +182,34 @@ void Tree::send_vals_to_shader() {
 	}
 
 	// texture regions
-	int btm_left_locs = GetShaderLocation(shader, "btmLefts");
-	int top_right_locs = GetShaderLocation(shader, "topRights");
-	
-	SetShaderValueV(shader, btm_left_locs, btm_lefts, SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(shader, top_right_locs, top_rights, SHADER_UNIFORM_VEC2, size);
+	int btm_left_locs = GetShaderLocation(tendril_shader, "btmLefts");
+	int top_right_locs = GetShaderLocation(tendril_shader, "topRights");
 
-	SetShaderValueV(shader, GetShaderLocation(shader, "pt1s"), compressed_branches[0], SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(shader, GetShaderLocation(shader, "pt2s"), compressed_branches[1], SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(shader, GetShaderLocation(shader, "pt3s"), compressed_branches[2], SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(shader, GetShaderLocation(shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
+	if (IsKeyPressed(KEY_U)) {
+		std::cout << "btm lefts:\n";
+		for (const auto& v : btm_lefts) {
+			std::cout << to_str(v, 2) << " ";
+		}
+		std::cout << "\n";
+		std::cout << "top rights:\n";
+		for (const auto& v : top_rights) {
+			std::cout << to_str(v, 2) << " ";
+		}
+		std::cout << "\n";
+	}
+	
+	SetShaderValueV(tendril_shader, btm_left_locs, btm_lefts, SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(tendril_shader, top_right_locs, top_rights, SHADER_UNIFORM_VEC2, size);
+
+	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt1s"), compressed_branches[0], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt2s"), compressed_branches[1], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt3s"), compressed_branches[2], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
 }
 
 void Tree::render() {
 	send_vals_to_shader();
-	BeginShaderMode(shader);
+	BeginShaderMode(tendril_shader);
 	// DrawTexture(blank_tex, texture_pos.x, texture_pos.y, WHITE);
 	DrawTexturePro(
 		blank_tex,
@@ -223,7 +241,7 @@ void Tree::render_to_target() {
 	auto src = full_texture(blank_tex);
 	auto dest = full_texture(target.texture);
 	src.height *= -1;
-	BeginShaderMode(shader);
+	BeginShaderMode(tendril_shader);
 	DrawTexturePro(
 		blank_tex,
 		src,

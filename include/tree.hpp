@@ -26,6 +26,22 @@ struct Branch {
 	Branch clone() const;
 };
 
+struct TrunkLayer {
+	float depth = 0;
+	Vector2 position {};
+	float radius = 0;
+};
+
+struct TrunkSegment {
+	const TrunkLayer& top;
+	const TrunkLayer& bottom;
+};
+
+struct Trunk {
+	std::vector<TrunkSegment> segments;
+	// I'm thinking of rendering the top segment differently, but it's not a pressing matter.
+};
+
 // TODO: make branches
 struct Tree {
 	private:
@@ -48,13 +64,15 @@ struct Tree {
 	Vector2 small {};
 	Vector2 big {};
 	size_t id = 0;
-	ShaderWithCheck shader;
+	ShaderWithCheck tendril_shader;
+	ShaderWithCheck trunk_shader;
 	Rand rand;
 	RenderTexture2D target;
 	// Contains same branches as in tendrils
 	std::vector<Branch> branches;
 	Vector2I texture_pos {};
 	Tendrils tendrils;
+	Trunk trunk;
 	// Hold onto tree_tex just to unload it.
 	TextureWithCheck blank_tex, tree_tex;
 
@@ -62,11 +80,11 @@ struct Tree {
 
 	// Tree(const Tree&) = delete;
 	// Tree& operator=(const Tree&) = delete;
-	Tree(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand);
+	Tree(std::vector<Branch> branches, Rand& rand);
 	~Tree();
 
 	void bounding_box(Vector2& small, Vector2& big);
-	void init(std::vector<Branch> branches, ShaderWithCheck shader, Rand& rand);
+	void init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand);
 	void update_texture();
 	void send_vals_to_shader();
 	void render();

@@ -92,14 +92,17 @@ int main() {
 
 							if (name == "rotation") {
 								rotation = std::stof(value);
-							} else if (name == "offset") {
+							} 
+							else if (name == "offset") {
 								const size_t xy_sep = value.find(" ");
 								float x = std::stof(value.substr(0, xy_sep));
 								float y = std::stof(value.substr(xy_sep + 1));
 								offset = { x, y };
-							} else if (name == "seed") {
+							} 
+							else if (name == "seed") {
 								seed = std::stoi(value);
-							} else if (name == "depth") {
+							} 
+							else if (name == "depth") {
 								depth = std::stof(value);
 
 								game.make_tree();

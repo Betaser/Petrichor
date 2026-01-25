@@ -71,7 +71,7 @@ struct LevelEditor : public Button::Owner {
 	void render(Game& game) const;
 	void invalidate_selected_index(Game& game);
 
-	void duplicate_selected_tree(Game& game);
+	void duplicate_selected_tendril(Game& game);
 
 	private:
 	bool show_instructions = false;

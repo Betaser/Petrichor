@@ -26,11 +26,11 @@ Game* Game::get() {
 
 void Game::make_tree() {
 	Rand rand(69);
-	ShaderWithCheck shader;
-	load_shader(shader, "assets/tree.fs");
+	// ShaderWithCheck shader;
+	// load_shader(shader, "assets/tree_tendril.fs");
 
 	// Black magic that is required to ensure trees are not created and copied, even though that would be fine.
-	auto t = std::unique_ptr<Tree>(new Tree({}, shader, rand));
+	auto t = std::unique_ptr<Tree>(new Tree({}, rand));
 	t->id = trees.size();
 	trees.emplace_back(std::move(t));
 }
