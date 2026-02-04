@@ -2,11 +2,12 @@
 #include <fstream>
 #include <sstream>
 #include <assert.h>
+#include <format>
 
 #include "mylib.hpp"
 #include "level_editor.hpp"
-#include <format>
 #include "constants.cpp"
+#include "tree_metadata.cpp"
 
 LevelEditor::LevelEditor() {
 	debug_button = nullptr;
@@ -60,7 +61,7 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 			.radius = 15
 		}
 	};
-	tree.trunk.segments.emplace_back(segment);
+	tree.trunk_segments.emplace_back(segment);
 }
 
 void LevelEditor::initialize_ui() {
@@ -160,18 +161,38 @@ void LevelEditor::update(Game& game) {
 			debug_button->state.hit = true;
 	}
 
-	if (selecting) {
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
-			std::cout << "todo: save trees to " << Constants::test_level_path << "\n";
+	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
+		std::cout << "Save trees to " << Constants::test_level_path << "\n";
 
-			// Move to a function probably
-			auto repr = convert_trees_to_chars(game.trees);
-			std::ofstream file;
-			file.open(Constants::test_level_path);
-			file << repr;
-			file.close();
+		// Move to a function probably
+		auto repr = convert_trees_to_chars(game.trees);
+		std::ofstream file;
+		file.open(Constants::test_level_path);
+		file << repr;
+		file.close();
+	}
+
+	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_O)) {
+		// And, metadatas are zeroed out.
+		tree_metadatas.clear();
+		std::cout << "Load file " << Constants::test_level2_path << "\n";
+		game.load_trees(
+			Constants::test_level2_path, 
+			[&](TreeMetadata& meta, Tree& tree) {
+				(void) tree;
+				tree_metadatas.emplace_back(meta);	
+			});
+
+		for (size_t i = 0; i < game.trees.size(); i++) {
+			selected_index = i;
+			update_selected_verts(game);
+			game.trees[i]->update_texture();
 		}
+		invalidate_selected_index(game);
+		return;
+	}
 
+	if (selecting) {
 		// Selected tree is not a thing yet.
 		auto& selected = game.trees[selected_index];
 		auto& meta = tree_metadatas[selected->id];
@@ -329,6 +350,7 @@ void LevelEditor::render(Game& game) const {
 		<< "Backspace = delete\n"
 		<< "Click on marks on sidebar to change depth\n"
 		<< "Ctrl + S = save to " << Constants::test_level_path << "\n"
+		<< "Ctrl + O = open " << Constants::test_level2_path << "\n"
 		<< "TODO: G = guidelines (editor add ons.\n"
 		<< "which are saved separate from level data)";
 		std::string s_str = ss.str();

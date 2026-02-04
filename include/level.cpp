@@ -32,11 +32,11 @@ Level::~Level() {
 
 void Level::update(Game& game) {
 	petra.update(*this, game.trees);
-
-	render_trees_to_target(game);
 }
 
 void Level::render(Game& game) {
+	render_trees_to_target(game);
+
 	Vector2 dims { 500, 300 };
 	Rectangle clip {
 		.x = ((float) game.screen_width - dims.x) / 2,

@@ -1,5 +1,7 @@
 #include <iostream>
+#include <fstream>
 
+#include "tree_metadata.cpp"
 #include "constants.cpp"
 #include "game.hpp"
 
@@ -22,6 +24,64 @@ void Game::set_fps(int fps) {
 Game* Game::get() {
 	std::cout << "using game.get\n";
 	return Game::_game;
+}
+
+void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tree&)> accept_metadata) {
+	trees.clear();
+	std::string line;
+	std::ifstream file;
+	file.open(filepath);
+
+	float rotation;
+	Vector2 offset;
+	int seed;
+	float depth;
+
+	std::string name;
+	while (!file.eof()) {
+		std::getline(file, line);
+		const size_t separator_at = line.find(":");
+		
+		if (separator_at == std::string_view::npos)
+			break;
+		
+		name = line.substr(0, separator_at);
+		const auto value = line.substr(separator_at + 1);
+
+		if (name == "rotation") {
+			rotation = std::stof(value);
+		}
+		else if (name == "offset") {
+			const size_t xy_sep = value.find(" ");
+			float x = std::stof(value.substr(0, xy_sep));
+			float y = std::stof(value.substr(xy_sep + 1));
+			offset = { x, y };
+		}
+		else if (name == "seed") {
+			seed = std::stoi(value);
+		}
+		else if (name == "depth") {
+			depth = std::stof(value);
+
+			make_tree();
+			auto& tree = trees.back();
+			tree->depth = depth;
+			tree->rand = Rand(seed);
+			tree->id = trees.size() - 1;
+			std::cout << "\nmake tree id " << tree->id << "\n";
+			const Vector2 start_location { 100, 100 };
+			Tendrils tendrils { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
+			tree->branches = Tree::branches_from_tendrils(tendrils);
+			tree->tendrils = tendrils;
+
+			TreeMetadata metadata(rotation, offset, *tree, {});
+			accept_metadata(metadata, *tree);
+
+			tree->update_texture();
+		}
+	}
+
+	file.close();
 }
 
 void Game::make_tree() {

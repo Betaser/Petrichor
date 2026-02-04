@@ -54,16 +54,22 @@ Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
 	std::cout << "init tree\n";
 	ShaderWithCheck tendril_shader;
 	load_shader(tendril_shader, "assets/tree_tendril.fs");
+	ShaderWithCheck trunk_shader;
+	load_shader(trunk_shader, "assets/tree_trunk.fs");
 
-	init(branches, tendril_shader, tendril_shader, rand);
+	init(branches, tendril_shader, trunk_shader, rand);
 }
 
 Tree::~Tree() {
 	std::cout << "deinit tree\n";
 	unload_textures();
-	std::cout << "unload shader!\n";
+	std::cout << "unload tendril shader!\n";
 	unload_shader(tendril_shader);
-	std::cout << "tree shader w/ id " << tendril_shader.id << " loads/unloads " << tendril_shader.load_unloads << "\n";
+	std::cout << "unload trunk shader!\n";
+	unload_shader(trunk_shader);
+	std::cout << "tendril shader w/ id " << tendril_shader.id << " loads/unloads " << tendril_shader.load_unloads << "\n";
+	std::cout << "trunk shader w/ id " << tendril_shader.id << " loads/unloads " << tendril_shader.load_unloads << "\n";
+
 	std::cout << "tree blank tex w/ id " << blank_tex.id << " loads/unloads " << blank_tex.load_unloads << "\n";
 	UnloadRenderTexture(target);
 }
@@ -123,11 +129,11 @@ void Tree::update_texture() {
 	texture_pos = Vector2I(pos);
 }
 
-void Tree::send_vals_to_shader() {
-	int color_loc = GetShaderLocation(tendril_shader, "color");
-	Vector4 white { 1.0, 1.0, 1.0, 1.0 };
+void Tree::send_vals_to_tendril_shader() {
+	int color_loc = GetShaderLocation(tendril_shader, "finishing_color");
+	Vector4 color { 1, 1, 1, 1 };
 	// Create a color for this branch.
-	SetShaderValue(tendril_shader, color_loc, &white, SHADER_UNIFORM_VEC4);
+	SetShaderValue(tendril_shader, color_loc, &color, SHADER_UNIFORM_VEC4);
 
 	int loc = GetShaderLocation(tendril_shader, "N");
 	size_t size = branches.size();
@@ -135,7 +141,6 @@ void Tree::send_vals_to_shader() {
 
 	int dims_loc = GetShaderLocation(tendril_shader, "dims");
 	Vector2I dims { tree_tex.width, tree_tex.height };
-	// std::cout << "dims are " << to_str(dims.to_vec2(), 2) << "\n";
 	SetShaderValue(tendril_shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
 
 	bounding_box(small, big);
@@ -207,19 +212,21 @@ void Tree::send_vals_to_shader() {
 	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
 }
 
+// ONLY FOR LEVEL EDITOR
 void Tree::render() {
-	send_vals_to_shader();
+	send_vals_to_tendril_shader();
+	int finishing_alpha_loc = GetShaderLocation(tendril_shader, "finishing_alpha");
+	// TODO: make tendrils that are far away clearer, which will require an ability to scroll the depth we are viewing at.
+	float finishing_alpha = 0.5;
+	SetShaderValue(tendril_shader, finishing_alpha_loc, &finishing_alpha, SHADER_UNIFORM_FLOAT);
+
+	// Later TODO: Make a custom shader for level editor (which is here) cause showing a high level repr of each segment is very different.
+
 	BeginShaderMode(tendril_shader);
-	// DrawTexture(blank_tex, texture_pos.x, texture_pos.y, WHITE);
 	DrawTexturePro(
 		blank_tex,
 		// source rect
-		{ 
-			.x = 0, 
-			.y = 0,
-			.width = (float) blank_tex.width,
-			.height = (float) blank_tex.height,
-		},
+		full_texture(blank_tex),
 		// dest rect, I think its the whole screen
 		{
 			.x = (float) texture_pos.x,
@@ -231,13 +238,32 @@ void Tree::render() {
 		0,
 		WHITE);
 	EndShaderMode();
+
+	// Suppose we only render the top
+	if (trunk_segments.size() > 0) {
+		auto trunk_layer = trunk_segments[0].top;
+		BeginShaderMode(trunk_shader);
+		DrawTexturePro(
+			blank_tex,
+			full_texture(blank_tex),
+			{
+				.x = trunk_layer.position.x,
+				.y = trunk_layer.position.y,
+				.width = trunk_layer.radius * 2,
+				.height = trunk_layer.radius * 2
+			},
+			{},
+			0,
+			WHITE);
+		EndShaderMode();
+	}
 }
 
 void Tree::render_to_target() {
 	BeginTextureMode(target);
 	ClearBackground(BLANK);
 
-	send_vals_to_shader();
+	send_vals_to_tendril_shader();
 	auto src = full_texture(blank_tex);
 	auto dest = full_texture(target.texture);
 	src.height *= -1;

@@ -4,36 +4,10 @@
 #include "game.hpp"
 #include "button.hpp"
 #include <vector>
-
-struct TreeMetadata {
-	// Rotation affects all tendrils
-	std::vector<Branch> branches;
-	Vector2 offset {};
-	float rotation = 0;
-	Rectangle mark {};
-
-	static TreeMetadata zero() {
-		return {};
-	}
-	TreeMetadata(float rotation, Vector2 offset, Tree& tree, Rectangle mark) {
-		std::cout << "init tree metadata\n";
-		this->rotation = rotation;
-		this->offset = offset;
-		this->mark = mark;
-
-		branches.reserve(tree.branches.size());
-		for (const auto& branch : tree.branches)
-			branches.emplace_back(branch);
-	}
-	~TreeMetadata() {
-		std::cout << "deinit tree metadata\n";
-	}
-
-	private:
-	TreeMetadata() {}
-};
+#include "tree_metadata.cpp"
 
 struct LevelEditor : public Button::Owner {
+	std::vector<std::unique_ptr<Tree>> saved_trees;
 	std::vector<Button> buttons;
 	Button* debug_button;
 	std::vector<TreeMetadata> tree_metadatas;

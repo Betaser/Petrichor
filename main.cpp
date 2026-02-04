@@ -51,7 +51,7 @@ int main() {
 		Game game(screen_width, screen_height, fps);
 		game._game = &game;
 
-		PauseMenu pause_menu(game);
+		// PauseMenu pause_menu(game);
 
 		// Load tree tex once
 		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
@@ -59,6 +59,8 @@ int main() {
 		LevelEditor level_editor;
 		auto metadata_zero = TreeMetadata::zero();
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
+
+		PauseMenu pause_menu(game, &level_editor);
 
 		while (!WindowShouldClose()) {
 			pause_menu.update();
@@ -68,6 +70,26 @@ int main() {
 					// Load in the trees
 					// Eventually, do something close to this but with metadatas for the level editor so progress can be saved in editing levels.
 					if (game.last_state == EditLevel) {
+						// But refill game.trees with our edit level contents.
+						for (auto& tree : game.trees)
+							level_editor.saved_trees.emplace_back(std::move(tree));
+						game.load_trees(
+							Constants::test_level_path,
+							[](TreeMetadata& meta, Tree& tree) {
+								const Vector2 origin = tree.branches[0].back();
+								for (size_t i = 0; i < tree.branches.size(); i++) {
+									auto& verts = tree.branches[i].verts;
+									for (size_t j = 0; j < verts.size(); j++)
+										verts[j] = my_rotate(origin, verts[j], meta.rotation) + meta.offset;
+								}
+							});
+					}
+
+					if (game.last_state == EditLevel && false) {
+						// But refill game.trees with our edit level contents.
+						for (auto& tree : game.trees)
+							level_editor.saved_trees.emplace_back(std::move(tree));
+
 						game.trees.clear();
 						std::cout << "load in the trees\n";
 						std::string line;
@@ -134,12 +156,19 @@ int main() {
 				case EditLevel: {
 					if (game.last_state != EditLevel) {
 						game.trees.clear();
+
+						// But refill game.trees with our edit level contents.
+						for (auto& tree : level_editor.saved_trees)
+							game.trees.emplace_back(std::move(tree));
+
+						level_editor.time = 0;
+						/*
 						level_editor.deleted_tree_ids.clear();
 						level_editor.tree_metadatas.clear();
-						level_editor.time = 0;
 						level_editor.using_depth_ui = false;
-						level_editor.invalidate_selected_index(game);
 						level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
+						*/
+						level_editor.invalidate_selected_index(game);
 						break;
 					}
 					level_editor.update(game);
@@ -157,7 +186,6 @@ int main() {
 			DrawRectangle(0, 0, 1, 1, BLANK);
 			ClearBackground({ 200, 200, 200, 255 });
 			DrawText(game.level.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
-			pause_menu.render(game.screen_width, game.screen_height);
 
 			switch (game.state) {
 				case PlayLevel: {
@@ -176,6 +204,7 @@ int main() {
 				break;
 				case Credits: break;
 			}
+			pause_menu.render(game.screen_width, game.screen_height);
 			EndDrawing();
 
 			game.last_state = game.state;

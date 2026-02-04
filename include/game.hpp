@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-// #include "petra.hpp"
+#include "tree_metadata.cpp"
 #include "button.hpp"
 #include "tree.hpp"
 #include "states.cpp"
@@ -28,6 +28,7 @@ struct Game : Button::Owner {
 	static Game* _game;
 	static Game* get();
 
+	void load_trees(const char* filepath, std::function<void(TreeMetadata&, Tree&)> accept_metadata);
 	void make_tree();
 	void set_fps(int fps);
 };

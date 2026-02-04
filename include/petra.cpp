@@ -71,7 +71,8 @@ void Petra::render(Game& game, Level& level) {
 	if (we_are_debugging) {
 		str = "petra debug movement";
 		color = PURPLE;
-	} else {
+	} 
+	else {
 		str = "petra standard movement";
 		color = ORANGE;
 	}

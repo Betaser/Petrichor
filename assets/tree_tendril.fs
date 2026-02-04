@@ -15,7 +15,7 @@ uniform sampler2D tex;
 uniform vec2 btmLefts[MAX];
 uniform vec2 topRights[MAX];
 
-uniform vec4 color;
+uniform float finishing_alpha = 1.0;
 
 out vec4 finalColor;
 
@@ -84,5 +84,7 @@ void main() {
 			break;
 		}
 	}
+
+	finalColor.a *= finishing_alpha;
 }
 

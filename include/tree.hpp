@@ -32,14 +32,10 @@ struct TrunkLayer {
 	float radius = 0;
 };
 
+// I'm thinking of rendering the top segment differently, but it's not a pressing matter.
 struct TrunkSegment {
-	const TrunkLayer& top;
-	const TrunkLayer& bottom;
-};
-
-struct Trunk {
-	std::vector<TrunkSegment> segments;
-	// I'm thinking of rendering the top segment differently, but it's not a pressing matter.
+	const TrunkLayer top;
+	const TrunkLayer bottom;
 };
 
 // TODO: make branches
@@ -72,7 +68,7 @@ struct Tree {
 	std::vector<Branch> branches;
 	Vector2I texture_pos {};
 	Tendrils tendrils;
-	Trunk trunk;
+	std::vector<TrunkSegment> trunk_segments;
 	// Hold onto tree_tex just to unload it.
 	TextureWithCheck blank_tex, tree_tex;
 
@@ -86,7 +82,7 @@ struct Tree {
 	void bounding_box(Vector2& small, Vector2& big);
 	void init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand);
 	void update_texture();
-	void send_vals_to_shader();
+	void send_vals_to_tendril_shader();
 	void render();
 	void render_to_target();
 
