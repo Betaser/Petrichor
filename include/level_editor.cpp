@@ -41,7 +41,7 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 		deleted_tree_ids.erase(deleted_tree_ids.begin());
 		tree.id = popped_id;
 	}
-	TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, game.trees.size() - 1));
+	TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
 	if (ids_available)
 		tree_metadatas[tree.id] = temp;
 	else
@@ -180,6 +180,7 @@ void LevelEditor::update(Game& game) {
 			Constants::test_level2_path, 
 			[&](TreeMetadata& meta, Tree& tree) {
 				(void) tree;
+				meta.mark = update_tree_for_depth_ui(game, tree);
 				tree_metadatas.emplace_back(meta);	
 			});
 
@@ -254,7 +255,7 @@ void LevelEditor::update(Game& game) {
 			float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(0.0f, GetMousePosition().y));
 			selected->depth = (clamped_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
 
-			meta.mark = update_tree_for_depth_ui(game, selected_index);
+			meta.mark = update_tree_for_depth_ui(game, *game.trees[selected_index]);
 		}
 
 		// Duplicate. Means we copy over metadata
@@ -364,7 +365,7 @@ void LevelEditor::render(Game& game) const {
 	render_depth_ui(id);
 }
 
-Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, size_t tree_index) {
+Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
 	depth_ui.height = (float) game.screen_height - 2 * depth_ui.SPACING;
 	depth_ui.top_left = {
 		(float) game.screen_width - depth_ui.WIDTH - depth_ui.SPACING,
@@ -380,7 +381,7 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, size_t tree_index) {
 	const float min_depth = std::min(0.0f, depths[0]);
 	const float max_depth = std::max(depth_ui.MAX_DEPTH, depths.back());
 
-	const float depth = game.trees[tree_index]->depth;
+	const float depth = tree.depth;
 	const int spacing = -5;
 	const int height = 5;
 

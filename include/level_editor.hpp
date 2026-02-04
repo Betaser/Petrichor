@@ -53,7 +53,7 @@ struct LevelEditor : public Button::Owner {
 	ShaderWithCheck select_shader;
 
 	// Does a full recalculation for every tree, but eh.
-	Rectangle update_tree_for_depth_ui(Game& game, size_t tree_index);
+	Rectangle update_tree_for_depth_ui(Game& game, Tree& tree);
 	void render_depth_ui(size_t selected_id) const;
 	bool is_selecting(Game& game) const;
 	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
