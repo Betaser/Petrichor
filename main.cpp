@@ -158,8 +158,10 @@ int main() {
 						game.trees.clear();
 
 						// But refill game.trees with our edit level contents.
+						std::cout << "level_editor size " << level_editor.saved_trees.size() << "\n"; 
 						for (auto& tree : level_editor.saved_trees)
 							game.trees.emplace_back(std::move(tree));
+						level_editor.saved_trees.clear();
 
 						level_editor.time = 0;
 						/*
@@ -169,7 +171,6 @@ int main() {
 						level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 						*/
 						level_editor.invalidate_selected_index(game);
-						break;
 					}
 					level_editor.update(game);
 
