@@ -6,12 +6,14 @@
 #include <raylib.h>
 #include <random>
 
-#include "mylib.hpp"
-#include "camera.hpp"
-
 struct Branch;
 struct Game;
+struct LevelEditor;
 using Tendrils = std::vector<std::vector<std::vector<Branch>>>;
+
+#include "mylib.hpp"
+#include "camera.hpp"
+#include "level_editor.hpp"
 
 struct Branch {
 	std::vector<Vector2> verts;
@@ -83,7 +85,7 @@ struct Tree {
 	void init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand);
 	void update_texture();
 	void send_vals_to_tendril_shader();
-	void render();
+	void render(LevelEditor* level_editor);
 	void render_to_target();
 
 	static std::vector<Branch> branches_from_tendrils(Tendrils tendrils);

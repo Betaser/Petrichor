@@ -1,9 +1,10 @@
 #ifndef LEVEL_EDITOR_H
 #define LEVEL_EDITOR_H
 
+#include <vector>
+
 #include "game.hpp"
 #include "button.hpp"
-#include <vector>
 #include "tree_metadata.cpp"
 
 struct LevelEditor : public Button::Owner {
@@ -30,7 +31,8 @@ struct LevelEditor : public Button::Owner {
 		const int MARK_SPACING = -5;
 		const int MARK_HEIGHT = 5;
 		const Color MARK_COLOR { 255, 255, 200, 255 };
-	} depth_ui;
+	};
+	DepthUi depth_ui;
 
 	LevelEditor();
 	~LevelEditor();

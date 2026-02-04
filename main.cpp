@@ -195,7 +195,7 @@ int main() {
 				break;
 				case EditLevel: {
 					for (const auto& tree : game.trees)
-						tree->render();
+						tree->render(&level_editor);
 
 					level_editor.render(game);
 
