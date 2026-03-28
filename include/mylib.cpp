@@ -107,7 +107,7 @@ Vector2 operator / (const Vector2& v, const float& f) {
 	return { v.x / f, v.y / f };
 }
 
-Vector2 my_rotate(const Vector2& origin, const Vector2& pt, const float& amt) {
+Vector2 rotate(const Vector2& origin, const Vector2& pt, const float& amt) {
 	const Vector2 out = pt - origin;
 	return Vector2 { 
 		out.x * cos(amt) - out.y * sin(amt),
@@ -115,7 +115,7 @@ Vector2 my_rotate(const Vector2& origin, const Vector2& pt, const float& amt) {
 	} + origin;
 }
 
-float my_angle(const Vector2& v) {
+float angle(const Vector2& v) {
 	const float ang = atan2f(v.y, v.x);
 	if (ang < 0) {
 		return ang + PI * 2.0;
@@ -142,7 +142,7 @@ Vector3 cross(const Vector3& a, const Vector3& b) {
 float dist_pt_from_line(const Vector2& pt, const std::array<const Vector2, 2>& line) {
 	Vector2 to_point = line[0] - pt;
 	Vector2 out_v = perp_rhr(line[1] - line[0]);
-	return std::abs(dot(to_point, out_v) / my_length(out_v));
+	return std::abs(dot(to_point, out_v) / length(out_v));
 }
 
 bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon) {
@@ -176,14 +176,14 @@ float dist_from_pt_to_polygon(const Vector2& pt, const std::vector<Vector2>& pol
 			continue;
 
 		Vector2 proj = project_pt(pt, { a, b });
-		if (std::max(my_length(proj - a), my_length(proj - b)) > my_length(a - b))
+		if (std::max(length(proj - a), length(proj - b)) > length(a - b))
 			continue;
 
 		return dist_pt_from_line(pt, { a, b });
 	}
 	float dist = INFINITY;
 	for (size_t i = 0; i < polygon.size(); i++)
-		dist = std::min(my_length(pt - polygon[i]), dist);
+		dist = std::min(length(pt - polygon[i]), dist);
 	return dist;
 }
 
@@ -195,18 +195,18 @@ float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
 }
 
 // Does not work past 180 degrees
-float my_angle_from(const Vector2& a, const Vector2& b) {
-	const float cos_theta = dot(a, b) / my_length(a) / my_length(b);
+float angle_from(const Vector2& a, const Vector2& b) {
+	const float cos_theta = dot(a, b) / length(a) / length(b);
 	return acos(cos_theta);
 }
 
-float my_length(const Vector2& v) {
+float length(const Vector2& v) {
 	return sqrtf((v.x * v.x) + (v.y * v.y));
 }
 
-Vector2 my_normalize(const Vector2& v) {
-	const float length = my_length(v);
-	return { v.x / length, v.y / length };
+Vector2 normalize(const Vector2& v) {
+	const float len = length(v);
+	return { v.x / len, v.y / len };
 }
 
 Vector2 perp_rhr(const Vector2& v) {
@@ -222,7 +222,7 @@ Vector2 unit_vector(const float& f) {
 Vector2 project_pt(const Vector2& pt, const std::array<const Vector2, 2>& onto) {
 	Vector2 a = onto[1] - onto[0];
 	Vector2 b = pt - onto[0];
-	return a * dot(b, a) / (pow(my_length(a), 2)) + onto[0];
+	return a * dot(b, a) / (pow(length(a), 2)) + onto[0];
 }
 
 std::string to_str(const Vector2& v, const int& decimal_pts) {

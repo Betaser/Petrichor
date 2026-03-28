@@ -76,11 +76,11 @@ int main() {
 						game.load_trees(
 							Constants::test_level_path,
 							[](TreeMetadata& meta, Tree& tree) {
-								const Vector2 origin = tree.branches[0].back();
+								const Vector2 origin = tree.origin();
 								for (size_t i = 0; i < tree.branches.size(); i++) {
 									auto& verts = tree.branches[i].verts;
 									for (size_t j = 0; j < verts.size(); j++)
-										verts[j] = my_rotate(origin, verts[j], meta.rotation) + meta.offset;
+										verts[j] = rotate(origin, verts[j], meta.rotation) + meta.offset;
 								}
 							});
 					}
@@ -136,11 +136,11 @@ int main() {
 								Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
 								tree->branches = Tree::branches_from_tendrils(tendrils);
 								tree->tendrils = tendrils;
-								const Vector2 origin = tree->branches[0].back();
+								const Vector2 origin = tree->origin();
 								for (size_t i = 0; i < tree->branches.size(); i++) {
 									auto& verts = tree->branches[i].verts;
 									for (size_t j = 0; j < verts.size(); j++) {
-										verts[j] = my_rotate(origin, verts[j], rotation) + offset;
+										verts[j] = rotate(origin, verts[j], rotation) + offset;
 									}
 								}
 

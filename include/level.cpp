@@ -1,7 +1,13 @@
 #include <algorithm>
+#include <ranges>
 
 #include "level.hpp"
 #include "mylib.hpp"
+
+void Dome::flatten_tree(Tree& tree) const {
+	(void) tree;
+	std::cout << "todo: flatten tree\n";
+}
 
 Level::Level() {
 	camera.lens_mult = 0.01;
@@ -14,6 +20,14 @@ Level::Level() {
 	UnloadImage(img);
 	load_shader(fog_shader, "assets/ambient_fog.fs");
 	load_shader(tree_foggy_blur_shader, "assets/tree_foggy_blur.fs");
+
+	dome = {
+		.pos = {},
+		.max_radius = std::sqrt(collision_dist) * 20,
+		.depth_to_radius_fn = [](float depth) {
+			return std::sqrt(depth) * 20;
+		}
+	};
 }
 
 void Level::init(int screen_width, int screen_height) {
@@ -32,12 +46,31 @@ Level::~Level() {
 
 void Level::update(Game& game) {
 	petra.update(*this, game.trees);
+	dome.pos = petra.pos;
 }
 
 void Level::render(Game& game) {
+	for (const auto& tree_ptr : game.trees) {
+		auto& tree = *tree_ptr;
+		if (!tree.past_me(petra))
+			continue;
+
+		const auto& dist = dist_from_cam(tree);
+		if (dist >= collision_dist)
+			continue;
+
+		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(dist));
+		const float dist_tree_dome = length(dome.pos - tree.origin());
+		std::cout << "radius " << radius << " dist tree dome " << dist_tree_dome << "\n";
+		if (dist_tree_dome < radius) {
+			dome.flatten_tree(tree);
+			std::cout << "flatten tree " << tree.id << "\n";
+		}
+	}
+
 	render_trees_to_target(game);
 
-	Vector2 dims { 500, 300 };
+	Vector2 dims { 700, 500 };
 	Rectangle clip {
 		.x = ((float) game.screen_width - dims.x) / 2,
 		.y = ((float) game.screen_height - dims.y) / 2,
@@ -60,11 +93,10 @@ void Level::render(Game& game) {
 		[](Tree* t1, Tree* t2) { return t1->depth > t2->depth; });
 
 	for (const auto& tree_ptr : trees) {
-		auto& tree = *tree_ptr;
+		const auto& tree = *tree_ptr;
 
 		// We are past it then.
-		const float epsilon = 0;
-		if (petra.depth > tree.depth + epsilon)
+		if (!tree.past_me(petra))
 			continue;
 
 		const float dist = dist_from_cam(tree);
@@ -75,16 +107,17 @@ void Level::render(Game& game) {
 		const int cd_loc = GetShaderLocation(tree_foggy_blur_shader, "collisionDist");
 		SetShaderValue(tree_foggy_blur_shader, cd_loc, &collision_dist, SHADER_UNIFORM_FLOAT);
 
-		Cam depth_cam = camera.clone();
-		depth_cam.scale = 1.0 / (dist * depth_cam.lens_mult);
+		Cam depth_cam = calc_depth_cam(dist);
 		// Change depth_cam if the tree is past the collision point
 		// You know what? This basic linear transition is not so bad
-		if (dist < collision_dist) {
-			Vector2 outwards = my_normalize(camera.pos - tree.branches[0].back());
+		/*
+		if (false && dist < collision_dist) {
+			Vector2 outwards = my_normalize(camera.pos - tree.origin());
 			float norm = (collision_dist - dist) / collision_dist;
 			Vector2 cam_offset = outwards * norm * std::max((float) game.screen_width, (float) game.screen_height);
 			depth_cam.pos += cam_offset;
 		}
+		*/
 
 		Rectangle dest {
 			.x = (float) tree.texture_pos.x,
@@ -110,13 +143,10 @@ void Level::render_trees_to_target(Game& game) {
 	// ClearBackground(BLANK);
 	for (const auto& tree_ptr : game.trees) {
 		auto& tree = *tree_ptr;
-		// We are past it then.
-		const float epsilon = 0;
-		if (petra.depth > tree.depth + epsilon)
-			continue;
 
-		// Cam depth_cam = camera.clone();
-		// depth_cam.scale = 1.0 / (dist_from_cam(tree) * depth_cam.lens_mult);
+		// We are past it then.
+		if (!tree.past_me(petra))
+			continue;
 
 		tree.render_to_target();
 	}
@@ -126,6 +156,8 @@ void Level::render_fog(Game& game) {
 	Vector2 dims { (float) game.screen_width, (float) game.screen_height };
 	int dims_loc = GetShaderLocation(fog_shader, "dims");
 	SetShaderValue(fog_shader, dims_loc, &dims, SHADER_UNIFORM_VEC2);
+
+	debug_render_dome_radii(game);
 
 	Rectangle screen_rect { 
 		.x = 0, 
@@ -143,6 +175,46 @@ void Level::render_fog(Game& game) {
 		screen_rect);
 }
 
-constexpr float Level::dist_from_cam(Tree& tree) {
+constexpr float Level::dist_from_cam(const Tree& tree) const {
 	return tree.depth - petra.depth;
+}
+
+std::vector<std::tuple<size_t, float>> Level::calc_dome_radii(const Dome& dome, std::vector<std::unique_ptr<Tree>>& trees) const {
+	// Hey, don't we have to scale the dome radius too, when drawing it?
+	std::vector<std::tuple<size_t, float>> dome_radii;
+
+	for (const auto& tree : trees) {
+		if (!tree->past_me(petra))
+			continue;	
+
+		const auto& dist = dist_from_cam(*tree);
+
+		if (dist >= collision_dist)
+			continue;
+
+		const Cam depth_cam = calc_depth_cam(dist);
+		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(dist));
+		dome_radii.push_back({ tree->depth, radius * depth_cam.scale });
+	}
+
+	return dome_radii;
+}
+
+void Level::debug_render_dome_radii(Game& game) const {
+	const auto& mapped_dome_radii = calc_dome_radii(dome, game.trees);
+	static float radii_array[100];
+	for (size_t i = 0; i < mapped_dome_radii.size(); i++)
+		radii_array[i] = std::get<1>(mapped_dome_radii[i]);
+
+	int radii_N_loc = GetShaderLocation(fog_shader, "domeRadiiN");
+	const int N = mapped_dome_radii.size();
+	SetShaderValue(fog_shader, radii_N_loc, &N, SHADER_UNIFORM_INT);
+	int radii_array_loc = GetShaderLocation(fog_shader, "domeRadii");
+	SetShaderValueV(fog_shader, radii_array_loc, &radii_array, SHADER_UNIFORM_FLOAT, N);
+}
+
+Cam Level::calc_depth_cam(float dist) const {
+	Cam cam = camera.clone();
+	cam.scale = 1.0 / (dist * cam.lens_mult);
+	return cam;
 }

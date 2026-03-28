@@ -12,12 +12,13 @@ struct Game;
 struct Collision {
 	size_t tree_index = 0;
 	size_t tendril_index = 0;
+
 	Collision(size_t tree_index, size_t tendril_index) {
 		this->tree_index = tree_index;
 		this->tendril_index = tendril_index;
 	}
 	~Collision() {
-		std::cout << "destroyed collision\n";
+		// std::cout << "destroyed collision\n";
 	}
 };
 

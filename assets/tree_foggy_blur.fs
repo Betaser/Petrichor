@@ -1,5 +1,3 @@
-// I'm not even sure if I can apply a completely new shader on top of an existing shader, let's see
-
 #version 330
 
 in vec2 fragTexCoord;
@@ -10,6 +8,7 @@ uniform sampler2D texture0;
 uniform vec2 dims;
 uniform float distFromCam;
 uniform float collisionDist;
+
 const float MAX_DIST_FROM_CAM = 150;
 
 void main() {

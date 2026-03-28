@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <assert.h>
+#include <algorithm>
 #include <format>
 
 #include "mylib.hpp"
@@ -106,7 +107,6 @@ void LevelEditor::update_selected_verts(Game& game) {
 	if (branches.size() != selected->branches.size())
 		std::cerr << "metadata branches size " << branches.size() << " selected branches size " << selected->branches.size() << "\n";
 
-	const Vector2 origin = branches[0].back();
 	const float rotation = floor(meta.rotation / (2.0 * PI / 30)) * (2.0 * PI / 30);
 
 	for (size_t i = 0; i < branches.size(); i++) {
@@ -114,7 +114,7 @@ void LevelEditor::update_selected_verts(Game& game) {
 		const auto& verts = branches[i].verts;
 		for (size_t j = 0; j < verts.size(); j++) {
 			Vector2 rotated = verts[j];
-			sel_verts[j] = my_rotate(origin, rotated, rotation) + meta.offset;
+			sel_verts[j] = rotate(selected->origin(), rotated, rotation) + meta.offset;
 		}
 	}
 }
@@ -142,7 +142,7 @@ void LevelEditor::update(Game& game) {
 			Vector2 small, big;
 			tree->bounding_box(small, big);
 			auto mid = (small + big) / 2;
-			float dist = my_length(mid - mouse_pos);
+			float dist = length(mid - mouse_pos);
 			if (dist < shortest) {
 				selected_index = i;
 				shortest = dist;

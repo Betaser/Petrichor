@@ -19,7 +19,7 @@ void Cam::draw_texture_begin_end(Shader& shader, Rectangle clip, Texture2D& text
 	EndShaderMode();
 }
 
-void Cam::draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest) {
+void Cam::draw_texture(const Rectangle clip, const Texture2D& texture, const Rectangle src, Rectangle dest) {
 	// transform dest automatically
 	Vector2 dest_top_left { dest.x, dest.y };
 	Vector2 dest_btm_right { dest.x + dest.width, dest.y + dest.height };

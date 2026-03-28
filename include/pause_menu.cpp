@@ -24,6 +24,7 @@ struct PauseMenu {
 
 	private:
 	void make_button(Vector2 pos, Setting& setting, Game& game) {
+		// Can we leverage emplace_back to construct button in-place in the vector?
 		buttons.emplace_back(Button(
 			setting.owner,
 			pos,

@@ -19,7 +19,7 @@ struct Cam {
 
 	// Let's achieve the same thing that tree.render() does 
     void draw_texture_begin_end(Shader& shader, Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest);
-    void draw_texture(Rectangle clip, Texture2D& texture, Rectangle src, Rectangle dest);
+    void draw_texture(const Rectangle clip, const Texture2D& texture, const Rectangle src, Rectangle dest);
 };
 
 #endif
