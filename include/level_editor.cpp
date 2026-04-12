@@ -89,7 +89,7 @@ void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	const Vector2 start_location { 100, 100 };
 
 	auto& tree = game.trees[tree_index];
-	Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
+	std::vector<std::vector<Branch>> tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
 	tree->branches = Tree::branches_from_tendrils(tendrils);
 	tree->tendrils = tendrils;
 

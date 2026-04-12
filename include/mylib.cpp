@@ -87,12 +87,24 @@ Vector2 operator + (const Vector2& a, const Vector2& b) {
 	return { a.x + b.x, a.y + b.y };
 }
 
+Vector3 operator + (const Vector3& a, const Vector3& b) {
+	return { a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
 Vector2 operator * (const Vector2& v, const float& f) {
 	return { v.x * f, v.y * f };
 }
 
+Vector3 operator * (const Vector3& v, const float& f) {
+	return { v.x * f, v.y * f, v.z * f };
+}
+
 Vector2 operator - (const Vector2& a, const Vector2& b) {
 	return { a.x - b.x, a.y - b.y };
+}
+
+Vector3 operator - (const Vector3& a, const Vector3& b) {
+	return { a.x - b.x, a.y - b.y, a.z - b.z };
 }
 
 Vector2 operator - (const Vector2& v) {

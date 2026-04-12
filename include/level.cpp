@@ -5,7 +5,29 @@
 #include "mylib.hpp"
 
 void Dome::flatten_tree(Tree& tree) const {
-	(void) tree;
+	// Debugging
+	
+	// The default order of the flat vector tree.branches is not exactly what we need, because we need to choose the nearer branch when branches happen.
+
+	// Below is flat vector traversal, which is close to what we want
+	if (false) {
+		int loc = GetShaderLocation(tree.tendril_shader, "debugBranchTints");
+		std::vector<Vector4> branch_tints(tree.branches.size());
+		// Debugging it:
+		Vector3 start_tint { 1, 0, 0 };
+		Vector3 end_tint { 0, 1, 0 };
+		for (size_t i = 0; i < branch_tints.size(); i++) {
+			const float amt = ((float) i) / (float) branch_tints.size();
+			Vector3 interp_color = (end_tint - start_tint) * amt + start_tint;
+			branch_tints[i] = {
+				.x = interp_color.x,
+				.y = interp_color.y,
+				.z = interp_color.z,
+				.w = amt * 0.2f + 0.5f,
+			};
+		}
+		SetShaderValueV(tree.tendril_shader, loc, branch_tints.data(), SHADER_UNIFORM_VEC4, branch_tints.size());
+	}
 	std::cout << "todo: flatten tree\n";
 }
 

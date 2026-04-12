@@ -11,13 +11,12 @@ struct Game;
 struct LevelEditor;
 struct Petra;
 
-using Tendrils = std::vector<std::vector<std::vector<Branch>>>;
-
 #include "mylib.hpp"
 #include "level_editor.hpp"
 
 struct Branch {
 	std::vector<Vector2> verts;
+	std::vector<unsigned int> nexts;
 
 	Branch(std::vector<Vector2> verts);
 
@@ -70,7 +69,7 @@ struct Tree {
 	// Contains same branches as in tendrils
 	std::vector<Branch> branches;
 	Vector2I texture_pos {};
-	Tendrils tendrils;
+	std::vector<std::vector<Branch>> tendrils;
 	// Trunk is not being rendered yet.
 	std::vector<TrunkSegment> trunk_segments;
 	// Hold onto tree_tex just to unload it.
@@ -92,10 +91,11 @@ struct Tree {
 
 	constexpr Vector2 origin() const;
 
-	static std::vector<Branch> branches_from_tendrils(Tendrils tendrils);
+	static std::vector<Branch> branches_from_tendrils(std::vector<std::vector<Branch>> tendrils);
 
 	// Does not figure out how we want to render it.
 	std::vector<std::vector<Branch>> random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5);
+	std::vector<Branch> random_branch_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, unsigned int MAX_TENDRILS = 5);
 	bool past_me(const Petra& petra, const float epsilon = 0) const;
 };
 

@@ -133,7 +133,7 @@ int main() {
 								tree->rand = Rand(seed);
 								tree->id = game.trees.size();
 								const Vector2 start_location { 100, 100 };
-								Tendrils tendrils = { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
+								std::vector<std::vector<Branch>> tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
 								tree->branches = Tree::branches_from_tendrils(tendrils);
 								tree->tendrils = tendrils;
 								const Vector2 origin = tree->origin();

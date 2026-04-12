@@ -52,8 +52,11 @@ struct Circle {
 
 void operator += (Vector2& a, const Vector2& b);
 Vector2 operator + (const Vector2& a, const Vector2& b);
+Vector3 operator + (const Vector3& a, const Vector3& b);
 Vector2 operator * (const Vector2& v, const float& f);
+Vector3 operator * (const Vector3& v, const float& f);
 Vector2 operator - (const Vector2& a, const Vector2& b);
+Vector3 operator - (const Vector3& a, const Vector3& b);
 Vector2 operator / (const Vector2& a, const Vector2& b);
 Vector2 operator / (const Vector2& v, const float& f);
 Vector2 operator - (const Vector2& v);

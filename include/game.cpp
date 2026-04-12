@@ -70,7 +70,7 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			tree->id = trees.size() - 1;
 			std::cout << "\nmake tree id " << tree->id << "\n";
 			const Vector2 start_location { 100, 100 };
-			Tendrils tendrils { tree->random_tendril_config(400, 20, 1.2, 0.1, start_location) };
+			std::vector<std::vector<Branch>> tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
 			tree->branches = Tree::branches_from_tendrils(tendrils);
 			tree->tendrils = tendrils;
 

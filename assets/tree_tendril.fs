@@ -9,6 +9,8 @@ uniform vec2 pt2s[MAX];
 uniform vec2 pt3s[MAX];
 uniform vec2 pt4s[MAX];
 
+uniform vec4 debugBranchTints[MAX];
+
 // Do not trust textureSize().
 uniform ivec2 dims;
 uniform sampler2D tex;
@@ -78,6 +80,12 @@ void main() {
 			// ivec2 texelXy = ivec2(regionXy * textureSize(tex, 0));
 			ivec2 texelXy = ivec2(regionXy * dims);
 			finalColor = texelFetch(tex, texelXy, 0);
+
+			// Tint it for debugging
+			vec4 tint = debugBranchTints[i];
+			finalColor.rgb = mix(finalColor.rgb, tint.rgb, tint.a);
+
+			// Also for debugging, make the final color translucent
 
 			// vec4 brown = vec4(2.0 * float(i) / N, 2.0 * float(i) / N, 0.0, 1.0);
 			// finalColor = mix(finalColor, brown, float(texelXy.y) / float(dims.y));
