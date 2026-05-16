@@ -2,6 +2,7 @@ raylib.h
 raymath.h
 app.exe
 test*
+!test_level.txt
 cubes_panning.fs
 /lib
 /raylib*
