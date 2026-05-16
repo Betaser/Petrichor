@@ -44,8 +44,8 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, Sh
 
 	this->tendrils = {};
 	tree_tex = static_tree_tex;
-	// This resolution actually matters. It seems like 1000x1000 is practically perfect
-	target = LoadRenderTexture(1000, 1000);
+	// This resolution actually matters. Lower looks ps1-like. It seems like 1000x1000 (1000, 1000) is practically perfect, but too slow to render more than like 5 branches at.
+	target = LoadRenderTexture(400, 400);
 	init_texture();
 }
 
@@ -110,9 +110,8 @@ void Tree::init_texture() {
 
 // Needed to reposition texture.
 void Tree::update_texture() {
-	Vector2 pos, _;
-	bounding_box(pos, _);
-	texture_pos = Vector2I(pos);
+	Vector2 _;
+	bounding_box(texture_pos, _);
 }
 
 void Tree::send_vals_to_tendril_shader() {
@@ -129,6 +128,8 @@ void Tree::send_vals_to_tendril_shader() {
 	Vector2I dims { tree_tex.width, tree_tex.height };
 	SetShaderValue(tendril_shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
 
+	// TODO
+	// HMM, BAD TO RECOMPUTE THESE ALL THE TIME IF WE USE IT FOR NORMALIZATION IN THE FOR LOOP.
 	bounding_box(small, big);
 
 	for (size_t n_i = 0; n_i < size; n_i++) {
@@ -136,10 +137,15 @@ void Tree::send_vals_to_tendril_shader() {
 		// Set the really big vertices array of the shader that doesn't exist yet
 		for (size_t branch_i = 0; branch_i < 4; branch_i++) {
 			auto pt = branch.verts[branch_i];
-			auto tex_size = Vector2I(big - small).to_vec2();
-			Vector2 norm = (pt - texture_pos.to_vec2()) / tex_size;
+			// auto tex_size = Vector2I(big - small).to_vec2();
+
+			// Vector2 norm = (pt - texture_pos.to_vec2()) / tex_size;
+			// Vector2 clamped_pt { roundf(pt.x), roundf(pt.y) };
+			// Vector2 norm = (clamped_pt - texture_pos.to_vec2()) / tex_size;
+
+			// I'm sus of these options, but it looks like all of them are bad.
+			Vector2 norm = (pt - small) / (big - small);
 			compressed_branches[branch_i][n_i] = norm;
-			// std::cout << "pt " << to_str(pt, 4) << " norm " << to_str(norm, 4) << "\n";
 		}
 	}
 
@@ -213,8 +219,8 @@ void Tree::render(LevelEditor* level_editor) {
 		full_texture(blank_tex),
 		// dest rect, I think its the whole screen
 		{
-			.x = (float) texture_pos.x,
-			.y = (float) texture_pos.y,
+			.x = texture_pos.x,
+			.y = texture_pos.y,
 			.width = (big - small).x,
 			.height = (big - small).y,
 		},
@@ -251,6 +257,7 @@ void Tree::render_to_target() {
 	auto src = full_texture(blank_tex);
 	auto dest = full_texture(target.texture);
 	src.height *= -1;
+
 	BeginShaderMode(tendril_shader);
 	DrawTexturePro(
 		blank_tex,
@@ -265,151 +272,6 @@ void Tree::render_to_target() {
 
 constexpr Vector2 Tree::origin() const {
 	return branches[0].back();
-}
-
-std::vector<Branch> Tree::random_branch_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, unsigned int MAX_TENDRILS) {
-
-	start_thickness = snap(start_thickness, (float) tree_tex.width / MAX_WIDTH);
-	std::uniform_real_distribution<> uniform_gen(0.0, 1.0);
-	float length_used = 0;
-
-	const auto& length_calc = [this, &total_length, &length_used](std::vector<Branch> subtendril) -> float {
-		(void) subtendril;
-		// for now just go with it being independent of tendril.
-		float rand_length = rand.gen(total_length * 0.04, total_length * 0.13);
-		float ret = fmin(total_length - length_used, rand_length);
-		return snap(ret, (float) tree_tex.width / MAX_WIDTH);
-	};
-
-	// Redo so that we follow a straight line given by another parameter; which will be determined by analyizing all tendrils and pathing towards a location that spreads out best.
-	const auto& angle_calc = [this, &length_used, &total_length](float aim, std::vector<Branch> subtendril) -> float {
-		// We gotta make sure the tree angles its branches kinda in a straight line.
-		if (subtendril.size() > 1) {
-			float sign = rand.gen(0.0, 1.0) < 0.5 ? -1 : 1;
-			float end_norm = 1.0 - length_used / total_length * 0.3;
-			float radian_offset = end_norm * rand.gen(0.2, 0.6) * sign;
-			
-			Vector2 tendril_direction = subtendril.back().front() - subtendril[0].front();
-			Vector2 aim_v = unit_vector(aim);
-			if (angle_from(tendril_direction, aim_v) > 1.0) {
-				// Then make sure the next radian_offset is in the right direction
-				float direction_sign = direction_to_rotate(aim_v, tendril_direction);
-				radian_offset = rand.gen(0.50, 0.9) * direction_sign;
-			}
-		
-			return radian_offset;
-		} 
-		// First branch case:
-		return rand.gen(0.5, 0.9) * rand.gen(0.0, 1.0) < 0.5 ? 1 : -1;
-	};
-
-	const auto& thickness_calc = [this, &length_used, &total_length](std::vector<Branch> subtendril) -> float {
-		// for now just randomize it but taper to MIN based on length_used
-		float end_norm = 0.95 - length_used / total_length;
-		const auto& last_branch = subtendril.back();
-		float last_thickness = length(last_branch.verts[0] - last_branch.verts[1]) / 2;
-		return end_norm * rand.gen(0.5 * last_thickness, 1.2 * last_thickness);
-	};
-
-	const auto& make_branch = [](Vector2 start, float rotation, float length, float front_thickness, float back_thickness) -> Branch {
-		const Vector2 mid_front = start + unit_vector(rotation) * length;
-		const Vector2 perp_rotation = perp_rhr(unit_vector(rotation));
-		Vector2 p1 = mid_front - perp_rotation * front_thickness;
-		Vector2 p2 = mid_front + perp_rotation * front_thickness;
-		Vector2 p3 = start + perp_rotation * back_thickness;
-		Vector2 p4 = start - perp_rotation * back_thickness;
-		return {{ p1, p2, p3, p4 }};
-	};
-
-	const float SPAWN_END_RATIO = 0.9;
-
-	const auto& make_branch_from = [&make_branch, &length_calc, &angle_calc, &thickness_calc, &SPAWN_END_RATIO](std::vector<Branch> tendril, Branch branch) -> Branch {
-		const Vector2 forward = branch.forward();
-		const float forward_angle = angle(forward);
-
-		const float length = length_calc(tendril);
-		const float new_angle = angle_calc(angle(tendril[0].forward()), tendril) + forward_angle;
-		const float new_thickness = thickness_calc(tendril);
-
-		const Vector2 back = branch.back();
-		const Vector2 start = forward * SPAWN_END_RATIO + back;
-		const float thickness = branch.front_thickness();
-
-		return make_branch(start, new_angle, length, new_thickness, thickness);
-	};
-
-	auto start_branch = make_branch(start_location, start_rotation, total_length * 0.2, start_thickness * 0.8, start_thickness);
-	
-	std::vector<Branch> branches;
-
-	std::vector<Branch> curr_tendril { start_branch, start_branch };
-
-	std::vector<Branch> splittable_branches;
-
-	unsigned int num_tendrils = 0;
-	while (num_tendrils < MAX_TENDRILS) {
-		length_used = 0;
-
-		// Below is the process of building out a tendril
-		while (length_used / total_length < 0.99) {
-			const auto branch = curr_tendril.back();
-			const auto new_branch = make_branch_from(curr_tendril, branch);
-			const auto new_length = length(new_branch.front() - new_branch.back());
-			length_used += new_length;
-
-			const float branch_thickness = new_branch.front_thickness();
-
-			// Ends the tendril if its too thin
-			if (branch_thickness / start_thickness < thickness_cutoff) {
-				// Then this is an ending branch, so force the front thickness to be small
-				const Vector2 forward = branch.forward();
-				const float forward_angle = angle(forward);
-
-				length_used -= new_length;
-				const float length = length_calc(curr_tendril);
-				length_used += length;
-
-				const float new_angle = angle_calc(angle(curr_tendril[0].forward()), curr_tendril) + forward_angle;
-
-				const Vector2 back = branch.back();
-				const Vector2 start = forward * SPAWN_END_RATIO + back;
-				const float thickness = branch.front_thickness();
-				const float new_thickness = 0.1 * thickness;
-
-				const auto end_branch = make_branch(start, new_angle, length, new_thickness, thickness);
-				curr_tendril.push_back(end_branch);
-
-				length_used = total_length;
-			}
-			else {
-				curr_tendril.push_back(new_branch);
-			}
-		}
-
-		// Splitting tendrils are similar to the code above, but don't repeat branches across tendrils	
-		curr_tendril.erase(curr_tendril.begin());
-
-		num_tendrils++;
-
-		for (const auto& branch : curr_tendril)
-			branches.push_back(branch);
-
-		for (int i = 0; i < (int) curr_tendril.size() - 2; i++) {
-			const auto& branch = curr_tendril[i];
-			splittable_branches.push_back(branch);
-		}
-		if (splittable_branches.size() == 0)
-			break;
-
-		const int random_index = (int) rand.gen(0, (float) splittable_branches.size());
-
-		const auto& random_branch = splittable_branches[random_index];
-
-		curr_tendril = { random_branch };
-		splittable_branches.erase(splittable_branches.begin() + random_index);
-	}
-
-	return branches;
 }
 
 std::vector<Branch> Tree::branches_from_tendrils(std::vector<std::vector<Branch>> tendrils) {
@@ -494,26 +356,38 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 		return make_branch(start, new_angle, length, new_thickness, thickness);
 	};
 
-	// Starting length = ???
+	size_t next_index = 1;
+
 	auto start_branch = make_branch(start_location, start_rotation, total_length * 0.2, start_thickness * 0.8, start_thickness);
 
 	std::vector<std::vector<Branch>> tendrils;
 	// In a for loop, allocate tendril vectors
 	std::vector<Branch> curr_tendril { start_branch, start_branch };
 
-	std::vector<Branch> splittable_branches;
+	// std::vector<Branch> splittable_branches;
+	struct SplitIdx {
+		int i, j;
+	};
+	std::vector<SplitIdx> splittable_indices;
+	SplitIdx indices;
 
 	while ((int) tendrils.size() < MAX_TENDRILS) {
 		length_used = 0;
 		
 		// Below is the process of building out a tendril.
 		while (length_used / total_length < 0.99) {
-			const auto branch = curr_tendril.back();
+			auto& branch = curr_tendril.back();
 			auto new_branch = make_branch_from(curr_tendril, branch);
 			const auto new_length = length(new_branch.front() - new_branch.back());
 			length_used += new_length;
 
 			const float branch_thickness = new_branch.front_thickness();
+
+			// Let's adjust nexts.
+			if (curr_tendril.size() == 1)
+				tendrils[indices.i][indices.j].nexts.push_back(next_index++);
+			else
+				branch.nexts.push_back(next_index++);
 
 			// Stops the tendril if its too thin.
 			if (branch_thickness / start_thickness < thickness_cutoff) {
@@ -537,25 +411,24 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 
 				length_used = total_length;
 			}
-			else {
+			else
 				curr_tendril.push_back(new_branch);
-			}
 		}
 		// Base building a tendril off of a branch as above, but don't repeat branches across tendrils.
 		curr_tendril.erase(curr_tendril.begin());
 
 		tendrils.push_back(curr_tendril);
 
-		for (int i = 0; i < (int) curr_tendril.size() - 2; i++) {
-			const auto& branch = curr_tendril[i];
-			splittable_branches.push_back(branch);
-		}
-		if (splittable_branches.size() == 0)
+		for (int i = 0; i < (int) curr_tendril.size() - 2; i++)
+			splittable_indices.push_back({ (int) tendrils.size() - 1, i });
+		if (splittable_indices.size() == 0)
 			break;
 
-		const int random_index = (int) rand.gen(0, (float) splittable_branches.size());
+		const int random_index = (int) rand.gen(0, (float) splittable_indices.size());
 
-		const auto& random_branch = splittable_branches[random_index];
+		indices = splittable_indices[random_index];
+		const auto& random_branch = tendrils[indices.i][indices.j];
+
 		// We want to capture this data conceptually, though this index value is kind of weird.
 		// Specifically, we care about which branch this random_branch "split off from". In actuality, it is that a tendril is shared between two branches.
 		// We want to be able to ask for every pair of "split" split branches. Then, we also want to describe each of these pairs by their index from the start. However, branches randomly select where they branch off from, meaning the "earlyness" of branches is completely unguaranteed here. Therefore, we need to sort them in some way.
@@ -569,8 +442,9 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 		// Suppose we return an dictionary of {split_branch_id: {branch_ids_2[...], branch_ids_2[...]}, ...}
 		// This lets us enumerate the different split branches, and go down the two branches that correspond to that branch.
 		// However, we need to figure out the split "earlyness", and I am going to sketch that out to figure something out.
+
 		curr_tendril = { random_branch };
-		splittable_branches.erase(splittable_branches.begin() + random_index);
+		splittable_indices.erase(splittable_indices.begin() + random_index);
 	}
 
 	return tendrils;

@@ -293,7 +293,7 @@ void LevelEditor::update(Game& game) {
 			// just translate it instead of reloading shaders.
 			Vector2 small, big;
 			selected->bounding_box(small, big);
-			selected->texture_pos = Vector2I(small);
+			selected->texture_pos = small;
 			auto tree_tex_bounds = (Vector2I { selected->blank_tex.width, selected->blank_tex.height }).to_vec2();
 			tree_tex_bounds += select_extra_bounds;
 		}
@@ -309,7 +309,7 @@ void LevelEditor::render(Game& game) const {
 		SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
 
 		auto& tree = game.trees[selected_index];
-		Vector2 pos { tree->texture_pos.to_vec2() - select_extra_bounds / 2 };
+		Vector2 pos { tree->texture_pos - select_extra_bounds / 2 };
 		Vector2 small, big;
 		tree->bounding_box(small, big);
 		Vector2 dims = big - small + select_extra_bounds;

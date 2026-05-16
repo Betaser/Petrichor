@@ -77,6 +77,7 @@ float dist_pt_from_line(const Vector2& pt, const std::array<const Vector2, 2>& l
 bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon);
 bool right_side(const Vector2& pt, const std::array<const Vector2, 2>& line);
 float dist_from_pt_to_polygon(const Vector2& pt, const std::vector<Vector2>& polygon);
+float rhr_sign(const Vector2& a, const Vector2& b, const Vector2& c);
 
 // Debug
 std::string to_str(const Vector2& v, const int& decimal_pts);

@@ -10,10 +10,11 @@ struct Dome {
     float max_radius;
     std::function<float(float)> depth_to_radius_fn;
 
-    void flatten_tree(Tree& tree) const;
+    void flatten_tree(Tree& tree, const Circle& circle) const;
 };
 
 struct Level {
+    // 60
     float collision_dist = 60;
 	Petra petra;
     Cam camera;

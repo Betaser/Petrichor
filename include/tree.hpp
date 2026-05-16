@@ -68,7 +68,7 @@ struct Tree {
 	RenderTexture2D target;
 	// Contains same branches as in tendrils
 	std::vector<Branch> branches;
-	Vector2I texture_pos {};
+	Vector2 texture_pos {};
 	std::vector<std::vector<Branch>> tendrils;
 	// Trunk is not being rendered yet.
 	std::vector<TrunkSegment> trunk_segments;
@@ -95,7 +95,6 @@ struct Tree {
 
 	// Does not figure out how we want to render it.
 	std::vector<std::vector<Branch>> random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5);
-	std::vector<Branch> random_branch_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, unsigned int MAX_TENDRILS = 5);
 	bool past_me(const Petra& petra, const float epsilon = 0) const;
 };
 

@@ -55,6 +55,7 @@ void main() {
 			// if (cross(v1, v2).z > 0.0) {
 			if (cross(v1, v2).z < 0.0) {
 				inBranch = false;
+				// finalColor = vec4(0, 1, 0, 0.8);
 				break;
 			}
 		}
@@ -84,6 +85,8 @@ void main() {
 			// Tint it for debugging
 			vec4 tint = debugBranchTints[i];
 			finalColor.rgb = mix(finalColor.rgb, tint.rgb, tint.a);
+
+			// finalColor.rgb = vec3(0.05, 0.125, 0.1);
 
 			// Also for debugging, make the final color translucent
 

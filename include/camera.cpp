@@ -24,6 +24,8 @@ void Cam::draw_texture(const Rectangle clip, const Texture2D& texture, const Rec
 	Vector2 dest_top_left { dest.x, dest.y };
 	Vector2 dest_btm_right { dest.x + dest.width, dest.y + dest.height };
 	transform({ &dest_top_left, &dest_btm_right });
+
+	// Added, hmm...
 	dest.x = dest_top_left.x;
 	dest.y = dest_top_left.y;
 	dest.width = dest_btm_right.x - dest_top_left.x;
@@ -45,6 +47,7 @@ void Cam::draw_texture(const Rectangle clip, const Texture2D& texture, const Rec
 		};
 	};
 	Rectangle clipped_dest = rect_overlap(clip, dest);
+
 	Vector2 clipped_src_pos(
 		((clipped_dest.x - dest.x) / dest.width) * src.width, 
 		((clipped_dest.y - dest.y) / dest.height) * src.height);
@@ -54,6 +57,19 @@ void Cam::draw_texture(const Rectangle clip, const Texture2D& texture, const Rec
 		.width = (clipped_dest.width / dest.width) * src.width,
 		.height = (clipped_dest.height / dest.height) * src.height
 	};
+	// why tf does this mostly work?
+	float x = clipped_src.x - roundf(clipped_src.x);
+	clipped_src.x -= x;
+	clipped_dest.x -= x;
+	float y = clipped_src.y - roundf(clipped_src.y);
+	clipped_src.y -= y;
+	clipped_dest.y -= y;
+	float width = clipped_src.width - roundf(clipped_src.width);
+	clipped_src.width -= width;
+	clipped_dest.width -= width;
+	float height = clipped_src.height - roundf(clipped_src.height);
+	clipped_src.height -= height;
+	clipped_dest.height -= height;
 
 	DrawTexturePro(
 		texture,

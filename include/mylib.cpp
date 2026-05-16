@@ -152,19 +152,16 @@ Vector3 cross(const Vector3& a, const Vector3& b) {
 }
 
 float dist_pt_from_line(const Vector2& pt, const std::array<const Vector2, 2>& line) {
-	Vector2 to_point = line[0] - pt;
-	Vector2 out_v = perp_rhr(line[1] - line[0]);
+	const Vector2 to_point = line[0] - pt;
+	const Vector2 out_v = perp_rhr(line[1] - line[0]);
 	return std::abs(dot(to_point, out_v) / length(out_v));
 }
 
 bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon) {
 	for (size_t i = 0; i < polygon.size(); i++) {
-		Vector2 a = polygon[i];
-		Vector2 b = polygon[(i + 1) % polygon.size()];
-		Vector3 v1 = v2_to_v3(a - b, 0);
-		Vector3 v2 = v2_to_v3(b - pt, 0);
-		bool rhr = cross(v1, v2).z > 0;
-		if (!rhr)
+		const Vector2 a = polygon[i];
+		const Vector2 b = polygon[(i + 1) % polygon.size()];
+		if (rhr_sign(a, b, pt) <= 0)
 			return false;
 	}
 	return true;
@@ -199,6 +196,11 @@ float dist_from_pt_to_polygon(const Vector2& pt, const std::vector<Vector2>& pol
 	return dist;
 }
 
+float rhr_sign(const Vector2& a, const Vector2& b, const Vector2& c) {
+	const Vector3 v1 = v2_to_v3(a - b, 0);
+	const Vector3 v2 = v2_to_v3(b - c, 0);
+	return cross(v1, v2).z;
+}
 
 // Indicates direction to rotate towards, either -1 or 1
 float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
@@ -222,9 +224,7 @@ Vector2 normalize(const Vector2& v) {
 }
 
 Vector2 perp_rhr(const Vector2& v) {
-	const float vx = -v.y;
-	const float vy = v.x;
-	return { vx, vy };
+	return { -v.y, v.x };
 }
 
 Vector2 unit_vector(const float& f) {
