@@ -1,6 +1,8 @@
 #ifndef LEVEL_H
 #define LEVEL_H
 
+#include <map>
+
 #include "petra.hpp"
 #include "camera.hpp"
 #include "game.hpp"
@@ -10,7 +12,7 @@ struct Dome {
     float max_radius;
     std::function<float(float)> depth_to_radius_fn;
 
-    void flatten_tree(Tree& tree, const Circle& circle) const;
+    void flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, std::string>& debug) const;
 };
 
 struct Level {
@@ -22,6 +24,10 @@ struct Level {
     ShaderWithCheck fog_shader;
     ShaderWithCheck tree_foggy_blur_shader;
     Dome dome;
+
+    // Debugging
+    static bool debug_apply_rotation;
+	std::map<std::string, std::string> debug;
 
     Level();
     ~Level();
@@ -36,5 +42,7 @@ struct Level {
     void debug_render_dome_radii(Game& game) const;
     Cam calc_depth_cam(float dist) const;
 };
+
+bool Level::debug_apply_rotation = false;
 
 #endif

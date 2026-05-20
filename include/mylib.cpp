@@ -209,6 +209,7 @@ float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
 }
 
 // Does not work past 180 degrees
+// Normally, this returns only a positive number
 float angle_from(const Vector2& a, const Vector2& b) {
 	const float cos_theta = dot(a, b) / length(a) / length(b);
 	return acos(cos_theta);

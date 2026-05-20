@@ -82,6 +82,17 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 	}
 
 	file.close();
+
+	// And then copy em over
+	for (auto& tree : trees) {
+		std::vector<Branch> branches;
+		for (auto& branch : tree->branches) {
+			Branch b(branch.verts);
+			b.nexts = branch.nexts;
+			branches.push_back(b);
+		}
+		tree->original_branches = branches;
+	}
 }
 
 void Game::make_tree() {

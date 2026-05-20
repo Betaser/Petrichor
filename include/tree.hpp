@@ -68,6 +68,8 @@ struct Tree {
 	RenderTexture2D target;
 	// Contains same branches as in tendrils
 	std::vector<Branch> branches;
+	// Needed to simulate branch resistance to dome "bending"
+	std::vector<Branch> original_branches;
 	Vector2 texture_pos {};
 	std::vector<std::vector<Branch>> tendrils;
 	// Trunk is not being rendered yet.

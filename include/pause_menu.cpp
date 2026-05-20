@@ -34,9 +34,8 @@ struct PauseMenu {
 				self.state.background_color = ColorLerp(self.state.background_color, { 50, 0, 50, 255 }, 0.4);
 			},
 			[this, &game, &setting](Button& self) {
-				// setting.immediate_on_press(self.state.owner);
+				setting.immediate_on_press(self.state.owner);
 
-				(void) self;
 				game.state = setting.state;
 				active = false;
 			},
@@ -54,9 +53,10 @@ struct PauseMenu {
 				"Play", 
 				light_blue, 
 				PlayLevel, 
-				[&game](Button::Owner* o) {
-					auto owner = dynamic_cast<LevelEditor*>(o);
-					owner->invalidate_selected_index(game);
+				[](Button::Owner* o) {
+					(void) o;
+					// auto owner = dynamic_cast<LevelEditor*>(o);
+					// owner->invalidate_selected_index(game);
 				}
 			},
 			{ 
