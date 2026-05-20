@@ -202,6 +202,11 @@ float rhr_sign(const Vector2& a, const Vector2& b, const Vector2& c) {
 	return cross(v1, v2).z;
 }
 
+bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, const float& epsilon) {
+	return (fmin(bounds[0].x, bounds[1].x) + epsilon < pt.x) && (pt.x < fmax(bounds[0].x, bounds[1].x) - epsilon)
+		&& (fmin(bounds[0].y, bounds[1].y) + epsilon < pt.y) && (pt.y < fmax(bounds[0].y, bounds[1].y) - epsilon);
+}
+
 // Indicates direction to rotate towards, either -1 or 1
 float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
 	// Use cross product to figure out if we are on the left or right side

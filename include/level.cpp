@@ -28,17 +28,25 @@ static inline void walk_fn(const size_t branch_i, size_t& walk_i, std::vector<Ve
 }
 
 // The stuff for flatten_tree's final form
-static float dist(Vector2 a, Vector2 b, Vector2 circle_pos) {
+enum IntersectionType {
+	LINE,
+	VERT
+};
+
+// Sometimes doesn't do LINE when it should.
+static IntersectionType find_intersection(Vector2 a, Vector2 b, Vector2 circle_pos) {
 	const Vector2 projection = project_pt(circle_pos, { a, b });
-	const float projection_dist_sum = length(projection - a) + length(projection - b);
 
-	if (projection_dist_sum / length(a - b) > 1.0005) {
-		return length(b - circle_pos);
-		// const float pt_dist_a = length(a - circle_pos);
-		// const float pt_dist_b = length(b - circle_pos);
-
-		// return fmin(pt_dist_b, pt_dist_a);
+	// Ensure that the projection is inside of a and b
+	if (!is_inside(projection, { a, b }, 0.001)) {
+		return VERT;
 	}
+	return LINE;
+}
+
+static float dist(Vector2 a, Vector2 b, Vector2 circle_pos, IntersectionType intersection) {
+	if (intersection == VERT)
+		return length(b - circle_pos);
 
 	const float line_dist = dist_pt_from_line(circle_pos, { a, b });
 	return line_dist;
@@ -83,7 +91,7 @@ static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	return theta;
 }
 
-// Not correct yet
+// Correct now?
 static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle) {
 	const float opp_over_hyp = circle.radius / length(circle.pos - a);
 	const float bnew_angle = asin(opp_over_hyp);
@@ -107,94 +115,94 @@ void rotate_all(const size_t branch_i, const float amt, const Vector2 origin, Tr
 
 
 static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vector2 b, const Circle& circle, float* debug_angle) {
-	const float ab_dist = dist(a, b, circle.pos);
-
-	// Check if the closer dist is even intersecting at all, if not return, thereby doing nothing.
-	// std::cout << "ab_dist " << ab_dist << "\n";
-
-	if (ab_dist > circle.radius) {
-		// std::cout << "return false!\n";
-		return false;
+	const auto intersection = find_intersection(a, b, circle.pos);
+	const float ab_dist = dist(a, b, circle.pos, intersection);
+	if (isnan(ab_dist)) {
+		// std::println("ab_dist is nan, type was {}", intersection == VERT ? "VERT" : "LINE");
+		// if (intersection == VERT)
+		// 	std::println("for VERT, b {} circle.pos {}", to_str(b, 2), to_str(circle.pos, 2));
 	}
 
-	// And just do nudge stuff here instead
-	const Vector2 perp_pt = project_pt(circle.pos, { a, b });
+	// Check if the closer dist is even intersecting at all, if not return, thereby doing nothing.
 
-	float angle = line_angle(a, b, circle);
-	if (isnan(angle))
-		angle = vert_angle(a, b, circle);
-	else
-		angle = fmax(angle, vert_angle(a, b, circle));
-	(void) perp_pt;
-		
-	// if (length(perp_pt - a) < length(b - a)) {
-	// 	if (circle.radius < length(circle.pos - a))
-	// 		angle = line_angle(a, b, circle);
-	// 	else
-	// 		angle = vert_angle(a, b, circle);
-	// } else
-	// 	angle = vert_angle(a, b, circle);
-	// const float angle = 
-	// 	length(perp_pt - a) < length(b - a) ?
-	// 	line_angle(a, b, circle) :
-	// 	vert_angle(a, b, circle);
+	if (ab_dist > circle.radius)
+		return false;
 
-	// if (isnan(angle)) {
-	// 	const float opp_over_hyp = circle.radius / length(circle.pos - a);
-	// 	if (abs(opp_over_hyp) > 1.0) {
-	// 		std::cout << "opp_over_hyp" << opp_over_hyp << "\n";
-	// 	}
-	// 	std::cout << (length(perp_pt - a) < length(b - a) ? "line angle is nan" : "vert angle is nan") << "\n";
-	// }
-
-	// const float angle = vert_angle(a, b, circle);
+	const float angle = intersection == VERT
+		? vert_angle(a, b, circle)
+		: line_angle(a, b, circle);
 		
 	// Rotate the closer branch to edge of the circle
-	if (Level::debug_apply_rotation)
-		rotate_all(cur_i, angle, tree.branches[cur_i].back(), tree);
+	rotate_all(cur_i, angle, tree.branches[cur_i].back(), tree);
 	*debug_angle = angle;
 	return true;
 }
 
 // This assume cur_i has 2 nexts, which both need to be rotated.
-void flatten_fork(Tree& tree, const size_t cur_i, const Circle& circle) {
+bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float interp_radius) {
 	const Branch& branch = tree.branches[cur_i];
 	const auto& nexts = branch.nexts;
-	if (nexts.size() != 2)
-		std::cout << "\n\n\n\n\nERROR: flatten fork called on this many branches " << nexts.size() << "\n";	
 
-	auto [a, b] = to_wireframe(tree, cur_i, nexts[0]);
-	auto [c, d] = to_wireframe(tree, cur_i, nexts[1]);
+	// First rotate our branch!
+	{
+		const auto either_back = nexts[0];
+		auto [a, b] = to_wireframe(tree, cur_i, either_back);
+		float blah;
+		flatten(tree, cur_i, a, b, circle, &blah);
+		if (isnan(blah)) {
+			// std::println("nan angle for flatten_fork branch {}", cur_i);
+		}					
+	}
+
+	circle.radius = interp_radius;
+
+	const size_t ab_next_next_i = tree.branches[nexts[0]].nexts.size() > 0 
+		? tree.branches[nexts[0]].nexts[0]
+		: 0;
+	const size_t cd_next_next_i = tree.branches[nexts[1]].nexts.size() > 0 
+		? tree.branches[nexts[1]].nexts[0]
+		: 0;
+
+	auto [a, b] = to_wireframe(tree, nexts[0], ab_next_next_i);
+	auto [c, d] = to_wireframe(tree, nexts[1], cd_next_next_i);
 
 	size_t closer_branch_i = nexts[0];
 	size_t further_branch_i = nexts[1];
-	const float ab_dist = dist(a, b, circle.pos);
-	const float cd_dist = dist(c, d, circle.pos);
+	const auto ab_intersection = find_intersection(a, b, circle.pos);
+	const auto cd_intersection = find_intersection(c, d, circle.pos);
+	IntersectionType intersection = ab_intersection;
+	const float ab_dist = dist(a, b, circle.pos, ab_intersection);
+	const float cd_dist = dist(c, d, circle.pos, cd_intersection);
+	if (isnan(ab_dist)) {
+		// std::println("in flatten fork, ab_dist is nan, type was {}", ab_intersection == VERT ? "VERT" : "LINE");
+	}
 	if (ab_dist > cd_dist) {
 		std::swap(closer_branch_i, further_branch_i);
 		std::swap(a, c);
 		std::swap(b, d);
+		intersection = cd_intersection;
 	}
 
 	// Check if the closer dist is even intersecting at all, if not return, thereby doing nothing.
 	if (fmin(ab_dist, cd_dist) > circle.radius)
-		return;
+		return false;
 
-	// And just do nudge stuff here instead
-	const Vector2 perp_pt = project_pt(circle.pos, { a, b });
-	const float angle = 
-		length(perp_pt - a) < length(b - a) ?
-		line_angle(a, b, circle) :
-		vert_angle(a, b, circle);
+	// std::println("intersection type was {} ab and cd were {} {}", intersection == VERT ? "VERT" : "LINE", ab_intersection == VERT ? "VERT" : "LINE", cd_intersection == VERT ? "VERT" : "LINE");
+	const float angle = intersection == VERT
+		? vert_angle(a, b, circle)
+		: line_angle(a, b, circle);
 
 	// Rotate the closer branch to edge of the circle
 	rotate_all(closer_branch_i, angle, tree.branches[closer_branch_i].back(), tree);
+
+	// Seems to rotate in the wrong direction sometimes
 
 	// Rotate the further branch a smaller amount, but still ensuring its in front
 	const float closer_to_further_angle = angle_from(d - c, b - a);
 	const float angle_from_closer = angle + closer_to_further_angle * 0.8;
 	const float further_angle = angle_from_closer - closer_to_further_angle;
 	rotate_all(further_branch_i, further_angle, tree.branches[closer_branch_i].back(), tree);
+	return true;
 }
 
 void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, std::string>& debug) const {
@@ -207,46 +215,59 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 			float radius_buffer = circle.radius * 0.001;
 			for (size_t i = 0; i < branch_depth; i++)
 				radius_buffer *= 0.5;
+			const float original_radius = circle.radius;
 			circle.radius += radius_buffer;
 
 			const Branch& branch = tree.branches[walk_i];
 
+			// Before we do the next iter, shrink circle radius a little.
+			float radius_buffer2 = circle.radius * 0.001;
+			for (size_t i = 0; i < branch_depth + 1; i++)
+				radius_buffer2 *= 0.5;
+			const float interp_radius = original_radius + (radius_buffer2 + radius_buffer) / 2;
+
 			if (branch.nexts.size() == 2) {
 				// Let's isolate the problem
-				// flatten_fork(tree, walk_i, circle);
+				if (debug["rotate_state"] != "None")
+					if (flatten_fork(tree, walk_i, circle, interp_radius)) {
+						// std::println("circle radius {} depth {}", circle.radius, branch_depth);
+					}
 			}
 			else if (branch.nexts.size() == 1) {
-				const size_t next_i = branch.nexts[0];
-				auto [a, b] = to_wireframe(tree, walk_i, next_i);
-				float debug_angle;
-				if (flatten(tree, walk_i, a, b, circle, &debug_angle)) {
-					debug["should_flatten"] = "true";
-					// std::cout << "branches to flatten " << walk_i << "\n";
-					// std::cout << "branches angle " << debug_angle << "\n";
-				}
-				// This should do the job of flattening the child nodes as well.
-				const Branch& next_branch = tree.branches[next_i];
-				const size_t next_next_i = next_branch.nexts.size() > 0 
-					? next_branch.nexts[0] 
-					: 0;
-				auto [next_a, next_b] = to_wireframe(tree, next_i, next_next_i);
-				if (flatten(tree, next_i, next_a, next_b, circle, &debug_angle)) {
-					debug["should_flatten"] = "true";
-					std::cout << "tip angle " << debug_angle << "\n";
+				if (debug["rotate_state"] == "Rotate single branch") {
+					const size_t next_i = branch.nexts[0];
+					auto [a, b] = to_wireframe(tree, walk_i, next_i);
+					float debug_angle;
+					if (flatten(tree, walk_i, a, b, circle, &debug_angle)) {
+						debug["should_flatten"] = "true";
+						// std::cout << "branches to flatten " << walk_i << "\n";
+						// std::cout << "branches angle " << debug_angle << "\n";
+						if (walk_i == 0)
+							std::println("0th iter branch angle is {}", debug_angle);
+					}
+
+					circle.radius = interp_radius;
+					// This should do the job of flattening the child nodes as well.
+					const Branch& next_branch = tree.branches[next_i];
+					const size_t next_next_i = next_branch.nexts.size() > 0 
+						? next_branch.nexts[0] 
+						: 0;
+					auto [next_a, next_b] = to_wireframe(tree, next_i, next_next_i);
+					if (flatten(tree, next_i, next_a, next_b, circle, &debug_angle)) {
+						debug["should_flatten"] = "true";
+						if (walk_i == 0)
+							std::println("0th iter tip angle is {}", debug_angle);
+						// std::cout << "tip angle " << debug_angle << "\n";
+						// std::println("circle radius {} depth {}", circle.radius, branch_depth);
+					}
 				}
 			}
 			else if (branch.nexts.size() == 0) {
-				// const Vector2 a = branch.back();
-				// const Vector2 b = branch.front();
-				// if (flatten(tree, walk_i, a, b, circle)) {
-				// 	debug["should_flatten"] = "true";
-				// 	// std::cout << "tips to flatten " << walk_i << "\n";
-				// }
-				// std::cout << " last branch " << walk_i;
 			}
 			else
 				std::cout << "Unexpectedly we have this many branches: " << branch.nexts.size() << "\n";
 
+			circle.radius = original_radius;
 			for (const auto& next : branch.nexts)
 				walk(next, branch_depth + 1, circle);
 		};
@@ -377,12 +398,14 @@ Level::Level() {
 
 	dome = {
 		.pos = {},
-		// .max_radius = std::sqrt(collision_dist) * 20,
-		.max_radius = std::sqrt(collision_dist) * 4,
+		.max_radius = std::sqrt(collision_dist) * 20,
+		// .max_radius = (float) (std::sqrt(collision_dist) * 2.5),
 		.depth_to_radius_fn = [](float depth) {
 			return std::sqrt(depth) * 20;
 		}
 	};
+
+	debug["rotate_state"] = "None";
 }
 
 void Level::init(int screen_width, int screen_height) {
@@ -403,10 +426,24 @@ void Level::update(Game& game) {
 	petra.update(*this, game.trees);
 	dome.pos = petra.pos;
 
+	const auto debug_rotate_state = debug["rotate_state"];
 	debug.clear();
+	debug["rotate_state"] = debug_rotate_state;
 
-	if (IsKeyPressed(KEY_R))
+	if (IsKeyPressed(KEY_R)) {
 		debug_apply_rotation = !debug_apply_rotation;
+
+		std::map<std::string, std::string> switch_map {
+			{ "Rotate fork", "Rotate single branch" },
+			{ "Rotate single branch", "None" },
+			{ "None", "Rotate fork" },
+		};
+
+		if (switch_map.contains(debug["rotate_state"]))
+			debug["rotate_state"] = switch_map[debug["rotate_state"]];
+		else
+			std::cout << "What is this rotation state " << debug["rotate_state"] << "\n";
+	}
 
 	for (const auto& tree_ptr : game.trees) {
 		auto& tree = *tree_ptr;
@@ -522,6 +559,7 @@ void Level::render(Game& game) {
 		DrawCircle(100, 100, 10, RED);
 	if (debug["should_flatten"] == "true")
 		DrawCircle(150, 100, 15, GREEN);
+	DrawText(debug["rotate_state"].c_str(), 30, 125, 45, WHITE);
 }
 
 void Level::render_trees_to_target(Game& game) {

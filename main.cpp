@@ -9,9 +9,11 @@
 #include <fstream>
 #include <string>
 #include <memory>
+#include <raylib.h>
 
 #include "mylib.cpp"
 #include "main.hpp"
+
 #include "level_editor.cpp"
 #include "tree.cpp"
 #include "button.cpp"
@@ -20,8 +22,6 @@
 #include "pause_menu.cpp"
 #include "level.cpp"
 #include "camera.cpp"
-
-#include <raylib.h>
 
 // TODO: Reuse the same buffer of textures and just use DrawTextureEx with the scale option. Of course, I hope that works alongside the tree shader.
 // Or the dumb solution of making textures the size of the screen and just specifying a boundary as uniform

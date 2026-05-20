@@ -2,6 +2,7 @@
 #include <vector>
 #include <array>
 
+#include "game.hpp"
 #include "button.hpp"
 #include "states.cpp"
 
