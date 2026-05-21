@@ -97,13 +97,13 @@ void Petra::render(Game& game, Level& level) {
 void Petra::debug_update_movement() {
 	// Debug movement conflicts with the keybindings I want for regular movement, so we need to have an indicator.
 	if (IsKeyDown(KEY_A))
-		pos.x -= 1;
+		pos.x -= 2;
 	if (IsKeyDown(KEY_D))
-		pos.x += 1;
+		pos.x += 2;
 	if (IsKeyDown(KEY_W))
-		pos.y -= 1;
+		pos.y -= 2;
 	if (IsKeyDown(KEY_S))
-		pos.y += 1;
+		pos.y += 2;
 	float scroll = GetMouseWheelMove();
 	if (scroll != 0)
 		depth += scroll;
@@ -111,6 +111,7 @@ void Petra::debug_update_movement() {
 		depth -= 1;
 	if (IsKeyDown(KEY_DOWN))
 		depth += 1;
+	depth += 0.09;
 }
 
 void Petra::update_movement() {

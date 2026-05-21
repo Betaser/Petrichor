@@ -198,20 +198,17 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	// Seems to rotate in the wrong direction sometimes
 
 	// Rotate the further branch a smaller amount, but still ensuring its in front
-	const float bacd_theta = angle_from(d - a, b - a) * -rhr_sign(b, a, d);
-	const float sigmoidal_fraction = 2 * (1 - 0.2) * (1 / (1 + exp(fabs(theta) * 0.4)) - 0.5) + 1;
-	const float new_theta = bacd_theta * sigmoidal_fraction;
-	const float ba_angle = angle(b - a);
-	const float new_dc_angle = ba_angle + new_theta;
-	const float dc_angle = angle(d - c);
-	// Idk why we add a negative sign.
-	const float dc_theta = -(new_dc_angle - dc_angle);
-	// std::println("rhr_sign {}, theta {}, dc_theta {}", rhr_sign(b, a, d), theta, dc_theta);
-	rotate_all(further_branch_i, dc_theta, tree.branches[closer_branch_i].back(), tree);
-	// const float closer_to_further_angle = angle_from(d - c, b - a);
-	// const float angle_from_closer = angle + closer_to_further_angle * 0.8;
-	// const float further_angle = angle_from_closer - closer_to_further_angle;
-	// rotate_all(further_branch_i, further_angle, tree.branches[closer_branch_i].back(), tree);
+	// const float bacd_theta = angle_from(d - a, b - a) * -rhr_sign(b, a, d);
+	// const float sigmoidal_fraction = 2 * (1 - 0.2) * (1 / (1 + exp(fabs(theta) * 0.4)) - 0.5) + 1;
+	// const float new_theta = bacd_theta * sigmoidal_fraction;
+	// const float ba_angle = angle(b - a);
+	// const float new_dc_angle = ba_angle + new_theta;
+	// const float dc_angle = angle(d - c);
+	// // Idk why we add a negative sign.
+	// const float dc_theta = -(new_dc_angle - dc_angle);
+	// // std::println("rhr_sign {}, theta {}, dc_theta {}", rhr_sign(b, a, d), theta, dc_theta);
+	// rotate_all(further_branch_i, dc_theta, tree.branches[closer_branch_i].back(), tree);
+
 	return true;
 }
 
@@ -457,7 +454,7 @@ void Level::update(Game& game) {
 		if (dist >= collision_dist)
 			continue;
 
-		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(dist));
+		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - dist));
 
 		const float dist_tree_dome = length(dome.pos - tree.origin());
 		if (dist_tree_dome < radius * 1.1 && debug["spring"] == "true") {
@@ -653,7 +650,7 @@ std::vector<std::tuple<size_t, float>> Level::calc_dome_radii(const Dome& dome, 
 			continue;
 
 		const Cam depth_cam = calc_depth_cam(dist);
-		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(dist));
+		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - dist));
 		dome_radii.push_back({ tree->depth, radius * depth_cam.scale });
 	}
 
