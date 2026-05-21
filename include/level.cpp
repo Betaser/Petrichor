@@ -103,6 +103,9 @@ static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle
 }
 
 void rotate_all(const size_t branch_i, const float amt, const Vector2 origin, Tree& tree) {
+	if (isnan(amt))
+		return;
+
 	Branch& branch = tree.branches[branch_i];
 
 	for (auto& vert : branch.verts) {
@@ -151,9 +154,6 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 		auto [a, b] = to_wireframe(tree, cur_i, either_back);
 		float blah;
 		flatten(tree, cur_i, a, b, circle, &blah);
-		if (isnan(blah)) {
-			// std::println("nan angle for flatten_fork branch {}", cur_i);
-		}					
 	}
 
 	circle.radius = interp_radius;
@@ -175,9 +175,7 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	IntersectionType intersection = ab_intersection;
 	const float ab_dist = dist(a, b, circle.pos, ab_intersection);
 	const float cd_dist = dist(c, d, circle.pos, cd_intersection);
-	if (isnan(ab_dist)) {
-		// std::println("in flatten fork, ab_dist is nan, type was {}", ab_intersection == VERT ? "VERT" : "LINE");
-	}
+
 	if (ab_dist > cd_dist) {
 		std::swap(closer_branch_i, further_branch_i);
 		std::swap(a, c);
@@ -201,7 +199,7 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 
 	// Rotate the further branch a smaller amount, but still ensuring its in front
 	const float bacd_theta = angle_from(d - a, b - a) * -rhr_sign(b, a, d);
-	const float sigmoidal_fraction = 2 * (1 - 0.2) * (1 / (1 + exp(fabs(theta))) - 0.5) + 1;
+	const float sigmoidal_fraction = 2 * (1 - 0.2) * (1 / (1 + exp(fabs(theta) * 0.4)) - 0.5) + 1;
 	const float new_theta = bacd_theta * sigmoidal_fraction;
 	const float ba_angle = angle(b - a);
 	const float new_dc_angle = ba_angle + new_theta;
@@ -238,15 +236,14 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 				radius_buffer2 *= 0.5;
 			const float interp_radius = original_radius + (radius_buffer2 + radius_buffer) / 2;
 
-			if (branch.nexts.size() == 2) {
-				// Let's isolate the problem
-				if (debug["rotate_state"] != "None")
+			if (debug["rotate_state"] != "None") {
+				if (branch.nexts.size() == 2) {
+					// Let's isolate the problem
 					if (flatten_fork(tree, walk_i, circle, interp_radius)) {
 						// std::println("circle radius {} depth {}", circle.radius, branch_depth);
 					}
-			}
-			else if (branch.nexts.size() == 1) {
-				if (debug["rotate_state"] == "Rotate single branch") {
+				}
+				else if (branch.nexts.size() == 1) {
 					const size_t next_i = branch.nexts[0];
 					auto [a, b] = to_wireframe(tree, walk_i, next_i);
 					float debug_angle;
@@ -255,30 +252,15 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 						// std::cout << "branches to flatten " << walk_i << "\n";
 						// std::cout << "branches angle " << debug_angle << "\n";
 					}
-
-					// circle.radius = interp_radius;
-					// // This should do the job of flattening the child nodes as well.
-					// const Branch& next_branch = tree.branches[next_i];
-					// const size_t next_next_i = next_branch.nexts.size() > 0 
-					// 	? next_branch.nexts[0] 
-					// 	: 0;
-					// auto [next_a, next_b] = to_wireframe(tree, next_i, next_next_i);
-					// if (flatten(tree, next_i, next_a, next_b, circle, &debug_angle)) {
-					// 	debug["should_flatten"] = "true";
-					// 	if (walk_i == 0)
-					// 		std::println("0th iter tip angle is {}", debug_angle);
-					// 	// std::cout << "tip angle " << debug_angle << "\n";
-					// 	// std::println("circle radius {} depth {}", circle.radius, branch_depth);
-					// }
 				}
+				else if (branch.nexts.size() == 0) {
+					auto [a, b] = to_wireframe(tree, walk_i, 0);
+					float blah;
+					flatten(tree, walk_i, a, b, circle, &blah);
+				}
+				else
+					std::cout << "Unexpectedly we have this many branches: " << branch.nexts.size() << "\n";
 			}
-			else if (branch.nexts.size() == 0) {
-				auto [a, b] = to_wireframe(tree, walk_i, 0);
-				float blah;
-				flatten(tree, walk_i, a, b, circle, &blah);
-			}
-			else
-				std::cout << "Unexpectedly we have this many branches: " << branch.nexts.size() << "\n";
 
 			circle.radius = original_radius;
 			for (const auto& next : branch.nexts)
@@ -412,7 +394,7 @@ Level::Level() {
 	dome = {
 		.pos = {},
 		// .max_radius = std::sqrt(collision_dist) * 20,
-		.max_radius = (float) (std::sqrt(collision_dist) * 6),
+		.max_radius = (float) (std::sqrt(collision_dist) * 12),
 		.depth_to_radius_fn = [](float depth) {
 			return std::sqrt(depth) * 20;
 		}
@@ -425,6 +407,7 @@ Level::Level() {
 void Level::init(int screen_width, int screen_height) {
 	(void) screen_width;
 	(void) screen_height;
+
 }
 
 Level::~Level() {
@@ -446,9 +429,10 @@ void Level::update(Game& game) {
 		debug_apply_rotation = !debug_apply_rotation;
 
 		std::map<std::string, std::string> switch_map {
-			{ "Rotate fork", "Rotate single branch" },
-			{ "Rotate single branch", "None" },
-			{ "None", "Rotate fork" },
+			// { "Rotate fork", "Rotate single branch" },
+			// { "Rotate single branch", "None" },
+			{ "Rotation enabled ", "None"},
+			{ "None", "Rotate enabled " },
 		};
 
 		if (switch_map.contains(debug["rotate_state"]))
@@ -474,10 +458,17 @@ void Level::update(Game& game) {
 			continue;
 
 		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(dist));
-		const float dist_tree_dome = length(dome.pos - tree.origin());
-		// std::cout << "radius " << radius << " dist tree dome " << dist_tree_dome << "\n";
 
-		if (dist_tree_dome < radius)
+		const float dist_tree_dome = length(dome.pos - tree.origin());
+		if (dist_tree_dome < radius * 1.1 && debug["spring"] == "true") {
+			// TODO: Then we move the tree. 
+
+		}
+		else {
+			// TODO: Then we move the tree back to the original position.
+		}
+
+		if (dist_tree_dome < radius * 1.3)
 			debug["too_close"] = "true";
 		else {
 			debug["too_close"] = "";
@@ -490,15 +481,17 @@ void Level::update(Game& game) {
 
 			// Before we flatten, use the branch structure of the original tree!
 			if (debug["spring"] == "true") {
-				// springy stuff here
+				// springy/interp stuff here
+
 				std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
 					const auto& original = tree.original_branches[i];
 					const auto& cur = tree.branches[i];
-					const float theta = angle_from(original.forward(), cur.forward()) * 
+					const float ang = angle_from(original.forward(), cur.forward());
+					const float theta = fmin(0.08, 0.1 * ang) * 
 						rhr_sign(original.forward(), { 0, 0 }, cur.forward());
 
-					if (abs(theta) > 0.01)
-						rotate_all(i, theta * 0.1, cur.back(), tree);
+					if (abs(theta) > 0.005)
+						rotate_all(i, theta, cur.back(), tree);
 
 					for (const auto& next : cur.nexts)
 						walk(next);
@@ -515,9 +508,9 @@ void Level::update(Game& game) {
 					branches.push_back(b);
 				}
 				tree.branches = branches;
-
-				dome.flatten_tree(tree, dome_circle, debug);
 			}
+			
+			dome.flatten_tree(tree, dome_circle, debug);
 		}
 	}
 }
@@ -599,7 +592,7 @@ void Level::render(Game& game) {
 		DrawCircle(100, 100, 10, RED);
 	if (debug["should_flatten"] == "true")
 		DrawCircle(150, 100, 15, GREEN);
-	DrawText(debug["rotate_state"].c_str(), 30, 125, 45, WHITE);
+	DrawText(debug["rotate_state"].c_str(), 30, 125, 45, with_alpha(WHITE, 0.2));
 }
 
 void Level::render_trees_to_target(Game& game) {

@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <map>
 #include <raylib.h>
 #include <random>
 
@@ -86,6 +87,7 @@ struct Tree {
 
 	void bounding_box(Vector2& small, Vector2& big);
 	void init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand);
+	void on_updated_branch();
 	void update_texture();
 	void send_vals_to_tendril_shader();
 	void render(LevelEditor* level_editor);

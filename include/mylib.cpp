@@ -272,3 +272,21 @@ Rectangle full_texture(const Texture2D& tex) {
 		.height = (float) tex.height
 	};
 }
+
+Color mix(const Color& a, const Color& b, const float& amt) {
+	return {
+		.r = (unsigned char) (a.r + amt * (b.r - a.r)),
+		.g = (unsigned char) (a.g + amt * (b.g - a.g)),
+		.b = (unsigned char) (a.b + amt * (b.b - a.b)),
+		.a = (unsigned char) (a.a + amt * (b.a - a.a)),
+	};
+}
+
+Color with_alpha(const Color& c, const float& alpha) {
+	return {
+		.r = c.r,
+		.g = c.g,
+		.b = c.b,
+		.a = (unsigned char) (alpha * 255),
+	};
+}

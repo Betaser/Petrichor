@@ -49,6 +49,14 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, Sh
 	init_texture();
 }
 
+void Tree::on_updated_branch() {
+	for (auto& branch : branches) {
+		Branch b(branch.verts);
+		b.nexts = branch.nexts;
+		original_branches.push_back(b);
+	}
+}
+
 Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
 	id = 0;
 	std::cout << "init tree\n";
