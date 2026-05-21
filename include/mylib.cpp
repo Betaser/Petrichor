@@ -199,7 +199,7 @@ float dist_from_pt_to_polygon(const Vector2& pt, const std::vector<Vector2>& pol
 float rhr_sign(const Vector2& a, const Vector2& b, const Vector2& c) {
 	const Vector3 v1 = v2_to_v3(a - b, 0);
 	const Vector3 v2 = v2_to_v3(b - c, 0);
-	return cross(v1, v2).z;
+	return cross(v1, v2).z > 0 ? 1 : -1;
 }
 
 bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, const float& epsilon) {

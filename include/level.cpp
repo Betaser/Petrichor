@@ -80,7 +80,7 @@ static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle
 
 	// Works nicely for some situations, but maybe one of the solns is being picked when the other should be chosen?
 
-	const bool rhr_aligned = (rhr_sign(a, b, circle.pos) < 0) == (rhr_sign(a, solns[0], circle.pos) < 0);
+	const bool rhr_aligned = rhr_sign(a, b, circle.pos) == rhr_sign(a, solns[0], circle.pos);
 	const Vector2 b_new = rhr_aligned
 		? solns[0]
 		: solns[1];
@@ -97,9 +97,8 @@ static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	const float bnew_angle = asin(opp_over_hyp);
 	const float b_angle = angle_from(b - a, circle.pos - a);
 
-	const float sign = rhr_sign(a, b, circle.pos) > 0 ? -1 : 1;
+	const float sign = -rhr_sign(a, b, circle.pos);
 	const float ang = (bnew_angle - b_angle) * sign;
-	std::println("b_angle {} bnew_angle {} ang {}", b_angle, bnew_angle, ang);
 	return ang;
 }
 
@@ -201,7 +200,7 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	// Seems to rotate in the wrong direction sometimes
 
 	// Rotate the further branch a smaller amount, but still ensuring its in front
-	const float bacd_theta = angle_from(d - a, b - a) * (rhr_sign(b, a, d) > 0 ? -1 : 1);
+	const float bacd_theta = angle_from(d - a, b - a) * -rhr_sign(b, a, d);
 	const float sigmoidal_fraction = 2 * (1 - 0.2) * (1 / (1 + exp(fabs(theta))) - 0.5) + 1;
 	const float new_theta = bacd_theta * sigmoidal_fraction;
 	const float ba_angle = angle(b - a);
@@ -413,13 +412,14 @@ Level::Level() {
 	dome = {
 		.pos = {},
 		// .max_radius = std::sqrt(collision_dist) * 20,
-		.max_radius = (float) (std::sqrt(collision_dist) * 12),
+		.max_radius = (float) (std::sqrt(collision_dist) * 6),
 		.depth_to_radius_fn = [](float depth) {
 			return std::sqrt(depth) * 20;
 		}
 	};
 
 	debug["rotate_state"] = "None";
+	debug["spring"] = "false";
 }
 
 void Level::init(int screen_width, int screen_height) {
@@ -440,9 +440,7 @@ void Level::update(Game& game) {
 	petra.update(*this, game.trees);
 	dome.pos = petra.pos;
 
-	const auto debug_rotate_state = debug["rotate_state"];
-	debug.clear();
-	debug["rotate_state"] = debug_rotate_state;
+	debug["should_flatten"] = "false";
 
 	if (IsKeyPressed(KEY_R)) {
 		debug_apply_rotation = !debug_apply_rotation;
@@ -457,6 +455,13 @@ void Level::update(Game& game) {
 			debug["rotate_state"] = switch_map[debug["rotate_state"]];
 		else
 			std::cout << "What is this rotation state " << debug["rotate_state"] << "\n";
+	}
+
+	if (IsKeyPressed(KEY_P)) {
+		if (debug["spring"] == "true")
+			debug["spring"] = "false";
+		else
+			debug["spring"] = "true";
 	}
 
 	for (const auto& tree_ptr : game.trees) {
@@ -475,6 +480,7 @@ void Level::update(Game& game) {
 		if (dist_tree_dome < radius)
 			debug["too_close"] = "true";
 		else {
+			debug["too_close"] = "";
 			// Then we may be too far, it depends on what flatten_tree determines.
 			const Circle dome_circle {
 				.pos = dome.pos,
@@ -483,15 +489,35 @@ void Level::update(Game& game) {
 			// std::cout << "dome circle pos " << to_str(dome_circle.pos, 2) << " radius " << dome_circle.radius << "\n";
 
 			// Before we flatten, use the branch structure of the original tree!
-			std::vector<Branch> branches;
-			for (const auto& branch : tree.original_branches) {
-				Branch b(branch.verts);
-				b.nexts = branch.nexts;
-				branches.push_back(b);
-			}
-			tree.branches = branches;
+			if (debug["spring"] == "true") {
+				// springy stuff here
+				std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
+					const auto& original = tree.original_branches[i];
+					const auto& cur = tree.branches[i];
+					const float theta = angle_from(original.forward(), cur.forward()) * 
+						rhr_sign(original.forward(), { 0, 0 }, cur.forward());
 
-			dome.flatten_tree(tree, dome_circle, debug);
+					if (abs(theta) > 0.01)
+						rotate_all(i, theta * 0.1, cur.back(), tree);
+
+					for (const auto& next : cur.nexts)
+						walk(next);
+				};
+				walk(0);
+
+				tree.update_texture();
+			}
+			else {
+				std::vector<Branch> branches;
+				for (const auto& branch : tree.original_branches) {
+					Branch b(branch.verts);
+					b.nexts = branch.nexts;
+					branches.push_back(b);
+				}
+				tree.branches = branches;
+
+				dome.flatten_tree(tree, dome_circle, debug);
+			}
 		}
 	}
 }
