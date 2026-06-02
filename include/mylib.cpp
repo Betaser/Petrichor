@@ -243,6 +243,11 @@ Vector2 project_pt(const Vector2& pt, const std::array<const Vector2, 2>& onto) 
 	return a * dot(b, a) / (pow(length(a), 2)) + onto[0];
 }
 
+Vector2 rel_dir(const Vector2& v, const Vector2& origin_v) {
+	const float theta = angle_from(v, origin_v) * rhr_sign(v, { 0, 0 }, origin_v);
+	return unit_vector(theta);
+}
+
 std::string to_str(const Vector2& v, const int& decimal_pts) {
 	return std::format("({:.{}f}, {:.{}f})", v.x, decimal_pts, v.y, decimal_pts);
 }

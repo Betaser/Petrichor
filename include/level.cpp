@@ -123,7 +123,6 @@ static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vecto
 	const auto intersection = find_intersection(a, b, circle.pos);
 	const float ab_dist = dist(a, b, circle.pos, intersection);
 	if (isnan(ab_dist)) {
-		// std::println("ab_dist is nan, type was {}", intersection == VERT ? "VERT" : "LINE");
 		// if (intersection == VERT)
 		// 	std::println("for VERT, b {} circle.pos {}", to_str(b, 2), to_str(circle.pos, 2));
 	}
@@ -416,6 +415,14 @@ Level::~Level() {
 	std::cout << "tree foggy blur shader loads/unloads " << tree_foggy_blur_shader.load_unloads << "\n";
 }
 
+void interpolate_rotation(const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t next, const Branch& child, Tree& tree) {
+	const float theta = fmin(0.08, 0.1 * angle_from(original_rel_dir, cur_rel_dir)) * 
+		rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir);
+
+	if (abs(theta) > 0.005)
+		rotate_all(next, theta, child.back(), tree);
+}
+
 void Level::update(Game& game) {
 	petra.update(*this, game.trees);
 	dome.pos = petra.pos;
@@ -480,20 +487,58 @@ void Level::update(Game& game) {
 			if (debug["spring"] == "true") {
 				// springy/interp stuff here
 
+				// Let's see if we can just get the parent by inverting children
 				std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
-					const auto& original = tree.original_branches[i];
-					const auto& cur = tree.branches[i];
-					const float ang = angle_from(original.forward(), cur.forward());
-					const float theta = fmin(0.08, 0.1 * ang) * 
-						rhr_sign(original.forward(), { 0, 0 }, cur.forward());
+					const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
 
-					if (abs(theta) > 0.005)
-						rotate_all(i, theta, cur.back(), tree);
+					for (const auto& next : nexts) {
 
-					for (const auto& next : cur.nexts)
+						// That's all we need, notice that the first iterated branch will not rotate but that makes sense.
+						const size_t parent_i = i;
+						const size_t child_i = next;
+						const auto& parent = tree.branches[parent_i];
+						const auto& child = tree.branches[child_i];
+						const auto& original_parent = tree.original_branches[parent_i];
+						const auto& original_child = tree.original_branches[child_i];
+
+						const auto& parent_to_child = child.back() - parent.back();
+						const auto& cur_forward = child.forward();
+						const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
+
+						const auto& original_parent_to_child = original_child.back() - original_parent.back();
+						const auto& original_cur_forward = original_child.forward();
+						const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
+
+						interpolate_rotation(original_rel_dir, cur_rel_dir, next, child, tree);
+
 						walk(next);
+					}
 				};
+
 				walk(0);
+				// Okay but now we have to rotate the 0th iteration
+				interpolate_rotation(
+					tree.original_branches[0].forward(),
+					tree.branches[1].forward(),
+					0,
+					tree.branches[0],
+					tree);
+
+				// Below attempt is not an accurate portrayal of physics
+				// std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
+				// 	const auto& original = tree.original_branches[i];
+				// 	const auto& cur = tree.branches[i];
+				// 	const float ang = angle_from(original.forward(), cur.forward());
+				// 	const float theta = fmin(0.08, 0.1 * ang) * 
+				// 		rhr_sign(original.forward(), { 0, 0 }, cur.forward());
+
+				// 	if (abs(theta) > 0.005)
+				// 		rotate_all(i, theta, cur.back(), tree);
+
+				// 	for (const auto& next : cur.nexts)
+				// 		walk(next);
+				// };
+				// walk(0);
 
 				tree.update_texture();
 			}

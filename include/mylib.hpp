@@ -65,6 +65,7 @@ Vector2 normalize(const Vector2& v);
 Vector2 perp_rhr(const Vector2& v);
 Vector2 unit_vector(const float& f);
 Vector2 project_pt(const Vector2& pt, const std::array<const Vector2, 2>& onto);
+Vector2 rel_dir(const Vector2& v, const Vector2& origin_v);
 
 float direction_to_rotate(const Vector2& ahead, const Vector2& mobile);
 float angle(const Vector2& v);
