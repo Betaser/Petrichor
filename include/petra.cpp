@@ -104,14 +104,15 @@ void Petra::debug_update_movement() {
 		pos.y -= 2;
 	if (IsKeyDown(KEY_S))
 		pos.y += 2;
-	float scroll = GetMouseWheelMove();
+
+	const float scroll = GetMouseWheelMove();
 	if (scroll != 0)
 		depth += scroll;
 	if (IsKeyDown(KEY_UP))
 		depth -= 1;
 	if (IsKeyDown(KEY_DOWN))
 		depth += 1;
-	depth += 0.09;
+	// depth += 0.09;
 }
 
 void Petra::update_movement() {

@@ -416,7 +416,7 @@ Level::~Level() {
 }
 
 void interpolate_rotation(const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t next, const Branch& child, Tree& tree) {
-	const float theta = fmin(0.08, 0.1 * angle_from(original_rel_dir, cur_rel_dir)) * 
+	const float theta = fmin(0.03, 0.1 * angle_from(original_rel_dir, cur_rel_dir)) * 
 		rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir);
 
 	if (abs(theta) > 0.005)
@@ -464,7 +464,10 @@ void Level::update(Game& game) {
 		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - dist));
 
 		const float dist_tree_dome = length(dome.pos - tree.origin());
-		if (dist_tree_dome < radius * 1.1 && debug["spring"] == "true") {
+
+		// But we also want to move trees out of the way of the dome as necessary.
+		const bool tree_too_close = dist_tree_dome < radius * 1.3;
+		if (tree_too_close && debug["spring"] == "true") {
 			// TODO: Then we move the tree. 
 
 		}
@@ -472,7 +475,7 @@ void Level::update(Game& game) {
 			// TODO: Then we move the tree back to the original position.
 		}
 
-		if (dist_tree_dome < radius * 1.3)
+		if (tree_too_close)
 			debug["too_close"] = "true";
 		else {
 			debug["too_close"] = "";
@@ -481,49 +484,9 @@ void Level::update(Game& game) {
 				.pos = dome.pos,
 				.radius = radius
 			};
-			// std::cout << "dome circle pos " << to_str(dome_circle.pos, 2) << " radius " << dome_circle.radius << "\n";
 
-			// Before we flatten, use the branch structure of the original tree!
 			if (debug["spring"] == "true") {
-				// springy/interp stuff here
-
-				// Let's see if we can just get the parent by inverting children
-				std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
-					const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
-
-					for (const auto& next : nexts) {
-
-						// That's all we need, notice that the first iterated branch will not rotate but that makes sense.
-						const size_t parent_i = i;
-						const size_t child_i = next;
-						const auto& parent = tree.branches[parent_i];
-						const auto& child = tree.branches[child_i];
-						const auto& original_parent = tree.original_branches[parent_i];
-						const auto& original_child = tree.original_branches[child_i];
-
-						const auto& parent_to_child = child.back() - parent.back();
-						const auto& cur_forward = child.forward();
-						const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
-
-						const auto& original_parent_to_child = original_child.back() - original_parent.back();
-						const auto& original_cur_forward = original_child.forward();
-						const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
-
-						interpolate_rotation(original_rel_dir, cur_rel_dir, next, child, tree);
-
-						walk(next);
-					}
-				};
-
-				walk(0);
-				// Okay but now we have to rotate the 0th iteration
-				interpolate_rotation(
-					tree.original_branches[0].forward(),
-					tree.branches[1].forward(),
-					0,
-					tree.branches[0],
-					tree);
-
+				tree_interp_rigid(tree);
 				tree.update_texture();
 			}
 			else {
@@ -539,6 +502,45 @@ void Level::update(Game& game) {
 			dome.flatten_tree(tree, dome_circle, debug);
 		}
 	}
+}
+
+void Level::tree_interp_rigid(Tree& tree) {
+	// Let's see if we can just get the parent by inverting children
+	std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
+		const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
+
+		for (const auto& next : nexts) {
+
+			// That's all we need, notice that the first iterated branch will not rotate but that makes sense.
+			const size_t parent_i = i;
+			const size_t child_i = next;
+			const auto& parent = tree.branches[parent_i];
+			const auto& child = tree.branches[child_i];
+			const auto& original_parent = tree.original_branches[parent_i];
+			const auto& original_child = tree.original_branches[child_i];
+
+			const auto& parent_to_child = child.back() - parent.back();
+			const auto& cur_forward = child.forward();
+			const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
+
+			const auto& original_parent_to_child = original_child.back() - original_parent.back();
+			const auto& original_cur_forward = original_child.forward();
+			const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
+
+			interpolate_rotation(original_rel_dir, cur_rel_dir, next, child, tree);
+
+			walk(next);
+		}
+	};
+
+	walk(0);
+	// Okay but now we have to rotate the 0th iteration
+	interpolate_rotation(
+		tree.original_branches[0].forward(),
+		tree.branches[1].forward(),
+		0,
+		tree.branches[0],
+		tree);
 }
 
 void Level::render(Game& game) {
