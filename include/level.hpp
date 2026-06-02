@@ -34,7 +34,7 @@ struct Level {
 
     void init(int screen_width, int screen_height);
     void update(Game& game);
-    void tree_interp_rigid(Tree& tree);
+    void tree_interp_rigid(Tree& tree, const Circle& circle);
     void render(Game& game);
     void render_trees_to_target(Game& game);
     void render_fog(Game& game);
