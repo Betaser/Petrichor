@@ -78,7 +78,6 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			accept_metadata(metadata, *tree);
 
 			tree->on_updated_branch();
-
 			tree->update_texture();
 		}
 	}

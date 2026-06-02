@@ -266,113 +266,6 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 	
 		tree.update_texture();
 	}
-	
-	if (false) {
-		// Let's try rotating multiple parts instead of just the index 2.
-		// Must wrap this into a loop then.
-		const float rotate_amt = 0.002;
-
-		const std::function<void(size_t, float, Vector2)> rotate_all = [&rotate_all, &tree](const size_t branch_i, const float amt, const Vector2 origin) {
-			Branch& branch = tree.branches[branch_i];
-
-			for (auto& vert : branch.verts) {
-				auto rotated = rotate(origin, vert, amt);
-				vert.x = rotated.x;
-				vert.y = rotated.y;
-			}
-
-			for (const size_t next : branch.nexts)
-				rotate_all(next, amt, origin);
-		};
-
-		const std::function<void(size_t)> walk = [&walk, &tree, &rotate_amt, &rotate_all](const size_t walk_i) {
-			const Branch& branch = tree.branches[walk_i];
-
-			// Simulate some selectivity
-			if (walk_i >= 2) {
-				rotate_all(walk_i, rotate_amt, branch.back());
-			}
-
-			for (const auto& next : branch.nexts)
-				walk(next);
-		};
-		walk(0);
-		
-		tree.update_texture();
-	}
-
-	if (false) {
-		int loc = GetShaderLocation(tree.tendril_shader, "debugBranchTints");
-		std::vector<Vector4> branch_tints(tree.branches.size());
-
-		size_t walk_i = 2;
-		// walk_fn(2, walk_i, branch_tints, tree);
-
-		// static std::map<size_t, std::vector<Branch>> orig_branches;
-		// static std::map<size_t, float> frames;
-
-		// if (!frames.contains(tree.id))
-		// 	frames[tree.id] = 0;
-		// else
-		// 	frames[tree.id]++;
-
-		// if (!orig_branches.contains(tree.id)) {
-		// 	orig_branches[tree.id] = {};
-		// 	for (auto branch : tree.branches)
-		// 		orig_branches[tree.id].push_back(branch);
-		// }
-
-		const std::function<void(size_t)> walk = [&walk, &walk_i, &branch_tints, &tree](const size_t branch_i) {
-			Vector3 start_tint { 1, 0, 0 };
-			Vector3 end_tint { 0, 1, 0 };
-			const float amt = ((float) walk_i) / (float) branch_tints.size();
-
-			Vector3 interp_color = (end_tint - start_tint) * amt + start_tint;
-			branch_tints[branch_i] = {
-				.x = interp_color.x,
-				.y = interp_color.y,
-				.z = interp_color.z,
-				.w = amt * 0.2f + 0.5f,
-			};
-			walk_i++;
-
-			Branch& branch = tree.branches[branch_i];
-			for (size_t i = 0; i < 4; i++) {
-				branch.verts[i] += Vector2(0.05, 0);
-				// const auto offset = Vector2(0, 0.25) * frames[tree.id];
-				// branch.verts[i] = orig_branches[tree.id][branch_i].verts[i] + offset;
-			}
-
-			for (const size_t next : branch.nexts)
-				walk(next);
-		};
-		walk(2);
-
-		tree.update_texture();
-		SetShaderValueV(tree.tendril_shader, loc, branch_tints.data(), SHADER_UNIFORM_VEC4, branch_tints.size());
-	}
-
-	// The default order of the flat vector tree.branches is not exactly what we need, because we need to choose the nearer branch when branches happen.
-	if (false) {
-		int loc = GetShaderLocation(tree.tendril_shader, "debugBranchTints");
-		std::vector<Vector4> branch_tints(tree.branches.size());
-		// Debugging it:
-		Vector3 start_tint { 1, 0, 0 };
-		Vector3 end_tint { 0, 1, 0 };
-		for (size_t i = 0; i < branch_tints.size(); i++) {
-			std::cout << tree.branches[i].nexts.size() << "\n";
-			const float amt = ((float) tree.branches[i].nexts.size()) / 2.0;
-			Vector3 interp_color = (end_tint - start_tint) * amt + start_tint;
-			branch_tints[i] = {
-				.x = interp_color.x,
-				.y = interp_color.y,
-				.z = interp_color.z,
-				.w = amt * 0.2f + 0.5f,
-			};
-		}
-		SetShaderValueV(tree.tendril_shader, loc, branch_tints.data(), SHADER_UNIFORM_VEC4, branch_tints.size());
-	}
-	// std::cout << "todo: flatten tree\n";
 }
 
 Level::Level() {
@@ -415,9 +308,12 @@ Level::~Level() {
 	std::cout << "tree foggy blur shader loads/unloads " << tree_foggy_blur_shader.load_unloads << "\n";
 }
 
-void interpolate_rotation(const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t next, const Branch& child, Tree& tree) {
-	const float theta = fmin(0.03, 0.1 * angle_from(original_rel_dir, cur_rel_dir)) * 
-		rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir);
+void interpolate_rotation(const bool flip_cur_to_original, const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t next, const Branch& child, Tree& tree) {
+	const float raw_ang = angle_from(original_rel_dir, cur_rel_dir);
+	const float ang = flip_cur_to_original ? 2 * PI - raw_ang : raw_ang;
+	const float theta = fmin(0.015, 0.1 * ang) * 
+		rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir) *
+		(flip_cur_to_original ? -1 : 1);
 
 	if (abs(theta) > 0.005)
 		rotate_all(next, theta, child.back(), tree);
@@ -486,7 +382,7 @@ void Level::update(Game& game) {
 			};
 
 			if (debug["spring"] == "true") {
-				tree_interp_rigid(tree);
+				tree_interp_rigid(tree, dome_circle);
 				tree.update_texture();
 			}
 			else {
@@ -504,20 +400,57 @@ void Level::update(Game& game) {
 	}
 }
 
-void Level::tree_interp_rigid(Tree& tree) {
-	// Let's see if we can just get the parent by inverting children
-	std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
+void Level::tree_interp_rigid(Tree& tree, const Circle& circle) {
+	std::function<void(size_t)> walk = [&walk, &tree, &circle](const size_t i) {
 		const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
 
 		for (const auto& next : nexts) {
-
-			// That's all we need, notice that the first iterated branch will not rotate but that makes sense.
+			// The first iterated branch will not rotate, fix that outside of this fn.
 			const size_t parent_i = i;
 			const size_t child_i = next;
 			const auto& parent = tree.branches[parent_i];
 			const auto& child = tree.branches[child_i];
+
 			const auto& original_parent = tree.original_branches[parent_i];
 			const auto& original_child = tree.original_branches[child_i];
+
+			// Calculate current touch state
+			TouchState cur_touch_state {
+				.touch_enum = TouchState::FREE,
+				.rhr_sign_val = 0
+			};
+			size_t child_next = 0;
+			if (child.nexts.size() > 0)
+				child_next = child.nexts[0];
+			auto [a, b] = to_wireframe(tree, child_i, child_next);
+			const auto intersection = find_intersection(a, b, circle.pos);
+			const float ab_dist = dist(a, b, circle.pos, intersection);
+			if (ab_dist < circle.radius * 1.01) {
+				cur_touch_state.touch_enum = rhr_sign(a, b, circle.pos) > 0
+					? TouchState::LEFT
+					: TouchState::RIGHT;
+			}
+			// Curr | Past | Result
+			// L    | L    | If rhr_sign(original, 0, curr/past) flipped, 
+			// 				  add 2PI to angle_from
+			// L    | R    | Illegal, don't need to try
+			// L    | Free | Don't need to do anything
+			// Free | Free | Don't need to do anything
+			// Free | L    | Don't need to do anything
+			// Similar ideas for R
+			bool flip_cur_to_original = false;
+			auto&& past_touch_state = tree.touch_states[i];
+			if ((cur_touch_state.touch_enum == TouchState::LEFT && past_touch_state.touch_enum == TouchState::LEFT)
+			 || (cur_touch_state.touch_enum == TouchState::RIGHT && past_touch_state.touch_enum == TouchState::RIGHT)) {
+				cur_touch_state.rhr_sign_val = rhr_sign(original_child.forward(), { 0, 0 }, child.forward());
+				if (cur_touch_state.rhr_sign_val != past_touch_state.rhr_sign_val) {
+					flip_cur_to_original = true;
+					std::println("flip cur to original");
+				}
+			}
+
+			tree.touch_states[i].rhr_sign_val = cur_touch_state.rhr_sign_val;
+			tree.touch_states[i].touch_enum = cur_touch_state.touch_enum;
 
 			const auto& parent_to_child = child.back() - parent.back();
 			const auto& cur_forward = child.forward();
@@ -527,15 +460,38 @@ void Level::tree_interp_rigid(Tree& tree) {
 			const auto& original_cur_forward = original_child.forward();
 			const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
 
-			interpolate_rotation(original_rel_dir, cur_rel_dir, next, child, tree);
+			interpolate_rotation(flip_cur_to_original, original_rel_dir, cur_rel_dir, next, child, tree);
 
 			walk(next);
 		}
 	};
 
 	walk(0);
+
+	// Calculate current touch state
+	TouchState cur_touch_state {
+		.touch_enum = TouchState::FREE,
+		.rhr_sign_val = 0
+	};
+
+	const size_t child_i = 0;
+	const auto& child = tree.branches[child_i];
+	size_t child_next = 0;
+	if (child.nexts.size() > 0)
+		child_next = child.nexts[0];
+	auto [a, b] = to_wireframe(tree, child_i, child_next);
+	const auto intersection = find_intersection(a, b, circle.pos);
+	const float ab_dist = dist(a, b, circle.pos, intersection);
+	if (ab_dist < circle.radius * 1.01) {
+		cur_touch_state.touch_enum = rhr_sign(a, b, circle.pos) > 0
+			? TouchState::LEFT
+			: TouchState::RIGHT;
+	}
+	std::println("touch enum {}", (int) cur_touch_state.touch_enum);
+
 	// Okay but now we have to rotate the 0th iteration
 	interpolate_rotation(
+		false,
 		tree.original_branches[0].forward(),
 		tree.branches[1].forward(),
 		0,
