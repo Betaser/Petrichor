@@ -111,7 +111,7 @@ void Petra::debug_update_movement() {
 		depth -= 1;
 	if (IsKeyDown(KEY_DOWN))
 		depth += 1;
-	// depth += 0.09;
+	depth += 0.09;
 }
 
 void Petra::update_movement() {

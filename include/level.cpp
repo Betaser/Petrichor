@@ -524,22 +524,6 @@ void Level::update(Game& game) {
 					tree.branches[0],
 					tree);
 
-				// Below attempt is not an accurate portrayal of physics
-				// std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
-				// 	const auto& original = tree.original_branches[i];
-				// 	const auto& cur = tree.branches[i];
-				// 	const float ang = angle_from(original.forward(), cur.forward());
-				// 	const float theta = fmin(0.08, 0.1 * ang) * 
-				// 		rhr_sign(original.forward(), { 0, 0 }, cur.forward());
-
-				// 	if (abs(theta) > 0.005)
-				// 		rotate_all(i, theta, cur.back(), tree);
-
-				// 	for (const auto& next : cur.nexts)
-				// 		walk(next);
-				// };
-				// walk(0);
-
 				tree.update_texture();
 			}
 			else {
