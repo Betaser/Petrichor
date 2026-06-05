@@ -215,9 +215,21 @@ float direction_to_rotate(const Vector2& ahead, const Vector2& mobile) {
 
 // Does not work past 180 degrees
 // Normally, this returns only a positive number
+// If a ~= b can return NaN I think?
 float angle_from(const Vector2& a, const Vector2& b) {
 	const float cos_theta = dot(a, b) / length(a) / length(b);
-	return acos(cos_theta);
+	return acos(fmax(fmin(cos_theta, 1), 0));
+}
+
+// Hmm...
+float signed_angle_from(const Vector2& a, const Vector2& b) {
+	// 2D Cross product (gives us the directional sign)
+    float cross = a.x * b.y - a.y * b.x; 
+    // Dot product (gives us the magnitude cosine)
+    float dot_prod = a.x * b.x + a.y * b.y; 
+
+    // atan2 handles the magnitudes and prevents NaN entirely
+    return atan2(cross, dot_prod);
 }
 
 float length(const Vector2& v) {
@@ -244,7 +256,9 @@ Vector2 project_pt(const Vector2& pt, const std::array<const Vector2, 2>& onto) 
 }
 
 Vector2 rel_dir(const Vector2& v, const Vector2& origin_v) {
-	const float theta = angle_from(v, origin_v) * rhr_sign(v, { 0, 0 }, origin_v);
+	// const float theta2 = angle_from(v, origin_v) * rhr_sign(v, { 0, 0 }, origin_v);
+	const float theta = signed_angle_from(v, origin_v);
+	// std::println("diff {}", theta2 - theta);
 	return unit_vector(theta);
 }
 

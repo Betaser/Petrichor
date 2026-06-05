@@ -73,6 +73,7 @@ float dot(const Vector2& a, const Vector2& b);
 Vector3 v2_to_v3(const Vector2& v, const float z);
 Vector3 cross(const Vector3& a, const Vector3& b);
 float angle_from(const Vector2& a, const Vector2& b);
+float signed_angle_from(const Vector2& a, const Vector2& b);
 float length(const Vector2& v);
 float dist_pt_from_line(const Vector2& pt, const std::array<const Vector2, 2>& line);
 bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon);

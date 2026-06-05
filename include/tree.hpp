@@ -41,15 +41,6 @@ struct TrunkSegment {
 	const TrunkLayer bottom;
 };
 
-struct TouchState {
-	enum {
-		FREE,
-		LEFT,
-		RIGHT
-	} touch_enum = FREE;
-	float rhr_sign_val = 0;
-};
-
 // TODO: make branches
 struct Tree {
 	private:
@@ -81,7 +72,8 @@ struct Tree {
 	// Needed to simulate branch resistance to dome "bending"
 	std::vector<Branch> original_branches;
 	// Needed to simulate branch "twisting"
-	std::vector<TouchState> touch_states;
+	std::vector<Vector2> prev_rel_dirs;
+	std::vector<float> branch_twists;
 	Vector2 texture_pos {};
 	std::vector<std::vector<Branch>> tendrils;
 	// Trunk is not being rendered yet.

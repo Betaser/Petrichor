@@ -102,6 +102,7 @@ static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	return ang;
 }
 
+// THIS IS ANTI-MATHWISE I THINK?
 void rotate_all(const size_t branch_i, const float amt, const Vector2 origin, Tree& tree) {
 	if (isnan(amt))
 		return;
@@ -109,7 +110,7 @@ void rotate_all(const size_t branch_i, const float amt, const Vector2 origin, Tr
 	Branch& branch = tree.branches[branch_i];
 
 	for (auto& vert : branch.verts) {
-		auto rotated = rotate(origin, vert, amt);
+		const auto& rotated = rotate(origin, vert, amt);
 		vert.x = rotated.x;
 		vert.y = rotated.y;
 	}
@@ -214,58 +215,54 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, std::string>& debug) const {
 	// Debugging
 
-	if (true) {
-		// We have to like have a buffer that gets smaller the more we "walk"
-		const std::function<void(size_t, size_t, Circle)> walk = [&walk, &tree, &debug](const size_t walk_i, const size_t branch_depth, Circle circle) {
-			// Circle radius buffer
-			float radius_buffer = circle.radius * 0.001;
-			for (size_t i = 0; i < branch_depth; i++)
-				radius_buffer *= 0.5;
-			const float original_radius = circle.radius;
-			circle.radius += radius_buffer;
+	// We have to like have a buffer that gets smaller the more we "walk"
+	const std::function<void(size_t, size_t, Circle)> walk = [&walk, &tree, &debug](const size_t walk_i, const size_t branch_depth, Circle circle) {
+		// Circle radius buffer
+		float radius_buffer = circle.radius * 0.001;
+		for (size_t i = 0; i < branch_depth; i++)
+			radius_buffer *= 0.5;
+		const float original_radius = circle.radius;
+		circle.radius += radius_buffer;
 
-			const Branch& branch = tree.branches[walk_i];
+		const Branch& branch = tree.branches[walk_i];
 
-			// Before we do the next iter, shrink circle radius a little.
-			float radius_buffer2 = circle.radius * 0.001;
-			for (size_t i = 0; i < branch_depth + 1; i++)
-				radius_buffer2 *= 0.5;
-			const float interp_radius = original_radius + (radius_buffer2 + radius_buffer) / 2;
+		// Before we do the next iter, shrink circle radius a little.
+		float radius_buffer2 = circle.radius * 0.001;
+		for (size_t i = 0; i < branch_depth + 1; i++)
+			radius_buffer2 *= 0.5;
+		const float interp_radius = original_radius + (radius_buffer2 + radius_buffer) / 2;
 
-			if (debug["rotate_state"] != "None") {
-				if (branch.nexts.size() == 2) {
-					// Let's isolate the problem
-					if (flatten_fork(tree, walk_i, circle, interp_radius)) {
-						// std::println("circle radius {} depth {}", circle.radius, branch_depth);
-					}
+		if (debug["rotate_state"] != "None") {
+			if (branch.nexts.size() == 2) {
+				// Let's isolate the problem
+				if (flatten_fork(tree, walk_i, circle, interp_radius)) {
+					// std::println("circle radius {} depth {}", circle.radius, branch_depth);
 				}
-				else if (branch.nexts.size() == 1) {
-					const size_t next_i = branch.nexts[0];
-					auto [a, b] = to_wireframe(tree, walk_i, next_i);
-					float debug_angle;
-					if (flatten(tree, walk_i, a, b, circle, &debug_angle)) {
-						debug["should_flatten"] = "true";
-						// std::cout << "branches to flatten " << walk_i << "\n";
-						// std::cout << "branches angle " << debug_angle << "\n";
-					}
-				}
-				else if (branch.nexts.size() == 0) {
-					auto [a, b] = to_wireframe(tree, walk_i, 0);
-					float blah;
-					flatten(tree, walk_i, a, b, circle, &blah);
-				}
-				else
-					std::cout << "Unexpectedly we have this many branches: " << branch.nexts.size() << "\n";
 			}
+			else if (branch.nexts.size() == 1) {
+				const size_t next_i = branch.nexts[0];
+				auto [a, b] = to_wireframe(tree, walk_i, next_i);
+				float debug_angle;
+				if (flatten(tree, walk_i, a, b, circle, &debug_angle)) {
+					debug["should_flatten"] = "true";
+				}
+			}
+			else if (branch.nexts.size() == 0) {
+				auto [a, b] = to_wireframe(tree, walk_i, 0);
+				float blah;
+				flatten(tree, walk_i, a, b, circle, &blah);
+			}
+			else
+				std::cout << "Unexpectedly we have this many branches: " << branch.nexts.size() << "\n";
+		}
 
-			circle.radius = original_radius;
-			for (const auto& next : branch.nexts)
-				walk(next, branch_depth + 1, circle);
-		};
-		walk(0, 0, circle);
-	
-		tree.update_texture();
-	}
+		circle.radius = original_radius;
+		for (const auto& next : branch.nexts)
+			walk(next, branch_depth + 1, circle);
+	};
+	walk(0, 0, circle);
+
+	tree.update_texture();
 }
 
 Level::Level() {
@@ -308,6 +305,37 @@ Level::~Level() {
 	std::cout << "tree foggy blur shader loads/unloads " << tree_foggy_blur_shader.load_unloads << "\n";
 }
 
+static float interpolate_rotation2(const float twist, const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t cur, const Branch& child, Tree& tree) {
+	(void) original_rel_dir;
+	(void) cur_rel_dir;
+	(void) twist;
+	(void) child;
+	(void) tree;
+	(void) cur;
+	// const float raw_ang = angle_from(original_rel_dir, cur_rel_dir);
+
+	// const float rollover_twist = fmodf(abs(twist), 2 * PI);
+
+	// if (child.nexts.size() > 0 && child.nexts[0] == 1)
+	// 	std::println("rollover twist {}", rollover_twist);
+
+	// const float ang = rollover_twist > PI
+	// 	? 2 * PI - raw_ang
+	// 	: raw_ang;
+	// const float theta = fmin(0.03, 0.1 * ang)
+	// 	* rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir)
+	// 	* (rollover_twist > PI ? -1 : 1);
+	const float theta = fmin(0.04, 0.05 * abs(twist)) * (twist < 0 ? -1 : 1);
+	// if (abs(theta) > 0.001)
+	// 	std::println("theta {}", theta);
+
+	// ROTATE ALL LOOKS ANTI-MATHWISE
+	if (abs(theta) > 0.005)
+		rotate_all(cur, theta, child.back(), tree);
+
+	return theta;
+}
+
 void interpolate_rotation(const bool flip_cur_to_original, const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t cur, const Branch& child, Tree& tree) {
 	const float raw_ang = angle_from(original_rel_dir, cur_rel_dir);
 	(void) flip_cur_to_original;
@@ -321,6 +349,123 @@ void interpolate_rotation(const bool flip_cur_to_original, const Vector2& origin
 
 	if (abs(theta) > 0.005)
 		rotate_all(cur, theta, child.back(), tree);
+}
+
+struct BranchOffsetBundle {
+	float& twist;
+	const Vector2 original_rel_dir;
+	const Vector2 cur_rel_dir;
+	const size_t cur;
+	const Branch& child;
+	Tree& tree;
+};
+static void walk_branch_offsets_helper(std::function<void(BranchOffsetBundle&&)> bundle_fn, Tree& tree, const size_t i) {
+	const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
+
+	for (const auto& next : nexts) {
+		// The first iterated branch will not rotate, fix that outside of this fn.
+		const size_t parent_i = i;
+		const size_t child_i = next;
+		const auto& parent = tree.branches[parent_i];
+		const auto& child = tree.branches[child_i];
+
+		const auto& original_parent = tree.original_branches[parent_i];
+		const auto& original_child = tree.original_branches[child_i];
+
+		const auto& parent_to_child = child.back() - parent.back();
+		const auto& cur_forward = child.forward();
+		const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
+
+		const auto& original_parent_to_child = original_parent.forward(); 
+		const auto& original_cur_forward = original_child.forward();
+		const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
+
+		// Read from the current twist and edit it
+		bundle_fn({
+			tree.branch_twists[child_i],
+			original_rel_dir,
+			cur_rel_dir,
+			child_i,
+			child,
+			tree
+		});
+
+		walk_branch_offsets_helper(bundle_fn, tree, next);
+	}
+}
+
+static void walk_branch_offsets(std::function<void(BranchOffsetBundle&&)> bundle_fn, Tree& tree, const size_t i) {
+	if (i == 0) {
+		// Do I want to do the 0th iteration here too?
+		const auto& first = tree.branches[0];
+		bundle_fn({
+			tree.branch_twists[0],
+			rel_dir(tree.original_branches[0].forward(), { 1, 0 }),
+			rel_dir(first.forward(), { 1, 0 }),
+			0,
+			first,
+			tree});
+	}
+	
+	walk_branch_offsets_helper(bundle_fn, tree, i);
+}
+
+static void blah(Tree& tree) {
+	// std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
+	// 	const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
+
+	// 	for (const auto& next : nexts) {
+	// 		// The first iterated branch will not rotate, fix that outside of this fn.
+	// 		const size_t parent_i = i;
+	// 		const size_t child_i = next;
+	// 		const auto& parent = tree.branches[parent_i];
+	// 		const auto& child = tree.branches[child_i];
+
+	// 		const auto& original_parent = tree.original_branches[parent_i];
+	// 		const auto& original_child = tree.original_branches[child_i];
+
+	// 		const auto& parent_to_child = child.back() - parent.back();
+	// 		const auto& cur_forward = child.forward();
+	// 		const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
+
+	// 		const auto& original_parent_to_child = original_parent.forward(); 
+	// 		const auto& original_cur_forward = original_child.forward();
+	// 		const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
+
+	// 		// Read from the current twist and edit it
+	// 		interpolate_rotation2(
+	// 			tree.branch_twists[child_i], 
+	// 			original_rel_dir,
+	// 			cur_rel_dir,
+	// 			next,
+	// 			child,
+	// 			tree);
+
+	// 		walk(next);
+	// 	}
+	// };
+	// walk(0);
+
+	// (void) walk;
+	auto interpolate_rotation_bundled = [](BranchOffsetBundle&& b) {
+		// if (b.cur == 19 || b.cur == 0)
+		// 	std::println("cur {} receiving b.twist {}", b.cur, b.twist);
+		const float theta = interpolate_rotation2(
+			b.twist, 
+			b.original_rel_dir,
+			b.cur_rel_dir,
+			b.cur,
+			b.child,
+			b.tree);
+		if (b.cur == 19 || b.cur == 0) {
+			std::println("cur {} b.twist {} theta {}", b.cur, b.twist, theta);
+
+			// const float theta = fmin(0.04, 0.05 * abs(b.twist)) * (b.twist < 0 ? -1 : 1);
+			// if (abs(theta) > 0.001)
+			// 	std::println("theta {}", theta);
+		}
+	};
+	walk_branch_offsets(interpolate_rotation_bundled, tree, 0);
 }
 
 void Level::update(Game& game) {
@@ -386,8 +531,53 @@ void Level::update(Game& game) {
 			};
 
 			if (debug["spring"] == "true") {
-				tree_interp_rigid(tree, dome_circle);
-				tree.update_texture();
+				// tree_interp_rigid(tree, dome_circle);
+
+				blah(tree);
+				// tree.update_texture();
+
+				dome.flatten_tree(tree, dome_circle, debug);
+
+				std::vector<Vector2> cur_rel_dirs;
+				auto walk_fn = [&cur_rel_dirs](BranchOffsetBundle&& b) {
+					cur_rel_dirs.push_back(b.cur_rel_dir);
+				};
+				walk_branch_offsets(walk_fn, tree, 0);
+				// I DON'T TRUST THE WALK_BRANCH ABOVE.
+
+				// For twisting purposes, capture diff in twist caused by flatten_tree
+				// std::println("size of pre_rel_dirs {} size of tree branches {}", pre_rel_dirs.size(), tree.branches.size());
+
+				// 19 15
+				// for (size_t i = 0; i < tree.branches.size(); i++) {
+				// 	const Vector2& prev_rel_dir = tree.prev_rel_dirs[i];
+				// 	const Vector2& cur_rel_dir = cur_rel_dirs[i];
+
+				// 	// const float ang = angle_from(prev_rel_dir, cur_rel_dir);
+				// 	// const float theta = ang * rhr_sign(prev_rel_dir, { 0, 0 }, cur_rel_dir);
+				// 	const float theta = signed_angle_from(prev_rel_dir, cur_rel_dir);
+				// 	if (i > 9 || i == 0) {
+				// 		// std::println("{}'s theta {} twist {}", i, theta, tree.branch_twists[i]);
+				// 		std::println("{}'s twist {} cur_rel_dir {}", i, tree.branch_twists[i], to_str(cur_rel_dir, 2));
+				// 		// std::println("nexts #: {}", tree.branches[i].nexts.size());
+				// 	}
+
+				// 	tree.branch_twists[i] += theta;
+				// 	// tree.branch_twists[child_i],
+				// }
+				size_t nxt = 0;
+				auto fn = [&tree, &cur_rel_dirs, &nxt](BranchOffsetBundle&& b) {
+					const Vector2& prev_rel_dir = tree.prev_rel_dirs[nxt];
+					const Vector2& cur_rel_dir = cur_rel_dirs[nxt++];
+
+					const float theta = signed_angle_from(prev_rel_dir, cur_rel_dir);
+					b.twist += theta;
+				};
+				walk_branch_offsets(fn, tree, 0);
+
+				tree.prev_rel_dirs.clear();
+				for (const auto& dir : cur_rel_dirs)
+					tree.prev_rel_dirs.push_back(dir);
 			}
 			else {
 				std::vector<Branch> branches;
@@ -397,9 +587,9 @@ void Level::update(Game& game) {
 					branches.push_back(b);
 				}
 				tree.branches = branches;
-			}
 			
-			dome.flatten_tree(tree, dome_circle, debug);
+				dome.flatten_tree(tree, dome_circle, debug);
+			}
 		}
 	}
 }
@@ -435,52 +625,14 @@ void Level::tree_interp_rigid(Tree& tree, const Circle& circle) {
 
 	walk(0);
 
-	// Calculate current touch state
-	// TouchState cur_touch_state {
-	// 	.touch_enum = TouchState::FREE,
-	// 	.rhr_sign_val = 0
-	// };
-
-	// const size_t child_i = 0;
-	// const auto& child = tree.branches[child_i];
-	// size_t child_next = 0;
-	// if (child.nexts.size() > 0)
-	// 	child_next = child.nexts[0];
-	// auto [a, b] = to_wireframe(tree, child_i, child_next);
-	// const auto intersection = find_intersection(a, b, circle.pos);
-	// const float ab_dist = dist(a, b, circle.pos, intersection);
-	// if (ab_dist < circle.radius * 1.01) {
-	// 	cur_touch_state.touch_enum = rhr_sign(a, b, circle.pos) > 0
-	// 		? TouchState::LEFT
-	// 		: TouchState::RIGHT;
-	// }
-
-	// bool do_flip = false;
-	// if ((cur_touch_state.touch_enum == TouchState::LEFT && tree.touch_states[0].touch_enum == TouchState::LEFT) 
-	//  || (cur_touch_state.touch_enum == TouchState::RIGHT && tree.touch_states[0].touch_enum == TouchState::RIGHT)) {
-	// 	cur_touch_state.rhr_sign_val = rhr_sign(
-	// 		tree.original_branches[0].forward(),
-	// 		{ 0, 0 },
-	// 		tree.branches[0].forward()	
-	// 	);
-	// 	std::println("rhr sign val {}", cur_touch_state.rhr_sign_val);
-	// 	if (cur_touch_state.rhr_sign_val != tree.touch_states[0].rhr_sign_val)
-	// 		do_flip = true;
-	// }
-	// std::println("do_flip: {}", do_flip);
-
-	// tree.touch_states[0].touch_enum = cur_touch_state.touch_enum;
-	// tree.touch_states[0].rhr_sign_val = cur_touch_state.rhr_sign_val;
-	// std::println("touch enum {}", (int) cur_touch_state.touch_enum);
-
 	// Okay but now we have to rotate the 0th iteration
-	const auto& child = tree.branches[0];
+	const auto& first = tree.branches[0];
 	interpolate_rotation(
 		false,
 		tree.original_branches[0].forward(),
-		child.forward(),
+		first.forward(),
 		0,
-		child,
+		first,
 		tree);
 }
 

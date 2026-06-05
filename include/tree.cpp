@@ -50,19 +50,17 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, Sh
 }
 
 void Tree::on_updated_branch() {
-	touch_states.clear();
-	for (size_t i = 0; i < branches.size(); i++) {
-		touch_states.push_back({
-			.touch_enum = TouchState::FREE,
-			.rhr_sign_val = 0
-		});
-	}
+	branch_twists.clear();
+	for (size_t i = 0; i < branches.size(); i++)
+		branch_twists.push_back(0);
 
+	prev_rel_dirs.clear();
 	original_branches.clear();
 
 	for (auto& branch : branches) {
 		Branch b(branch.verts);
 		b.nexts = branch.nexts;
+		prev_rel_dirs.push_back({ 0, 0 });
 		original_branches.push_back(b);
 	}
 }
