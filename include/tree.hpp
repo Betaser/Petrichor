@@ -82,6 +82,7 @@ struct Tree {
 	TextureWithCheck blank_tex, tree_tex;
 
 	static TextureWithCheck static_tree_tex;
+	static void dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to);
 
 	// Tree(const Tree&) = delete;
 	// Tree& operator=(const Tree&) = delete;

@@ -91,11 +91,11 @@ Vector3 operator + (const Vector3& a, const Vector3& b) {
 	return { a.x + b.x, a.y + b.y, a.z + b.z };
 }
 
-Vector2 operator * (const Vector2& v, const float& f) {
+Vector2 operator * (const Vector2& v, const float f) {
 	return { v.x * f, v.y * f };
 }
 
-Vector3 operator * (const Vector3& v, const float& f) {
+Vector3 operator * (const Vector3& v, const float f) {
 	return { v.x * f, v.y * f, v.z * f };
 }
 
@@ -115,11 +115,11 @@ Vector2 operator / (const Vector2& a, const Vector2& b) {
 	return { a.x / b.x, a.y / b.y };
 }
 
-Vector2 operator / (const Vector2& v, const float& f) {
+Vector2 operator / (const Vector2& v, const float f) {
 	return { v.x / f, v.y / f };
 }
 
-Vector2 rotate(const Vector2& origin, const Vector2& pt, const float& amt) {
+Vector2 rotate(const Vector2& origin, const Vector2& pt, const float amt) {
 	const Vector2 out = pt - origin;
 	return Vector2 { 
 		out.x * cos(amt) - out.y * sin(amt),
@@ -202,7 +202,7 @@ float rhr_sign(const Vector2& a, const Vector2& b, const Vector2& c) {
 	return cross(v1, v2).z > 0 ? 1 : -1;
 }
 
-bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, const float& epsilon) {
+bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, const float epsilon) {
 	return (fmin(bounds[0].x, bounds[1].x) + epsilon < pt.x) && (pt.x < fmax(bounds[0].x, bounds[1].x) - epsilon)
 		&& (fmin(bounds[0].y, bounds[1].y) + epsilon < pt.y) && (pt.y < fmax(bounds[0].y, bounds[1].y) - epsilon);
 }
@@ -245,7 +245,7 @@ Vector2 perp_rhr(const Vector2& v) {
 	return { -v.y, v.x };
 }
 
-Vector2 unit_vector(const float& f) {
+Vector2 unit_vector(const float f) {
 	return { cosf(f), sinf(f) };
 }
 
@@ -262,11 +262,11 @@ Vector2 rel_dir(const Vector2& v, const Vector2& origin_v) {
 	return unit_vector(theta);
 }
 
-std::string to_str(const Vector2& v, const int& decimal_pts) {
+std::string to_str(const Vector2& v, const int decimal_pts) {
 	return std::format("({:.{}f}, {:.{}f})", v.x, decimal_pts, v.y, decimal_pts);
 }
 
-float snap(const float& f, const float& by) {
+float snap(const float f, const float by) {
 	return (float) int(f * by) / by;
 }
 
@@ -292,7 +292,7 @@ Rectangle full_texture(const Texture2D& tex) {
 	};
 }
 
-Color mix(const Color& a, const Color& b, const float& amt) {
+Color mix(const Color& a, const Color& b, const float amt) {
 	return {
 		.r = (unsigned char) (a.r + amt * (b.r - a.r)),
 		.g = (unsigned char) (a.g + amt * (b.g - a.g)),
@@ -301,7 +301,7 @@ Color mix(const Color& a, const Color& b, const float& amt) {
 	};
 }
 
-Color with_alpha(const Color& c, const float& alpha) {
+Color with_alpha(const Color& c, const float alpha) {
 	return {
 		.r = c.r,
 		.g = c.g,

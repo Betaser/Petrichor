@@ -11,7 +11,7 @@ Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text,
 	state.hit = false;
 	state.owner = owner;
 	
-	std::cout << "created button\n";
+	std::println("created button");
 	state.pos = pos;
 	state.dim = dim;
 	state.text = text;
@@ -26,7 +26,7 @@ Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text,
 }
 
 Button::~Button() {
-	std::cout << "deinit button\n";
+	std::println("deinit button");
 }
 
 void Button::take_input(Vector2 cursor) {
@@ -42,7 +42,7 @@ void Button::take_input(Vector2 cursor) {
 
 	if (new_hovered && !hovered) {
 		// Save idle state, aka this state
-		std::cout << "copy constructor button\n";
+		std::println("copy constructor button");
 		idle_state = state;
 		on_hover(*this);
 	}

@@ -22,7 +22,7 @@ void Game::set_fps(int fps) {
 }
 
 Game* Game::get() {
-	std::cout << "using game.get\n";
+	std::println("using game.get");
 	return Game::_game;
 }
 
@@ -64,13 +64,15 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			depth = std::stof(value);
 
 			make_tree();
+
 			auto& tree = trees.back();
 			tree->depth = depth;
 			tree->rand = Rand(seed);
 			tree->id = trees.size() - 1;
-			std::cout << "\nmake tree id " << tree->id << "\n";
+			std::println("make tree id {}", tree->id);
+
 			const Vector2 start_location { 100, 100 };
-			std::vector<std::vector<Branch>> tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
+			auto tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
 			tree->branches = Tree::branches_from_tendrils(tendrils);
 			tree->tendrils = tendrils;
 

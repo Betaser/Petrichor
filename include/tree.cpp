@@ -49,25 +49,31 @@ void Tree::init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, Sh
 	init_texture();
 }
 
-void Tree::on_updated_branch() {
-	branch_twists.clear();
-	for (size_t i = 0; i < branches.size(); i++)
-		branch_twists.push_back(0);
-
-	prev_rel_dirs.clear();
-	original_branches.clear();
-
-	for (auto& branch : branches) {
+void Tree::dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to) {
+	to.clear();
+	
+	for (auto& branch : from) {
 		Branch b(branch.verts);
 		b.nexts = branch.nexts;
-		prev_rel_dirs.push_back({ 0, 0 });
-		original_branches.push_back(b);
+		to.push_back(b);
 	}
+}
+
+void Tree::on_updated_branch() {
+	branch_twists.clear();
+	prev_rel_dirs.clear();
+
+	for (size_t i = 0; i < branches.size(); i++) {
+		branch_twists.push_back(0);
+		prev_rel_dirs.push_back({ 0, 0 });
+	}
+
+	dup_branches(branches, original_branches);
 }
 
 Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
 	id = 0;
-	std::cout << "init tree\n";
+	std::println("init tree");
 	ShaderWithCheck tendril_shader;
 	load_shader(tendril_shader, "assets/tree_tendril.fs");
 	ShaderWithCheck trunk_shader;
@@ -77,21 +83,21 @@ Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
 }
 
 Tree::~Tree() {
-	std::cout << "deinit tree\n";
+	std::println("deinit tree");
 	unload_textures();
-	std::cout << "unload tendril shader!\n";
+	std::println("unload tendril shader!");
 	unload_shader(tendril_shader);
-	std::cout << "unload trunk shader!\n";
+	std::println("unload trunk shader!");
 	unload_shader(trunk_shader);
-	std::cout << "tendril shader w/ id " << tendril_shader.id << " loads/unloads " << tendril_shader.load_unloads << "\n";
-	std::cout << "trunk shader w/ id " << tendril_shader.id << " loads/unloads " << tendril_shader.load_unloads << "\n";
+	std::println("tendril shader w/ id {} loads/unloads {}", tendril_shader.id, tendril_shader.load_unloads);
+	std::println("trunk shader w/ id {} loads/unloads {}", trunk_shader.id, trunk_shader.load_unloads);
 
-	std::cout << "tree blank tex w/ id " << blank_tex.id << " loads/unloads " << blank_tex.load_unloads << "\n";
+	std::println("tree blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
 	UnloadRenderTexture(target);
 }
 
 void Tree::unload_textures() {
-	std::cout << "unload texs\n";
+	std::println("unload texs");
 	unload_texture(blank_tex);
 }
 
@@ -110,7 +116,7 @@ void Tree::bounding_box(Vector2& small, Vector2& big) {
 
 // Will be out of date if branch verts are changed.
 void Tree::init_texture() {
-	std::cout << "init tree texture\n";
+	std::println("init tree texture");
 	// unload_textures();
 
 	// Bounding box it
@@ -196,19 +202,6 @@ void Tree::send_vals_to_tendril_shader() {
 	int btm_left_locs = GetShaderLocation(tendril_shader, "btmLefts");
 	int top_right_locs = GetShaderLocation(tendril_shader, "topRights");
 
-	if (IsKeyPressed(KEY_U)) {
-		std::cout << "btm lefts:\n";
-		for (const auto& v : btm_lefts) {
-			std::cout << to_str(v, 2) << " ";
-		}
-		std::cout << "\n";
-		std::cout << "top rights:\n";
-		for (const auto& v : top_rights) {
-			std::cout << to_str(v, 2) << " ";
-		}
-		std::cout << "\n";
-	}
-	
 	SetShaderValueV(tendril_shader, btm_left_locs, btm_lefts, SHADER_UNIFORM_VEC2, size);
 	SetShaderValueV(tendril_shader, top_right_locs, top_rights, SHADER_UNIFORM_VEC2, size);
 

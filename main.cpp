@@ -103,7 +103,7 @@ int main() {
 								level_editor.saved_trees.emplace_back(std::move(tree));
 
 							game.trees.clear();
-							std::cout << "load in the trees\n";
+							std::println("load in the trees");
 							std::string line;
 							std::ifstream file;
 							file.open(Constants::test_level_path);
@@ -170,7 +170,7 @@ int main() {
 							game.trees.clear();
 
 							// But refill game.trees with our edit level contents.
-							std::cout << "level_editor size " << level_editor.saved_trees.size() << "\n"; 
+							std::println("level_editor size {}", level_editor.saved_trees.size());
 							for (auto& tree : level_editor.saved_trees)
 								game.trees.emplace_back(std::move(tree));
 							level_editor.saved_trees.clear();
@@ -232,8 +232,8 @@ int main() {
 		unload_texture(Tree::static_tree_tex);
 		unload_texture(Main::dummy_tex);
 
-		std::cout << "static tree tex w/ id " << Tree::static_tree_tex.id << " loads/unloads " << Tree::static_tree_tex.load_unloads << "\n";
-		std::cout << "dummy tex w/ id " << Main::dummy_tex.id << " loads/unloads " << Main::dummy_tex.load_unloads << "\n";
+		std::println("static tree tex w/ id {} loads/unloads {}", Tree::static_tree_tex.id, Tree::static_tree_tex.load_unloads);
+		std::println("dummy tex w/ id {} loads/unloads {}", Main::dummy_tex.id, Main::dummy_tex.load_unloads);
 	}
 
 	CloseWindow();

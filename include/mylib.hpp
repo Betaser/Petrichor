@@ -53,17 +53,17 @@ struct Circle {
 void operator += (Vector2& a, const Vector2& b);
 Vector2 operator + (const Vector2& a, const Vector2& b);
 Vector3 operator + (const Vector3& a, const Vector3& b);
-Vector2 operator * (const Vector2& v, const float& f);
-Vector3 operator * (const Vector3& v, const float& f);
+Vector2 operator * (const Vector2& v, const float f);
+Vector3 operator * (const Vector3& v, const float f);
 Vector2 operator - (const Vector2& a, const Vector2& b);
 Vector3 operator - (const Vector3& a, const Vector3& b);
 Vector2 operator / (const Vector2& a, const Vector2& b);
-Vector2 operator / (const Vector2& v, const float& f);
+Vector2 operator / (const Vector2& v, const float f);
 Vector2 operator - (const Vector2& v);
-Vector2 rotate(const Vector2& origin, const Vector2& pt, const float& amt);
+Vector2 rotate(const Vector2& origin, const Vector2& pt, const float amt);
 Vector2 normalize(const Vector2& v);
 Vector2 perp_rhr(const Vector2& v);
-Vector2 unit_vector(const float& f);
+Vector2 unit_vector(const float f);
 Vector2 project_pt(const Vector2& pt, const std::array<const Vector2, 2>& onto);
 Vector2 rel_dir(const Vector2& v, const Vector2& origin_v);
 
@@ -80,19 +80,19 @@ bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon);
 bool right_side(const Vector2& pt, const std::array<const Vector2, 2>& line);
 float dist_from_pt_to_polygon(const Vector2& pt, const std::vector<Vector2>& polygon);
 float rhr_sign(const Vector2& a, const Vector2& b, const Vector2& c);
-bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, const float& epsilon);
+bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, const float epsilon);
 
 // Debug
-std::string to_str(const Vector2& v, const int& decimal_pts);
+std::string to_str(const Vector2& v, const int decimal_pts);
 
 // Misc
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim);
 bool is_overlap(const Rectangle& r1, const Rectangle& r2);
 Rectangle full_texture(const Texture2D& tex);
-Color mix(const Color& a, const Color& b, const float& amt);
-Color with_alpha(const Color& c, const float& alpha);
+Color mix(const Color& a, const Color& b, const float amt);
+Color with_alpha(const Color& c, const float alpha);
 
 // Math, non vector
-float snap(const float& f, const float& by);
+float snap(const float f, const float by);
 
 #endif

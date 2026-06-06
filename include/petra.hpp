@@ -18,7 +18,6 @@ struct Collision {
 		this->tendril_index = tendril_index;
 	}
 	~Collision() {
-		// std::cout << "destroyed collision\n";
 	}
 };
 

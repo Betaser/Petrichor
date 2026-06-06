@@ -6,7 +6,7 @@
 #include "mylib.hpp"
 
 Petra::Petra() {
-	std::cout << "initialized Petra\n";
+	std::println("initialized Petra");
 
 	// Idk, seems about right?
 	hitbox_radius = 12;
@@ -43,16 +43,14 @@ void Petra::collision_detection(Level& level, std::vector<std::unique_ptr<Tree>>
 
 		for (const auto& branch : tree->branches) {
 			// Seriously is it not rhr???
-			// TODO seriously????
 			const float dist = dist_from_pt_to_polygon(pos, branch.verts);
-			// std::cout << "dist " << dist << "\n";
 			// But only using dist that assumes line are infintely long, so I can't just do this.
 			// TODO, figure out a diff algo.
 			if (dist < 0) {
 				collision = std::unique_ptr<Collision>(new Collision(tree_index, 0));
 				return;
 			}
-			else if (dist / hitbox_radius < 0.7) {
+			else if (dist / hitbox_radius < 0.99) {
 				collision = std::unique_ptr<Collision>(new Collision(tree_index, 0));
 				return;
 			}
@@ -81,9 +79,8 @@ void Petra::render(Game& game, Level& level) {
 
 	// Render her hitbox
 	Color hitbox_color { 255, 255, 255, 180 };
-	if (collision) {
+	if (collision)
 		hitbox_color = { 255, 0, 0, 100 };
-	}
 
 	auto new_pos = pos;
 

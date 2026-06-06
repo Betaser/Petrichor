@@ -16,6 +16,16 @@ struct Dome {
 };
 
 struct Level {
+    private:
+    void manage_debug_rotate_state();
+    void manage_debug_spring_state();
+    void move_tree_thats_too_close(Tree& tree, const float boundary_dist);
+    void tree_interp_rigid(Tree& tree);
+    void debug_render_dome_radii(Game& game) const;
+    std::vector<Vector2> calc_rel_dirs(Tree& tree);
+    void calc_twist(Tree& tree);
+
+    public:
     // 60
     float collision_dist = 60;
 	Petra petra;
@@ -34,13 +44,12 @@ struct Level {
 
     void init(int screen_width, int screen_height);
     void update(Game& game);
-    void tree_interp_rigid(Tree& tree, const Circle& circle);
+    void push_trees_aside(Tree& tree, const float cam_dist);
     void render(Game& game);
     void render_trees_to_target(Game& game);
     void render_fog(Game& game);
 	constexpr float dist_from_cam(const Tree& tree) const;
     std::vector<std::tuple<size_t, float>> calc_dome_radii(const Dome& dome, std::vector<std::unique_ptr<Tree>>& trees) const;
-    void debug_render_dome_radii(Game& game) const;
     Cam calc_depth_cam(float dist) const;
 };
 

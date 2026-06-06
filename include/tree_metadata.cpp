@@ -15,7 +15,7 @@ struct TreeMetadata {
 		return {};
 	}
 	TreeMetadata(float rotation, Vector2 offset, Tree& tree, Rectangle mark) {
-		std::cout << "init tree metadata\n";
+		std::println("init tree metadata");
 		this->rotation = rotation;
 		this->offset = offset;
 		this->mark = mark;
@@ -25,7 +25,7 @@ struct TreeMetadata {
 			branches.emplace_back(branch);
 	}
 	~TreeMetadata() {
-		std::cout << "deinit tree metadata\n";
+		std::println("deinit tree metadata");
 	}
 
 	private:

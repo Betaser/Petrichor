@@ -55,13 +55,12 @@ static float dist(Vector2 a, Vector2 b, Vector2 circle_pos, IntersectionType int
 static std::tuple<Vector2, Vector2> to_wireframe(const Tree& tree, const size_t cur_i, const size_t next_i) {
 	const Branch& branch = tree.branches[cur_i];
 	if (branch.nexts.size() == 0) {
-		// End branch
+		// End branch case
 		return { branch.back(), branch.front() };
 	}
 	return { branch.back(), tree.branches[next_i].back() };
 }
 
-// TODO: Unfortunately this is wrong.
 static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle) {
 	// For 2 circles intersecting, one from a to b and the other c (for circle),
 	// b' and b' in the wrong theta direction can be found. Finding the correct of those 2 
@@ -78,8 +77,6 @@ static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	const Vector2 perp_out = perp_rhr(delta) * perp_length / d;
 	const Vector2 solns[2] = { midpt + perp_out, midpt - perp_out };
 
-	// Works nicely for some situations, but maybe one of the solns is being picked when the other should be chosen?
-
 	const bool rhr_aligned = rhr_sign(a, b, circle.pos) == rhr_sign(a, solns[0], circle.pos);
 	const Vector2 b_new = rhr_aligned
 		? solns[0]
@@ -91,7 +88,6 @@ static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	return theta;
 }
 
-// Correct now?
 static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle) {
 	const float opp_over_hyp = circle.radius / length(circle.pos - a);
 	const float bnew_angle = asin(opp_over_hyp);
@@ -120,14 +116,9 @@ void rotate_all(const size_t branch_i, const float amt, const Vector2 origin, Tr
 };
 
 
-static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vector2 b, const Circle& circle, float* debug_angle) {
+static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vector2 b, const Circle& circle) {
 	const auto intersection = find_intersection(a, b, circle.pos);
 	const float ab_dist = dist(a, b, circle.pos, intersection);
-	if (isnan(ab_dist)) {
-		// if (intersection == VERT)
-		// 	std::println("for VERT, b {} circle.pos {}", to_str(b, 2), to_str(circle.pos, 2));
-	}
-
 	// Check if the closer dist is even intersecting at all, if not return, thereby doing nothing.
 
 	if (ab_dist > circle.radius)
@@ -139,7 +130,7 @@ static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vecto
 		
 	// Rotate the closer branch to edge of the circle
 	rotate_all(cur_i, angle, tree.branches[cur_i].back(), tree);
-	*debug_angle = angle;
+
 	return true;
 }
 
@@ -152,8 +143,7 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	{
 		const auto either_back = nexts[0];
 		auto [a, b] = to_wireframe(tree, cur_i, either_back);
-		float blah;
-		flatten(tree, cur_i, a, b, circle, &blah);
+		flatten(tree, cur_i, a, b, circle);
 	}
 
 	circle.radius = interp_radius;
@@ -187,7 +177,6 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	if (fmin(ab_dist, cd_dist) > circle.radius)
 		return false;
 
-	// std::println("intersection type was {} ab and cd were {} {}", intersection == VERT ? "VERT" : "LINE", ab_intersection == VERT ? "VERT" : "LINE", cd_intersection == VERT ? "VERT" : "LINE");
 	const float theta = intersection == VERT
 		? vert_angle(a, b, circle)
 		: line_angle(a, b, circle);
@@ -198,6 +187,8 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	// Seems to rotate in the wrong direction sometimes
 
 	// Rotate the further branch a smaller amount, but still ensuring its in front
+	// Causes jittery glitchyness, for now discard.
+
 	// const float bacd_theta = angle_from(d - a, b - a) * -rhr_sign(b, a, d);
 	// const float sigmoidal_fraction = 2 * (1 - 0.2) * (1 / (1 + exp(fabs(theta) * 0.4)) - 0.5) + 1;
 	// const float new_theta = bacd_theta * sigmoidal_fraction;
@@ -213,8 +204,6 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 }
 
 void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, std::string>& debug) const {
-	// Debugging
-
 	// We have to like have a buffer that gets smaller the more we "walk"
 	const std::function<void(size_t, size_t, Circle)> walk = [&walk, &tree, &debug](const size_t walk_i, const size_t branch_depth, Circle circle) {
 		// Circle radius buffer
@@ -235,25 +224,21 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 		if (debug["rotate_state"] != "None") {
 			if (branch.nexts.size() == 2) {
 				// Let's isolate the problem
-				if (flatten_fork(tree, walk_i, circle, interp_radius)) {
-					// std::println("circle radius {} depth {}", circle.radius, branch_depth);
-				}
+				flatten_fork(tree, walk_i, circle, interp_radius);
 			}
 			else if (branch.nexts.size() == 1) {
 				const size_t next_i = branch.nexts[0];
 				auto [a, b] = to_wireframe(tree, walk_i, next_i);
-				float debug_angle;
-				if (flatten(tree, walk_i, a, b, circle, &debug_angle)) {
+				if (flatten(tree, walk_i, a, b, circle))
 					debug["should_flatten"] = "true";
-				}
 			}
 			else if (branch.nexts.size() == 0) {
 				auto [a, b] = to_wireframe(tree, walk_i, 0);
-				float blah;
-				flatten(tree, walk_i, a, b, circle, &blah);
+				if (flatten(tree, walk_i, a, b, circle))
+					debug["should_flatten"]	= "true";
 			}
 			else
-				std::cout << "Unexpectedly we have this many branches: " << branch.nexts.size() << "\n";
+				std::println("Unexpectedly we have this many branches: {}", branch.nexts.size());
 		}
 
 		circle.radius = original_radius;
@@ -286,8 +271,8 @@ Level::Level() {
 		}
 	};
 
-	debug["rotate_state"] = "None";
-	debug["spring"] = "false";
+	debug["rotate_state"] = "Rotate enabled";
+	debug["spring"] = "true";
 }
 
 void Level::init(int screen_width, int screen_height) {
@@ -298,57 +283,20 @@ void Level::init(int screen_width, int screen_height) {
 
 Level::~Level() {
 	unload_texture(fog_texture);
-	std::cout << "fog texture loads/unloads " << fog_texture.load_unloads << "\n";
+	std::println("fog texture loads/unloads {}", fog_texture.load_unloads);
 	unload_shader(fog_shader);
-	std::cout << "ambient fog shader loads/unloads " << fog_shader.load_unloads << "\n";
+	std::println("ambient fog shader loads/unloads {}", fog_shader.load_unloads);
 	unload_shader(tree_foggy_blur_shader);
-	std::cout << "tree foggy blur shader loads/unloads " << tree_foggy_blur_shader.load_unloads << "\n";
+	std::println("tree foggy blur shader loads/unloads {}", tree_foggy_blur_shader.load_unloads);
 }
 
-static float interpolate_rotation2(const float twist, const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t cur, const Branch& child, Tree& tree) {
-	(void) original_rel_dir;
-	(void) cur_rel_dir;
-	(void) twist;
-	(void) child;
-	(void) tree;
-	(void) cur;
-	// const float raw_ang = angle_from(original_rel_dir, cur_rel_dir);
+static float interpolate_rotation(const float twist, const size_t cur, const Branch& child, Tree& tree) {
+	const float theta = fmin(0.13, 0.06 * abs(twist)) * (twist < 0 ? -1 : 1);
 
-	// const float rollover_twist = fmodf(abs(twist), 2 * PI);
-
-	// if (child.nexts.size() > 0 && child.nexts[0] == 1)
-	// 	std::println("rollover twist {}", rollover_twist);
-
-	// const float ang = rollover_twist > PI
-	// 	? 2 * PI - raw_ang
-	// 	: raw_ang;
-	// const float theta = fmin(0.03, 0.1 * ang)
-	// 	* rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir)
-	// 	* (rollover_twist > PI ? -1 : 1);
-	const float theta = fmin(0.04, 0.05 * abs(twist)) * (twist < 0 ? -1 : 1);
-	// if (abs(theta) > 0.001)
-	// 	std::println("theta {}", theta);
-
-	// ROTATE ALL LOOKS ANTI-MATHWISE
 	if (abs(theta) > 0.005)
 		rotate_all(cur, theta, child.back(), tree);
 
 	return theta;
-}
-
-void interpolate_rotation(const bool flip_cur_to_original, const Vector2& original_rel_dir, const Vector2& cur_rel_dir, const size_t cur, const Branch& child, Tree& tree) {
-	const float raw_ang = angle_from(original_rel_dir, cur_rel_dir);
-	(void) flip_cur_to_original;
-	// const float ang = flip_cur_to_original ? 2 * PI - raw_ang : raw_ang;
-	// const float theta = fmin(0.015, 0.1 * ang) * 
-	// 	rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir) *
-	// 	(flip_cur_to_original ? -1 : 1);
-
-	const float theta = fmin(0.015, 0.1 * raw_ang) * 
-		rhr_sign(original_rel_dir, { 0, 0 }, cur_rel_dir);
-
-	if (abs(theta) > 0.005)
-		rotate_all(cur, theta, child.back(), tree);
 }
 
 struct BranchOffsetBundle {
@@ -410,62 +358,120 @@ static void walk_branch_offsets(std::function<void(BranchOffsetBundle&&)> bundle
 	walk_branch_offsets_helper(bundle_fn, tree, i);
 }
 
-static void blah(Tree& tree) {
-	// std::function<void(size_t)> walk = [&walk, &tree](const size_t i) {
-	// 	const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
-
-	// 	for (const auto& next : nexts) {
-	// 		// The first iterated branch will not rotate, fix that outside of this fn.
-	// 		const size_t parent_i = i;
-	// 		const size_t child_i = next;
-	// 		const auto& parent = tree.branches[parent_i];
-	// 		const auto& child = tree.branches[child_i];
-
-	// 		const auto& original_parent = tree.original_branches[parent_i];
-	// 		const auto& original_child = tree.original_branches[child_i];
-
-	// 		const auto& parent_to_child = child.back() - parent.back();
-	// 		const auto& cur_forward = child.forward();
-	// 		const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
-
-	// 		const auto& original_parent_to_child = original_parent.forward(); 
-	// 		const auto& original_cur_forward = original_child.forward();
-	// 		const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
-
-	// 		// Read from the current twist and edit it
-	// 		interpolate_rotation2(
-	// 			tree.branch_twists[child_i], 
-	// 			original_rel_dir,
-	// 			cur_rel_dir,
-	// 			next,
-	// 			child,
-	// 			tree);
-
-	// 		walk(next);
-	// 	}
-	// };
-	// walk(0);
-
-	// (void) walk;
+void Level::tree_interp_rigid(Tree& tree) {
 	auto interpolate_rotation_bundled = [](BranchOffsetBundle&& b) {
-		// if (b.cur == 19 || b.cur == 0)
-		// 	std::println("cur {} receiving b.twist {}", b.cur, b.twist);
-		const float theta = interpolate_rotation2(
+		interpolate_rotation(
 			b.twist, 
-			b.original_rel_dir,
-			b.cur_rel_dir,
 			b.cur,
 			b.child,
 			b.tree);
-		if (b.cur == 19 || b.cur == 0) {
-			std::println("cur {} b.twist {} theta {}", b.cur, b.twist, theta);
-
-			// const float theta = fmin(0.04, 0.05 * abs(b.twist)) * (b.twist < 0 ? -1 : 1);
-			// if (abs(theta) > 0.001)
-			// 	std::println("theta {}", theta);
-		}
 	};
 	walk_branch_offsets(interpolate_rotation_bundled, tree, 0);
+}
+
+void Level::manage_debug_rotate_state() {
+	if (IsKeyPressed(KEY_R)) {
+		debug_apply_rotation = !debug_apply_rotation;
+
+		std::map<std::string, std::string> switch_map {
+			{ "Rotation enabled ", "None"},
+			{ "None", "Rotate enabled " },
+		};
+
+		if (switch_map.contains(debug["rotate_state"]))
+			debug["rotate_state"] = switch_map[debug["rotate_state"]];
+		else
+			std::println("What is this rotation state {}", debug["rotate_state"]);
+	}
+
+}
+
+void Level::manage_debug_spring_state() {
+	if (IsKeyPressed(KEY_P)) {
+		if (debug["spring"] == "true")
+			debug["spring"] = "false";
+		else
+			debug["spring"] = "true";
+	}
+}
+
+void Level::move_tree_thats_too_close(Tree& tree, const float boundary_dist) {
+	// TODO: Then we move the tree. 
+	const auto& out = normalize(tree.origin() - dome.pos);
+	const auto& new_origin = dome.pos + out * boundary_dist;
+	const auto& offset = new_origin - tree.origin();
+	// Move all vertices of the tree.
+	for (auto& branch : tree.branches) {
+		for (auto& vert : branch.verts)
+			vert += offset;
+	}
+}
+
+std::vector<Vector2> Level::calc_rel_dirs(Tree& tree) {
+	std::vector<Vector2> cur_rel_dirs;
+	auto walk_fn = [&cur_rel_dirs](BranchOffsetBundle&& b) {
+		cur_rel_dirs.push_back(b.cur_rel_dir);
+	};
+	walk_branch_offsets(walk_fn, tree, 0);
+
+	return cur_rel_dirs;
+}
+
+void Level::calc_twist(Tree& tree) {
+	const auto& cur_rel_dirs = calc_rel_dirs(tree);
+
+	size_t nxt = 0;
+	auto fn = [&tree, &cur_rel_dirs, &nxt](BranchOffsetBundle&& b) {
+		const Vector2& prev_rel_dir = tree.prev_rel_dirs[nxt];
+		const Vector2& cur_rel_dir = cur_rel_dirs[nxt++];
+
+		const float theta = signed_angle_from(prev_rel_dir, cur_rel_dir);
+		b.twist += theta;
+	};
+	walk_branch_offsets(fn, tree, 0);
+
+	tree.prev_rel_dirs.clear();
+	for (const auto& dir : cur_rel_dirs)
+		tree.prev_rel_dirs.push_back(dir);
+}
+
+void Level::push_trees_aside(Tree& tree, const float cam_dist) {
+	const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - cam_dist));
+	const float dist_tree_dome = length(dome.pos - tree.origin());
+
+	// But we also want to move trees out of the way of the dome as necessary.
+	const float boundary_dist = radius * 1.3;
+	const bool tree_too_close = dist_tree_dome < boundary_dist;
+	if (tree_too_close && debug["spring"] == "true")
+		move_tree_thats_too_close(tree, boundary_dist);
+	else {
+		// TODO: Then we move the tree back to the original position.
+	}
+
+	if (tree_too_close)
+		debug["too_close"] = "true";
+	else {
+		debug["too_close"] = "";
+		// Then we may be too far, it depends on what flatten_tree determines.
+		const Circle dome_circle {
+			.pos = dome.pos,
+			.radius = radius
+		};
+
+		if (debug["spring"] == "true") {
+			tree_interp_rigid(tree);
+
+			dome.flatten_tree(tree, dome_circle, debug);
+
+			// For twisting purposes, capture diff in twist caused by flatten_tree
+			calc_twist(tree);
+		}
+		else {
+			Tree::dup_branches(tree.original_branches, tree.branches);
+		
+			dome.flatten_tree(tree, dome_circle, debug);
+		}
+	}
 }
 
 void Level::update(Game& game) {
@@ -474,166 +480,20 @@ void Level::update(Game& game) {
 
 	debug["should_flatten"] = "false";
 
-	if (IsKeyPressed(KEY_R)) {
-		debug_apply_rotation = !debug_apply_rotation;
-
-		std::map<std::string, std::string> switch_map {
-			// { "Rotate fork", "Rotate single branch" },
-			// { "Rotate single branch", "None" },
-			{ "Rotation enabled ", "None"},
-			{ "None", "Rotate enabled " },
-		};
-
-		if (switch_map.contains(debug["rotate_state"]))
-			debug["rotate_state"] = switch_map[debug["rotate_state"]];
-		else
-			std::cout << "What is this rotation state " << debug["rotate_state"] << "\n";
-	}
-
-	if (IsKeyPressed(KEY_P)) {
-		if (debug["spring"] == "true")
-			debug["spring"] = "false";
-		else
-			debug["spring"] = "true";
-	}
+	manage_debug_rotate_state();
+	manage_debug_spring_state();
 
 	for (const auto& tree_ptr : game.trees) {
 		auto& tree = *tree_ptr;
 		if (!tree.past_me(petra))
 			continue;
 
-		const auto& dist = dist_from_cam(tree);
-		if (dist >= collision_dist)
+		const float cam_dist = dist_from_cam(tree);
+		if (cam_dist >= collision_dist)
 			continue;
 
-		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - dist));
-
-		const float dist_tree_dome = length(dome.pos - tree.origin());
-
-		// But we also want to move trees out of the way of the dome as necessary.
-		const bool tree_too_close = dist_tree_dome < radius * 1.3;
-		if (tree_too_close && debug["spring"] == "true") {
-			// TODO: Then we move the tree. 
-
-		}
-		else {
-			// TODO: Then we move the tree back to the original position.
-		}
-
-		if (tree_too_close)
-			debug["too_close"] = "true";
-		else {
-			debug["too_close"] = "";
-			// Then we may be too far, it depends on what flatten_tree determines.
-			const Circle dome_circle {
-				.pos = dome.pos,
-				.radius = radius
-			};
-
-			if (debug["spring"] == "true") {
-				// tree_interp_rigid(tree, dome_circle);
-
-				blah(tree);
-				// tree.update_texture();
-
-				dome.flatten_tree(tree, dome_circle, debug);
-
-				std::vector<Vector2> cur_rel_dirs;
-				auto walk_fn = [&cur_rel_dirs](BranchOffsetBundle&& b) {
-					cur_rel_dirs.push_back(b.cur_rel_dir);
-				};
-				walk_branch_offsets(walk_fn, tree, 0);
-				// I DON'T TRUST THE WALK_BRANCH ABOVE.
-
-				// For twisting purposes, capture diff in twist caused by flatten_tree
-				// std::println("size of pre_rel_dirs {} size of tree branches {}", pre_rel_dirs.size(), tree.branches.size());
-
-				// 19 15
-				// for (size_t i = 0; i < tree.branches.size(); i++) {
-				// 	const Vector2& prev_rel_dir = tree.prev_rel_dirs[i];
-				// 	const Vector2& cur_rel_dir = cur_rel_dirs[i];
-
-				// 	// const float ang = angle_from(prev_rel_dir, cur_rel_dir);
-				// 	// const float theta = ang * rhr_sign(prev_rel_dir, { 0, 0 }, cur_rel_dir);
-				// 	const float theta = signed_angle_from(prev_rel_dir, cur_rel_dir);
-				// 	if (i > 9 || i == 0) {
-				// 		// std::println("{}'s theta {} twist {}", i, theta, tree.branch_twists[i]);
-				// 		std::println("{}'s twist {} cur_rel_dir {}", i, tree.branch_twists[i], to_str(cur_rel_dir, 2));
-				// 		// std::println("nexts #: {}", tree.branches[i].nexts.size());
-				// 	}
-
-				// 	tree.branch_twists[i] += theta;
-				// 	// tree.branch_twists[child_i],
-				// }
-				size_t nxt = 0;
-				auto fn = [&tree, &cur_rel_dirs, &nxt](BranchOffsetBundle&& b) {
-					const Vector2& prev_rel_dir = tree.prev_rel_dirs[nxt];
-					const Vector2& cur_rel_dir = cur_rel_dirs[nxt++];
-
-					const float theta = signed_angle_from(prev_rel_dir, cur_rel_dir);
-					b.twist += theta;
-				};
-				walk_branch_offsets(fn, tree, 0);
-
-				tree.prev_rel_dirs.clear();
-				for (const auto& dir : cur_rel_dirs)
-					tree.prev_rel_dirs.push_back(dir);
-			}
-			else {
-				std::vector<Branch> branches;
-				for (const auto& branch : tree.original_branches) {
-					Branch b(branch.verts);
-					b.nexts = branch.nexts;
-					branches.push_back(b);
-				}
-				tree.branches = branches;
-			
-				dome.flatten_tree(tree, dome_circle, debug);
-			}
-		}
+		push_trees_aside(tree, cam_dist);
 	}
-}
-
-void Level::tree_interp_rigid(Tree& tree, const Circle& circle) {
-	std::function<void(size_t)> walk = [&walk, &tree, &circle](const size_t i) {
-		(void) circle;
-		const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
-
-		for (const auto& next : nexts) {
-			// The first iterated branch will not rotate, fix that outside of this fn.
-			const size_t parent_i = i;
-			const size_t child_i = next;
-			const auto& parent = tree.branches[parent_i];
-			const auto& child = tree.branches[child_i];
-
-			const auto& original_parent = tree.original_branches[parent_i];
-			const auto& original_child = tree.original_branches[child_i];
-
-			const auto& parent_to_child = child.back() - parent.back();
-			const auto& cur_forward = child.forward();
-			const auto& cur_rel_dir = rel_dir(cur_forward, parent_to_child);
-
-			const auto& original_parent_to_child = original_parent.forward(); 
-			const auto& original_cur_forward = original_child.forward();
-			const auto& original_rel_dir = rel_dir(original_cur_forward, original_parent_to_child);
-
-			interpolate_rotation(false, original_rel_dir, cur_rel_dir, next, child, tree);
-
-			walk(next);
-		}
-	};
-
-	walk(0);
-
-	// Okay but now we have to rotate the 0th iteration
-	const auto& first = tree.branches[0];
-	interpolate_rotation(
-		false,
-		tree.original_branches[0].forward(),
-		first.forward(),
-		0,
-		first,
-		tree);
 }
 
 void Level::render(Game& game) {
@@ -677,18 +537,7 @@ void Level::render(Game& game) {
 		SetShaderValue(tree_foggy_blur_shader, cd_loc, &collision_dist, SHADER_UNIFORM_FLOAT);
 
 		Cam depth_cam = calc_depth_cam(dist);
-		if (tree.id == 0) {
-			// printf("collision dist %f dist %f\n", collision_dist, dist);
-		}
 		// Change depth_cam if the tree is past the collision point
-		// You know what? This basic linear transition is not so bad
-		
-		if (false && dist < collision_dist) {
-			Vector2 outwards = normalize(camera.pos - tree.origin());
-			float norm = (collision_dist - dist) / collision_dist;
-			Vector2 cam_offset = outwards * norm * 0.05 * std::max((float) game.screen_width, (float) game.screen_height);
-			depth_cam.pos += cam_offset;
-		}
 		
 		// This dest perfectly matches the bounding_box call that yields a diff result every time verts is adjusted
 		// But the jitter is fairly hard to tell now.
