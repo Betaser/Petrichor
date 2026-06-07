@@ -246,8 +246,6 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 			walk(next, branch_depth + 1, circle);
 	};
 	walk(0, 0, circle);
-
-	tree.update_texture();
 }
 
 Level::Level() {
@@ -396,7 +394,7 @@ void Level::manage_debug_spring_state() {
 }
 
 void Level::move_tree_thats_too_close(Tree& tree, const float boundary_dist) {
-	// TODO: Then we move the tree. 
+	// TODO: Then FIX this erroneous method of moving the tree. 
 	const auto& out = normalize(tree.origin() - dome.pos);
 	const auto& new_origin = dome.pos + out * boundary_dist;
 	const auto& offset = new_origin - tree.origin();
@@ -441,37 +439,44 @@ void Level::push_trees_aside(Tree& tree, const float cam_dist) {
 
 	// But we also want to move trees out of the way of the dome as necessary.
 	const float boundary_dist = radius * 1.3;
-	const bool tree_too_close = dist_tree_dome < boundary_dist;
-	if (tree_too_close && debug["spring"] == "true")
+	const bool tree_getting_close = dist_tree_dome < boundary_dist;
+
+	if (tree_getting_close && debug["spring"] == "true")
 		move_tree_thats_too_close(tree, boundary_dist);
 	else {
 		// TODO: Then we move the tree back to the original position.
 	}
 
-	if (tree_too_close)
+	if (tree_getting_close)
 		debug["too_close"] = "true";
-	else {
+	else 
 		debug["too_close"] = "";
-		// Then we may be too far, it depends on what flatten_tree determines.
-		const Circle dome_circle {
-			.pos = dome.pos,
-			.radius = radius
-		};
+	
+	if (dist_tree_dome < radius)
+		std::println("Distance from tree to cam {} is less than radius {}", dist_tree_dome, radius);
 
-		if (debug["spring"] == "true") {
-			tree_interp_rigid(tree);
+	// Then we may be too far, it depends on what flatten_tree determines.
+	const Circle dome_circle {
+		.pos = dome.pos,
+		.radius = radius
+	};
 
-			dome.flatten_tree(tree, dome_circle, debug);
+	if (debug["spring"] == "true") {
+		tree_interp_rigid(tree);
 
-			// For twisting purposes, capture diff in twist caused by flatten_tree
-			calc_twist(tree);
-		}
-		else {
-			Tree::dup_branches(tree.original_branches, tree.branches);
-		
-			dome.flatten_tree(tree, dome_circle, debug);
-		}
+		dome.flatten_tree(tree, dome_circle, debug);
+
+		// For twisting purposes, capture diff in twist caused by flatten_tree
+		calc_twist(tree);
 	}
+	else {
+		Tree::dup_branches(tree.original_branches, tree.branches);
+	
+		dome.flatten_tree(tree, dome_circle, debug);
+	}
+
+	// Not even computationally hard to do this
+	tree.update_texture();
 }
 
 void Level::update(Game& game) {
