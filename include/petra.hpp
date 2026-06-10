@@ -1,13 +1,15 @@
 #ifndef PETRA_H
 #define PETRA_H
 
-#include <iostream>
 #include <raylib.h>
+#include <cstdlib>
+#include <memory>
 
 struct Level;
 struct Game;
 
-#include "game.hpp"
+#include "mylib.hpp"
+#include "tree.hpp"
 
 struct Collision {
 	size_t tree_index = 0;

@@ -1,11 +1,7 @@
 #ifndef TREE_H
 #define TREE_H
 
-#include <array>
-#include <vector>
-#include <map>
 #include <raylib.h>
-#include <random>
 
 struct Branch;
 struct Game;
@@ -13,7 +9,6 @@ struct LevelEditor;
 struct Petra;
 
 #include "mylib.hpp"
-#include "level_editor.hpp"
 
 struct Branch {
 	std::vector<Vector2> verts;
@@ -45,7 +40,6 @@ struct TreeRenderData {
 	float finishing_alpha;
 };
 
-// TODO: make branches
 struct Tree {
 	private:
 	static const int MAX = 100;
@@ -53,7 +47,6 @@ struct Tree {
 	const float MAX_WIDTH = 300;
 	const float MAX_HEIGHT = MAX_WIDTH;
 
-	// std::array<std::array<Vector2, 4>, MAX> compressed_branches;
 	Vector2 compressed_branches[4][MAX] {};
 	Vector2 btm_lefts[MAX] {};
 	Vector2 top_rights[MAX] {};
@@ -89,8 +82,6 @@ struct Tree {
 	static TextureWithCheck static_tree_tex;
 	static void dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to);
 
-	// Tree(const Tree&) = delete;
-	// Tree& operator=(const Tree&) = delete;
 	Tree(std::vector<Branch> branches, Rand& rand);
 	~Tree();
 

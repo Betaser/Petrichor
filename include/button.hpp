@@ -5,9 +5,6 @@
 #include <functional>
 #include <raylib.h>
 
-#include "mylib.hpp"
-#include "level_editor.hpp"
-
 // Add shader support later.
 struct Button;
 struct LevelEditor;

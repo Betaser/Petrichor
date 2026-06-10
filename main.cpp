@@ -5,7 +5,6 @@
 // Is probably a given.
 #define PLATFORM_DESKTOP
 
-#include <sstream>
 #include <fstream>
 #include <string>
 #include <memory>

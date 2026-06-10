@@ -53,7 +53,7 @@ struct LevelEditor : public Button::Owner {
 	bool show_instructions = false;
 	Vector2 select_extra_bounds { 10, 10 };
 	ShaderWithCheck select_shader;
-	float cam_depth;
+	float cam_depth = 0;
 	float min_cam_depth;
 	float max_cam_depth;
 	bool focus_on_selected = false;

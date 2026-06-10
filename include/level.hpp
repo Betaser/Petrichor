@@ -2,10 +2,10 @@
 #define LEVEL_H
 
 #include <map>
+#include <functional>
 
 #include "petra.hpp"
 #include "camera.hpp"
-#include "game.hpp"
 
 struct Dome {
     Vector2 pos;
