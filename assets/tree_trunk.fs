@@ -6,5 +6,6 @@ in vec2 fragTexCoord;
 out vec4 finalColor;
 
 void main() {
-	finalColor = vec4(1, 0, 0, 1);
+	// It's supposed to be a circle
+	finalColor = vec4(1, 1, 0, 1);
 }

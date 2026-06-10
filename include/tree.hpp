@@ -41,6 +41,10 @@ struct TrunkSegment {
 	const TrunkLayer bottom;
 };
 
+struct TreeRenderData {
+	float finishing_alpha;
+};
+
 // TODO: make branches
 struct Tree {
 	private:
@@ -95,7 +99,7 @@ struct Tree {
 	void on_updated_branch();
 	void update_texture();
 	void send_vals_to_tendril_shader();
-	void render(LevelEditor* level_editor);
+	void level_editor_render(const TreeRenderData& data);
 	void render_to_target();
 
 	constexpr Vector2 origin() const;

@@ -192,10 +192,6 @@ void LevelEditor::update(Game& game) {
 				tree_metadatas.push_back(meta);	
 			});
 
-		// Maybe metadata is bad, print it out:
-		for (const auto& meta : tree_metadatas) {
-			std::println("meta: offset {} rot {}", to_str(meta.offset, 2), meta.rotation);
-		}
 		for (size_t i = 0; i < game.trees.size(); i++) {
 			selected_index = i;
 			update_selected_verts(game);
@@ -210,6 +206,9 @@ void LevelEditor::update(Game& game) {
 		// Selected tree is not a thing yet.
 		auto& selected = game.trees[selected_index];
 		auto& meta = tree_metadatas[selected->id];
+
+		if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
+			focus_on_selected = !focus_on_selected;
 
 		if (!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 			selection_offset = GetMousePosition() - meta.offset;
@@ -306,9 +305,28 @@ void LevelEditor::update(Game& game) {
 		if (last_selected_index != selected_index)
 			last_selected_index = selected_index;
 	}
+
+	// New idea: mouse scroll wheel to control depth
+	adjust_cam_depth(game);
 }
 
 void LevelEditor::render(Game& game) const {
+	for (size_t i = 0; i < game.trees.size(); i++) {
+		auto& tree = game.trees[i];
+		const float eff_depth = abs(tree->depth - cam_depth);
+		float depth_alpha = std::max(0.0, 1.0 - eff_depth / (depth_ui.MAX_DEPTH * 0.8));
+
+		if (focus_on_selected) {
+			if (i != selected_index) {
+				depth_alpha *= 0.1 * (0.5 * sin(time * 2.3) + 0.5);
+			}
+		}
+
+		tree->level_editor_render({
+			.finishing_alpha = depth_alpha
+		});
+	}
+
 	if (is_selecting(game)) {
 		int loc = GetShaderLocation(select_shader, "time");
 		SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
@@ -357,6 +375,8 @@ void LevelEditor::render(Game& game) const {
 		<< "Click on marks on sidebar to change depth\n"
 		<< "Ctrl + S = save to " << Constants::test_level_path << "\n"
 		<< "Ctrl + O = open " << Constants::test_level2_path << "\n"
+		<< "Mouse scroll to change depth\n"
+		<< "Middle mouse to toggle focus mode\n"
 		<< "TODO: G = guidelines (editor add ons.\n"
 		<< "which are saved separate from level data)";
 		std::string s_str = ss.str();
@@ -368,6 +388,8 @@ void LevelEditor::render(Game& game) const {
 
 	size_t id = is_selecting(game) ? game.trees[selected_index]->id : selected_index;
 	render_depth_ui(id);
+
+	render_cam_depth(game);
 }
 
 Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
@@ -430,6 +452,58 @@ void LevelEditor::render_depth_ui(size_t selected_id) const {
 
 bool LevelEditor::is_selecting(Game& game) const {
 	return selected_index < game.trees.size();
+}
+
+void LevelEditor::adjust_cam_depth(Game& game) {
+	const float scroll = GetMouseWheelMove();
+
+	cam_depth += scroll;
+
+	// Bounds are the same bounds that depth_ui uses
+	std::vector<float> depths(game.trees.size());
+	for (size_t i = 0; i < game.trees.size(); i++)
+		depths[i] = game.trees[i]->depth;
+	
+	std::sort(depths.begin(), depths.end());
+
+	min_cam_depth = std::min(0.0f, depths[0]);
+	max_cam_depth = std::max(depth_ui.MAX_DEPTH, depths.back());
+
+	cam_depth = std::min(std::max(min_cam_depth, cam_depth), max_cam_depth);
+}
+
+void LevelEditor::render_cam_depth(Game& game) const {
+	// A horz bar at the top of the screen
+	const float width = 0.8 * game.screen_width;
+	const float height = 30;
+	const float left = ((float) game.screen_width - width) / 2;
+	const float top = 50;
+
+	DrawRectangleRounded(
+		{
+			.x = left,
+			.y = top,
+			.width = width,
+			.height = height
+		},
+		10,
+		1,
+		ColorAlpha(DARKGRAY, 0.5));
+	// Fill to show current depth
+	const float normalized_depth = (cam_depth - min_cam_depth) / (max_cam_depth - min_cam_depth);
+	const float adjusted_depth = normalized_depth * 0.95 + 0.05;
+	DrawRectangleRounded(
+		{
+			.x = left + 4,
+			.y = top + 4,
+			.width = width * adjusted_depth - 8,
+			.height = height - 8
+		},
+		10,
+		1,
+		ColorAlpha(ORANGE, 0.7));
+	// Add text below to remind me what this bar is for
+	DrawText("Depth (use scroll)", (int) left, (int) (top - 15), 15, PINK);
 }
 
 void LevelEditor::invalidate_selected_index(Game& game) {

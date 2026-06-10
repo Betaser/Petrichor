@@ -208,9 +208,6 @@ int main() {
 				}
 				break;
 				case EditLevel: {
-					for (const auto& tree : game.trees)
-						tree->render(&level_editor);
-
 					level_editor.render(game);
 
 					for (const auto& button : level_editor.buttons)

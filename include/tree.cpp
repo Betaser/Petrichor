@@ -212,11 +212,10 @@ void Tree::send_vals_to_tendril_shader() {
 }
 
 // ONLY FOR LEVEL EDITOR
-void Tree::render(LevelEditor* level_editor) {
+void Tree::level_editor_render(const TreeRenderData& data) {
 	send_vals_to_tendril_shader();
 	int finishing_alpha_loc = GetShaderLocation(tendril_shader, "finishing_alpha");
-	// TODO: make tendrils that are far away clearer, which will require an ability to scroll the depth we are viewing at.
-	float finishing_alpha = std::max(0.0, 1.0 - depth / (level_editor->depth_ui.MAX_DEPTH * 0.8));
+	float finishing_alpha = data.finishing_alpha;
 	SetShaderValue(tendril_shader, finishing_alpha_loc, &finishing_alpha, SHADER_UNIFORM_FLOAT);
 
 	// Later TODO: Make a custom shader for level editor (which is here) cause showing a high level repr of each segment is very different.

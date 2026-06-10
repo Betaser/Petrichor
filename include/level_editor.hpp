@@ -53,11 +53,17 @@ struct LevelEditor : public Button::Owner {
 	bool show_instructions = false;
 	Vector2 select_extra_bounds { 10, 10 };
 	ShaderWithCheck select_shader;
+	float cam_depth;
+	float min_cam_depth;
+	float max_cam_depth;
+	bool focus_on_selected = false;
 
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_tree_for_depth_ui(Game& game, Tree& tree);
 	void render_depth_ui(size_t selected_id) const;
+	void render_cam_depth(Game& game) const;
 	bool is_selecting(Game& game) const;
+	void adjust_cam_depth(Game& game);
 	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
 };
 
