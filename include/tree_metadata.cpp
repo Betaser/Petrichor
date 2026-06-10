@@ -6,7 +6,7 @@
 
 struct TreeMetadata {
 	// Rotation affects all tendrils
-	std::vector<Branch> branches;
+	// std::vector<Branch> branches;
 	Vector2 offset {};
 	float rotation = 0;
 	Rectangle mark {};
@@ -14,16 +14,22 @@ struct TreeMetadata {
 	static TreeMetadata zero() {
 		return {};
 	}
-	TreeMetadata(float rotation, Vector2 offset, Tree& tree, Rectangle mark) {
+	TreeMetadata(float rotation, Vector2 offset, Rectangle mark) {
 		std::println("init tree metadata");
 		this->rotation = rotation;
 		this->offset = offset;
 		this->mark = mark;
-
-		branches.reserve(tree.branches.size());
-		for (const auto& branch : tree.branches)
-			branches.emplace_back(branch);
 	}
+	// TreeMetadata(float rotation, Vector2 offset, Tree& tree, Rectangle mark) {
+	// 	std::println("init tree metadata");
+	// 	this->rotation = rotation;
+	// 	this->offset = offset;
+	// 	this->mark = mark;
+
+	// 	branches.reserve(tree.branches.size());
+	// 	for (const auto& branch : tree.branches)
+	// 		branches.emplace_back(branch);
+	// }
 	~TreeMetadata() {
 		std::println("deinit tree metadata");
 	}

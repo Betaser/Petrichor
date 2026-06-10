@@ -44,13 +44,15 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 		tree.id = popped_id;
 	}
 
-	TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
+	// TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
+	TreeMetadata temp(metadata.rotation, metadata.offset, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
 	if (ids_available)
 		tree_metadatas[tree.id] = temp;
 	else
-		tree_metadatas.emplace_back(temp);
+		tree_metadatas.push_back(temp);
 
 	randomize_tendrils(game, game.trees.size() - 1);
+
 	// Now we're gonna add the trunk.
 	TrunkSegment segment {
 		.top {
@@ -95,28 +97,35 @@ void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	tree->branches = Tree::branches_from_tendrils(tendrils);
 	tree->tendrils = tendrils;
 
-	auto& meta = tree_metadatas[tree->id];
-	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, *tree, meta.mark);
+	const auto& meta = tree_metadatas[tree->id];
+	// tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, *tree, meta.mark);
+	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, meta.mark);
+	tree->on_updated_branch();
+
 	update_selected_verts(game);
 
 	tree->update_texture();
 }
 
 void LevelEditor::update_selected_verts(Game& game) {
-	auto& selected = game.trees[selected_index];
-	auto& meta = tree_metadatas[selected->id];
-	const auto& branches = meta.branches;
-	if (branches.size() != selected->branches.size())
-		std::cerr << "metadata branches size " << branches.size() << " selected branches size " << selected->branches.size() << "\n";
+	auto& tree = game.trees[selected_index];
+	auto& meta = tree_metadatas[tree->id];
+	// std::println("meta branch origin {}", to_str(branches[0].back(), 2));
 
-	const float rotation = floor(meta.rotation / (2.0 * PI / 30)) * (2.0 * PI / 30);
+	const auto& branches = tree->original_branches;
+
+	if (branches.size() != tree->branches.size())
+		std::cerr << "metadata branches size " << branches.size() << " selected branches size " << tree->branches.size() << "\n";
+
+	// TODO: Use step function instead?
+	// const float rotation = floor(meta.rotation / (2.0 * PI / 30)) * (2.0 * PI / 30);
+	const float rotation = snap(meta.rotation, 2.0 * PI / 30);
 
 	for (size_t i = 0; i < branches.size(); i++) {
-		auto& sel_verts = selected->branches[i].verts;
+		auto& sel_verts = tree->branches[i].verts;
 		const auto& verts = branches[i].verts;
 		for (size_t j = 0; j < verts.size(); j++) {
-			Vector2 rotated = verts[j];
-			sel_verts[j] = rotate(selected->origin(), rotated, rotation) + meta.offset;
+			sel_verts[j] = rotate(branches[0].back(), verts[j], rotation) + meta.offset;
 		}
 	}
 }
@@ -181,11 +190,14 @@ void LevelEditor::update(Game& game) {
 		game.load_trees(
 			Constants::test_level2_path, 
 			[&](TreeMetadata& meta, Tree& tree) {
-				(void) tree;
 				meta.mark = update_tree_for_depth_ui(game, tree);
-				tree_metadatas.emplace_back(meta);	
+				tree_metadatas.push_back(meta);	
 			});
 
+		// Maybe metadata is bad, print it out:
+		for (const auto& meta : tree_metadatas) {
+			std::println("meta: offset {} rot {}", to_str(meta.offset, 2), meta.rotation);
+		}
 		for (size_t i = 0; i < game.trees.size(); i++) {
 			selected_index = i;
 			update_selected_verts(game);
@@ -267,7 +279,7 @@ void LevelEditor::update(Game& game) {
 		if (IsKeyDown(KEY_D))
 			rotation_input = 0.05; 
 
-		meta.rotation = meta.rotation + rotation_input;
+		meta.rotation += rotation_input;
 
 		if (rotation_input != 0) {
 			update_selected_verts(game);

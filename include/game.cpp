@@ -76,7 +76,8 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			tree->branches = Tree::branches_from_tendrils(tendrils);
 			tree->tendrils = tendrils;
 
-			TreeMetadata metadata(rotation, offset, *tree, {});
+			// TreeMetadata metadata(rotation, offset, *tree, {});
+			TreeMetadata metadata(rotation, offset, {});
 			accept_metadata(metadata, *tree);
 
 			tree->on_updated_branch();

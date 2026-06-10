@@ -45,6 +45,7 @@ struct TrunkSegment {
 struct Tree {
 	private:
 	static const int MAX = 100;
+	// Controls the horz zoom of texels, bigger = more zoomed in
 	const float MAX_WIDTH = 300;
 	const float MAX_HEIGHT = MAX_WIDTH;
 

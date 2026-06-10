@@ -373,7 +373,6 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 	// In a for loop, allocate tendril vectors
 	std::vector<Branch> curr_tendril { start_branch, start_branch };
 
-	// std::vector<Branch> splittable_branches;
 	struct SplitIdx {
 		int i, j;
 	};

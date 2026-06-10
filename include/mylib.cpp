@@ -267,7 +267,7 @@ std::string to_str(const Vector2& v, const int decimal_pts) {
 }
 
 float snap(const float f, const float by) {
-	return (float) int(f * by) / by;
+	return (float) int(f / by) * by;
 }
 
 bool pt_in_rect(const Vector2& pt, const Vector2& pos, const Vector2& dim) {

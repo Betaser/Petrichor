@@ -81,6 +81,8 @@ int main() {
 					case PlayLevel: {
 						// Load in the trees
 						// Eventually, do something close to this but with metadatas for the level editor so progress can be saved in editing levels.
+						//
+						// THIS RUNS AND OBV WORKS
 						if (game.last_state == EditLevel) {
 							// But refill game.trees with our edit level contents.
 							for (auto& tree : game.trees)
