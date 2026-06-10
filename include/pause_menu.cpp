@@ -12,7 +12,9 @@ struct PauseMenu {
 		std::string text;
 		Color background_color;
 		State state;
-		std::function<void(Button::Owner* owner)> immediate_on_press = {};
+		std::function<void(Button::Owner* owner)> immediate_on_press = [](auto* owner) {
+			(void) owner;
+		};
 	};
 	// Instead of a shader, just render a plain background
 	std::vector<Button> buttons;
@@ -82,16 +84,15 @@ struct PauseMenu {
 	}
 
 	void update() {
-		if (IsKeyPressed(KEY_TAB)) {
+		if (IsKeyPressed(KEY_TAB))
 			active = !active;
-		}
 
 		if (active) {
 			const Vector2 cursor = GetMousePosition();
 			for (auto& button : buttons) {
-				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && button.state.hovered) {
+				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && button.state.hovered)
 					button.state.hit = true;
-				}
+
 				button.take_input(cursor);
 			}
 		}
@@ -100,8 +101,10 @@ struct PauseMenu {
 	void render(int screen_width, int screen_height) {
 		if (!active)
 			return;
+
 		Color background_color { 50, 0, 0, 100 };
 		DrawRectangle(0, 0, screen_width, screen_height, background_color);
+
 		for (const auto& button : buttons)
 			button.render();
 	}

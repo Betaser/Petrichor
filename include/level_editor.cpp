@@ -44,7 +44,6 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 		tree.id = popped_id;
 	}
 
-	// TreeMetadata temp(metadata.rotation, metadata.offset, tree, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
 	TreeMetadata temp(metadata.rotation, metadata.offset, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
 	if (ids_available)
 		tree_metadatas[tree.id] = temp;
@@ -98,7 +97,6 @@ void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	tree->tendrils = tendrils;
 
 	const auto& meta = tree_metadatas[tree->id];
-	// tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, *tree, meta.mark);
 	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, meta.mark);
 	tree->on_updated_branch();
 
