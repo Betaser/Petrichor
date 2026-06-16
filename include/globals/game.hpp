@@ -4,13 +4,13 @@
 #include <memory>
 #include <vector>
 
-#include "tree_metadata.cpp"
-#include "button.hpp"
-#include "tree.hpp"
-#include "states.cpp"
-#include "level.hpp"
+#include "../scene_elements/button.hpp"
+#include "../entities/tree.hpp"
+#include "../gamestates/states.cpp"
+#include "../gamestates/level.hpp"
 
 struct Game;
+struct TreeMetadata;
 
 struct Game : Button::Owner {
 	std::vector<std::unique_ptr<Tree>> trees;

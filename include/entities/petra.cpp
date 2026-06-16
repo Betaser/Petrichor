@@ -1,9 +1,11 @@
 #include <string>
-#include <tuple>
-#include <ranges>
+#include <print>
+#include <memory>
 
 #include "petra.hpp"
-#include "mylib.hpp"
+#include "../globals/mylib.hpp"
+#include "../globals/game.hpp"
+#include "../gamestates/level.hpp"
 
 Petra::Petra() {
 	std::println("initialized Petra");

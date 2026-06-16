@@ -17,7 +17,8 @@ uniform sampler2D tex;
 uniform vec2 btmLefts[MAX];
 uniform vec2 topRights[MAX];
 
-uniform float finishing_alpha = 1.0;
+uniform float finishingAlpha = 1.0;
+uniform vec4 rgbTint;
 
 out vec4 finalColor;
 
@@ -82,10 +83,6 @@ void main() {
 			ivec2 texelXy = ivec2(regionXy * dims);
 			finalColor = texelFetch(tex, texelXy, 0);
 
-			// Tint it for debugging
-			vec4 tint = debugBranchTints[i];
-			finalColor.rgb = mix(finalColor.rgb, tint.rgb, tint.a);
-
 			// finalColor.rgb = vec3(0.05, 0.125, 0.1);
 
 			// Also for debugging, make the final color translucent
@@ -96,6 +93,8 @@ void main() {
 		}
 	}
 
-	finalColor.a *= finishing_alpha;
+	finalColor.a *= finishingAlpha;
+
+	finalColor.rgb = mix(finalColor.rgb, rgbTint.rgb, rgbTint.a);
 }
 

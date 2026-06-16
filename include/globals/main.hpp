@@ -3,6 +3,8 @@
 
 #include <raylib.h>
 
+#include "mylib.hpp"
+
 struct Main {
 	public:
 	static int clicks;

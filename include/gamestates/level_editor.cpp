@@ -5,19 +5,22 @@
 #include <algorithm>
 #include <format>
 
-#include "mylib.hpp"
+#include "../globals/mylib.hpp"
 #include "level_editor.hpp"
-#include "constants.cpp"
+#include "../globals/constants.cpp"
 #include "tree_metadata.cpp"
 
-LevelEditor::LevelEditor() {
+LevelEditor::LevelEditor(int* screen_height) {
 	debug_button = nullptr;
 	show_instructions = false;
 	std::println("init level editor");
 	time = 0;
 	selected_index = 0;
 	using_depth_ui = false;
-	last_selected_index = selected_index;
+
+	for (int i = 0; i < SIZE; i++)
+		views[i] = (View) i;
+	view_selector.screen_height = screen_height;
 
 	load_shader(select_shader, "assets/select.fs");
 	init_selection_texture();
@@ -65,7 +68,23 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 			.radius = 15
 		}
 	};
-	tree.trunk_segments.emplace_back(segment);
+	tree.trunk_segments.push_back(segment);
+
+	
+	std::vector<TrunkFace> example_faces {
+		{
+			.depth = 0,
+			.position = { 300, 300 },
+			.radius = 20,
+		},
+		{
+			.depth = 100,
+			.position = { 200, 150 },
+			.radius = 10,
+		}
+	};
+	for (auto& face : example_faces)
+		tree.trunk_faces.push_back(face);
 }
 
 void LevelEditor::initialize_ui() {
@@ -115,16 +134,13 @@ void LevelEditor::update_selected_verts(Game& game) {
 	if (branches.size() != tree->branches.size())
 		std::cerr << "metadata branches size " << branches.size() << " selected branches size " << tree->branches.size() << "\n";
 
-	// TODO: Use step function instead?
-	// const float rotation = floor(meta.rotation / (2.0 * PI / 30)) * (2.0 * PI / 30);
 	const float rotation = snap(meta.rotation, 2.0 * PI / 30);
 
 	for (size_t i = 0; i < branches.size(); i++) {
 		auto& sel_verts = tree->branches[i].verts;
 		const auto& verts = branches[i].verts;
-		for (size_t j = 0; j < verts.size(); j++) {
+		for (size_t j = 0; j < verts.size(); j++)
 			sel_verts[j] = rotate(branches[0].back(), verts[j], rotation) + meta.offset;
-		}
 	}
 }
 
@@ -142,9 +158,9 @@ void LevelEditor::update(Game& game) {
 
 	const bool selecting = is_selecting(game);
 
+	const auto mouse_pos = GetMousePosition();
 	// Right click to select, chooses closest tree
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-		auto mouse_pos = GetMousePosition();
 		float shortest = INFINITY;
 		for (size_t i = 0; i < game.trees.size(); i++) {
 			const auto& tree = game.trees[i];
@@ -159,16 +175,20 @@ void LevelEditor::update(Game& game) {
 		}
 	}
 
-	bool using_ui = using_depth_ui;
 	// Yes, let's eventually move this button checking bounds to a designated class
 	const bool using_debug_btn_ui = debug_button->state.hovered;
-	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-		using_ui |= using_debug_btn_ui;
-
+	
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		if (using_debug_btn_ui)
 			debug_button->state.hit = true;
+
+		// Check if we are hovering over the view_selector
+		using_view_selector = pt_in_rect(mouse_pos, view_selector.bounds());
 	}
+
+	bool using_ui = using_depth_ui | using_view_selector;
+	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+		using_ui |= using_debug_btn_ui;
 
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
 		std::println("Save trees to {}", Constants::test_level_path);
@@ -246,7 +266,7 @@ void LevelEditor::update(Game& game) {
 			r.y -= margin;
 			r.width += 2 * margin;
 			r.height += 2 * margin;
-			if (pt_in_rect(GetMousePosition(), { r.x, r.y }, { r.width, r.height }))
+			if (pt_in_rect(GetMousePosition(), r))
 				using_depth_ui = true;
 		} 
 		else
@@ -256,7 +276,7 @@ void LevelEditor::update(Game& game) {
 			// Then make depth move to your mouse, and call update
 			// I suppose we make the depth go from 0 at the top to like 100 at the bottom?
 			const float MAX_DEPTH = 100;
-			float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(0.0f, GetMousePosition().y));
+			const float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(depth_ui.SPACING, GetMousePosition().y));
 			selected->depth = (clamped_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
 
 			meta.mark = update_tree_for_depth_ui(game, *game.trees[selected_index]);
@@ -301,9 +321,6 @@ void LevelEditor::update(Game& game) {
 			auto tree_tex_bounds = (Vector2I { selected->blank_tex.width, selected->blank_tex.height }).to_vec2();
 			tree_tex_bounds += select_extra_bounds;
 		}
-
-		if (last_selected_index != selected_index)
-			last_selected_index = selected_index;
 	}
 
 	// New idea: mouse scroll wheel to control depth
@@ -322,8 +339,24 @@ void LevelEditor::render(Game& game) const {
 			}
 		}
 
+		// Tree view; highlight all parts of the tree cause it could be confusing what branches belong to which trees
+		Vector4 rgb_tint { .x = 0, .y = 0, .z = 0, .w = 0 };
+		const bool tree_view = true;
+		if (tree_view) {
+			// wanes with time staying in tree_view.
+			float tree_view_wane = 1.0;
+			// balsdhfiah
+			rgb_tint = {
+				.x = 1.0,
+				.y = 0.2,
+				.z = 0.2,
+				.w = (float) (0.4 * sin(time * 6.0) * tree_view_wane + 0.4)
+			};
+		}
+
 		tree->level_editor_render({
-			.finishing_alpha = depth_alpha
+			.finishing_alpha = depth_alpha,
+			.rgb_tint = rgb_tint
 		});
 	}
 
@@ -377,8 +410,8 @@ void LevelEditor::render(Game& game) const {
 		<< "Ctrl + O = open " << Constants::test_level2_path << "\n"
 		<< "Mouse scroll to change depth\n"
 		<< "Middle mouse to toggle focus mode\n"
-		<< "TODO: G = guidelines (editor add ons.\n"
-		<< "which are saved separate from level data)";
+		<< "Right click + Shift = multiple select\n";
+
 		std::string s_str = ss.str();
 		unsigned char opacity = 255 * (0.3 * (0.5 * sin(time * 3.0) + 0.5) + 0.7);
 		const int font_size = 30;
@@ -389,7 +422,11 @@ void LevelEditor::render(Game& game) const {
 	size_t id = is_selecting(game) ? game.trees[selected_index]->id : selected_index;
 	render_depth_ui(id);
 
+	// Render the camera depth at top of screen
 	render_cam_depth(game);
+
+	// Render view selector
+	view_selector.render();
 }
 
 Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
@@ -413,7 +450,7 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
 	const int height = 5;
 
 	float percent = (depth - min_depth) / (max_depth - min_depth);
-	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - height / 2;
+	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - (float) height / 2;
 	depth_ui.y_pos = y_pos;
 
 	return { 
@@ -441,12 +478,11 @@ void LevelEditor::render_depth_ui(size_t selected_id) const {
 
 		Rectangle r = tree_metadatas[i].mark;
 		// For now, color differently. Could use a shader maybe.
-		if (i == selected_id) {
-			DrawRectangle(r.x, r.y, r.width, r.height, ColorLerp(ORANGE, depth_ui.MARK_COLOR, 0.7));
-		} 
-		else {
-			DrawRectangle(r.x, r.y, r.width, r.height, depth_ui.MARK_COLOR);
-		}
+		const Color color = i == selected_id 
+			? ColorLerp(ORANGE, depth_ui.MARK_COLOR, 0.7)
+			: depth_ui.MARK_COLOR;
+
+		DrawRectangle(r.x, r.y, r.width, r.height, color);
 	}
 }
 
@@ -486,7 +522,7 @@ void LevelEditor::render_cam_depth(Game& game) const {
 			.width = width,
 			.height = height
 		},
-		10,
+		0.4,
 		1,
 		ColorAlpha(DARKGRAY, 0.5));
 	// Fill to show current depth
@@ -499,7 +535,7 @@ void LevelEditor::render_cam_depth(Game& game) const {
 			.width = width * adjusted_depth - 8,
 			.height = height - 8
 		},
-		10,
+		0.4,
 		1,
 		ColorAlpha(ORANGE, 0.7));
 	// Add text below to remind me what this bar is for

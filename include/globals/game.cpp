@@ -1,8 +1,6 @@
-#include <iostream>
 #include <fstream>
 
-#include "tree_metadata.cpp"
-#include "constants.cpp"
+#include "../tree_metadata.cpp"
 #include "game.hpp"
 
 Game::~Game() {}

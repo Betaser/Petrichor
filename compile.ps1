@@ -24,13 +24,13 @@ $warningFlags = "-Wall -Wextra -Werror -Wuninitialized -Wimplicit-fallthrough -W
 if ($staticLinking -eq "true") {
 	$lib = "./lib/"
 	$outFile = "./app.exe"
-	Invoke-Expression "$compiler main.cpp -o $outFile -O1 $warningFlags -fno-inline -fno-omit-frame-pointer -fno-stack-protector -pedantic -std=c++23 -DRAYLIB_STATIC -DGRAPHICS_API_OPENGL_33 -static -I ./include/ -L $lib -lraylib -lopengl32 -lgdi32 -lwinmm"
+	Invoke-Expression "$compiler ./include/globals/main.cpp -o $outFile -O1 $warningFlags -fno-inline -fno-omit-frame-pointer -fno-stack-protector -pedantic -std=c++23 -DRAYLIB_STATIC -DGRAPHICS_API_OPENGL_33 -static -I ./include/ -L $lib -lraylib -lopengl32 -lgdi32 -lwinmm"
 } 
 else {
 	$lib = "./lib/dynamic/"
 	$outFile = "./TryingToRun/app.exe"
 	Copy-Item -Path "./assets/*" -Destination "./TryingToRun/assets" -Recurse
-	Invoke-Expression "$compiler main.cpp -o $outFile -O1 $warningFlags -fno-stack-protector -pedantic -std=c++23 -g -fno-inline -fno-omit-frame-pointer -fsanitize=undefined -fsanitize=address -I ./include/ -L $lib -lraylib -lopengl32 -lgdi32 -lwinmm"
+	Invoke-Expression "$compiler ./include/globals/main.cpp -o $outFile -O1 $warningFlags -fno-stack-protector -pedantic -std=c++23 -g -fno-inline -fno-omit-frame-pointer -fsanitize=undefined -fsanitize=address -I ./include/ -L $lib -lraylib -lopengl32 -lgdi32 -lwinmm"
 }
 
 switch ($mode) {
@@ -50,6 +50,3 @@ switch ($mode) {
 		}
 	}
 }
-
-# Old:
-# Invoke-Expression "$compiler main.cpp -o $outFile -O1 -Wall -g -I ./include/ -L ./lib/ -lraylib -lopengl32 -lgdi32 -lwinmm";

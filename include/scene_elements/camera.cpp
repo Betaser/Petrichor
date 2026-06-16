@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "../globals/mylib.hpp"
 
 Cam Cam::clone() const {
     return {

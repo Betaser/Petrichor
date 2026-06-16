@@ -1,10 +1,9 @@
 // Only lives in game, hence no header file 
 #include <vector>
-#include <array>
 
-#include "game.hpp"
-#include "button.hpp"
-#include "states.cpp"
+#include "../globals/game.hpp"
+#include "../scene_elements/button.hpp"
+#include "../gamestates/states.cpp"
 
 struct PauseMenu {
 	struct Setting {

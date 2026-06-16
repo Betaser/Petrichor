@@ -8,7 +8,7 @@ struct Game;
 struct LevelEditor;
 struct Petra;
 
-#include "mylib.hpp"
+#include "../globals/mylib.hpp"
 
 struct Branch {
 	std::vector<Vector2> verts;
@@ -36,8 +36,15 @@ struct TrunkSegment {
 	const TrunkLayer bottom;
 };
 
+struct TrunkFace {
+	float depth = 0;
+	Vector2 position {};
+	float radius = 10;
+};
+
 struct TreeRenderData {
 	float finishing_alpha;
+	Vector4 rgb_tint;
 };
 
 struct Tree {
@@ -74,8 +81,11 @@ struct Tree {
 	std::vector<float> branch_twists;
 	Vector2 texture_pos {};
 	std::vector<std::vector<Branch>> tendrils;
-	// Trunk is not being rendered yet.
 	std::vector<TrunkSegment> trunk_segments;
+
+	// Current idea for trunk
+	std::vector<TrunkFace> trunk_faces;
+
 	// Hold onto tree_tex just to unload it.
 	TextureWithCheck blank_tex, tree_tex;
 

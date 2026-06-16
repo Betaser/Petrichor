@@ -1,11 +1,14 @@
 #ifndef LEVEL_H
 #define LEVEL_H
 
-#include <map>
 #include <functional>
+#include <map>
+#include <raylib.h>
 
-#include "petra.hpp"
-#include "camera.hpp"
+struct Tree;
+
+#include "../entities/petra.hpp"
+#include "../scene_elements/camera.hpp"
 
 struct Dome {
     Vector2 pos;

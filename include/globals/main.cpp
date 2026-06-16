@@ -13,14 +13,14 @@
 #include "mylib.cpp"
 #include "main.hpp"
 
-#include "level_editor.cpp"
-#include "tree.cpp"
-#include "button.cpp"
+#include "../gamestates/level_editor.cpp"
+#include "../entities/tree.cpp"
+#include "../scene_elements/button.cpp"
 #include "game.cpp"
-#include "petra.cpp"
-#include "pause_menu.cpp"
-#include "level.cpp"
-#include "camera.cpp"
+#include "../entities/petra.cpp"
+#include "../gamestates/pause_menu.cpp"
+#include "../gamestates/level.cpp"
+#include "../scene_elements/camera.cpp"
 
 // TODO: Reuse the same buffer of textures and just use DrawTextureEx with the scale option. Of course, I hope that works alongside the tree shader.
 // Or the dumb solution of making textures the size of the screen and just specifying a boundary as uniform
@@ -34,10 +34,11 @@
 #endif
 
 int main() {
+	// testing
 	SetTraceLogLevel(LOG_WARNING);
 
-	const int screen_width = 800;
-	const int screen_height = 600;
+	int screen_width = 800;
+	int screen_height = 600;
 	const int fps = 60;
 	InitWindow(screen_width, screen_height, "Petrichor");
 
@@ -55,7 +56,7 @@ int main() {
 		// Load tree tex once
 		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
 
-		LevelEditor level_editor;
+		LevelEditor level_editor(&screen_height);
 		auto metadata_zero = TreeMetadata::zero();
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 
@@ -67,10 +68,7 @@ int main() {
 			// Debugging
 			if (IsKeyPressed(KEY_L)) {
 				slow_down = !slow_down;
-				if (slow_down)
-					game.set_fps(5);
-				else
-					game.set_fps(fps);
+				game.set_fps(slow_down ? 5 : fps);
 			}
 
 			pause_menu.update();
@@ -80,8 +78,6 @@ int main() {
 					case PlayLevel: {
 						// Load in the trees
 						// Eventually, do something close to this but with metadatas for the level editor so progress can be saved in editing levels.
-						//
-						// THIS RUNS AND OBV WORKS
 						if (game.last_state == EditLevel) {
 							// But refill game.trees with our edit level contents.
 							for (auto& tree : game.trees)
@@ -96,71 +92,6 @@ int main() {
 											verts[j] = rotate(origin, verts[j], meta.rotation) + meta.offset;
 									}
 								});
-						}
-
-						if (game.last_state == EditLevel && false) {
-							// But refill game.trees with our edit level contents.
-							for (auto& tree : game.trees)
-								level_editor.saved_trees.emplace_back(std::move(tree));
-
-							game.trees.clear();
-							std::println("load in the trees");
-							std::string line;
-							std::ifstream file;
-							file.open(Constants::test_level_path);
-
-							float rotation;
-							Vector2 offset;
-							int seed;
-							float depth;
-
-							std::string name;
-							while (!file.eof()) {
-								std::getline(file, line);
-								const size_t separator_loc = line.find(":");
-
-								if (separator_loc == std::string_view::npos)
-									break;
-
-								name = line.substr(0, separator_loc);
-								const auto value = line.substr(separator_loc + 1);
-
-								if (name == "rotation") {
-									rotation = std::stof(value);
-								} 
-								else if (name == "offset") {
-									const size_t xy_sep = value.find(" ");
-									float x = std::stof(value.substr(0, xy_sep));
-									float y = std::stof(value.substr(xy_sep + 1));
-									offset = { x, y };
-								} 
-								else if (name == "seed") {
-									seed = std::stoi(value);
-								} 
-								else if (name == "depth") {
-									depth = std::stof(value);
-
-									game.make_tree();
-									auto& tree = game.trees.back();
-									tree->depth = depth;
-									tree->rand = Rand(seed);
-									tree->id = game.trees.size();
-									const Vector2 start_location { 100, 100 };
-									std::vector<std::vector<Branch>> tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
-									tree->branches = Tree::branches_from_tendrils(tendrils);
-									tree->tendrils = tendrils;
-									const Vector2 origin = tree->origin();
-									for (size_t i = 0; i < tree->branches.size(); i++) {
-										auto& verts = tree->branches[i].verts;
-										for (size_t j = 0; j < verts.size(); j++) {
-											verts[j] = rotate(origin, verts[j], rotation) + offset;
-										}
-									}
-
-									tree->update_texture();
-								}
-							}
-							file.close();
 						}
 
 						game.level.update(game);

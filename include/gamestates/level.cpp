@@ -1,9 +1,10 @@
 #include <algorithm>
-#include <ranges>
 #include <map>
+#include <print>
 
 #include "level.hpp"
-#include "mylib.hpp"
+#include "../globals/game.hpp"
+#include "../globals/mylib.hpp"
 
 static inline void walk_fn(const size_t branch_i, size_t& walk_i, std::vector<Vector4>& branch_tints, Tree& tree) {
 	Vector3 start_tint { 1, 0, 0 };
@@ -78,11 +79,11 @@ static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	const Vector2 solns[2] = { midpt + perp_out, midpt - perp_out };
 
 	const bool rhr_aligned = rhr_sign(a, b, circle.pos) == rhr_sign(a, solns[0], circle.pos);
-	const Vector2 b_new = rhr_aligned
+	const Vector2 b_solved = rhr_aligned
 		? solns[0]
 		: solns[1];
 	
-	const float theta = angle_from(b_new - a, b - a) * 
+	const float theta = angle_from(b_solved - a, b - a) * 
 		(rhr_aligned ? -1 : 1);
 
 	return theta;
@@ -95,6 +96,7 @@ static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle
 
 	const float sign = -rhr_sign(a, b, circle.pos);
 	const float ang = (bnew_angle - b_angle) * sign;
+
 	return ang;
 }
 

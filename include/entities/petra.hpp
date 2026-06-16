@@ -8,7 +8,7 @@
 struct Level;
 struct Game;
 
-#include "mylib.hpp"
+#include "../globals/mylib.hpp"
 #include "tree.hpp"
 
 struct Collision {

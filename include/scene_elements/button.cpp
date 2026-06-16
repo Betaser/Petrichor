@@ -1,4 +1,5 @@
-#include <iostream>
+#include <print>
+
 #include "button.hpp"
 
 Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text, 

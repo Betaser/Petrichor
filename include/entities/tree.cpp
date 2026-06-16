@@ -1,9 +1,10 @@
-#include <iostream>
 #include <cmath>
 #include <random>
+#include <print>
 
+#include "petra.hpp"
 #include "tree.hpp"
-#include "../main.hpp"
+#include "../globals/mylib.hpp"
 
 Branch::Branch(std::vector<Vector2> verts) {
 	this->verts = verts;
@@ -214,9 +215,18 @@ void Tree::send_vals_to_tendril_shader() {
 // ONLY FOR LEVEL EDITOR
 void Tree::level_editor_render(const TreeRenderData& data) {
 	send_vals_to_tendril_shader();
-	int finishing_alpha_loc = GetShaderLocation(tendril_shader, "finishing_alpha");
+
+	set_shader_value(tendril_shader, "finishingAlpha", &data.finishing_alpha, SHADER_UNIFORM_FLOAT);
+	// std::println("rgb_tint {} {} {} {}", blah.r, blah.g, blah.g, blah.a);
+	set_shader_value(tendril_shader, "rgbTint", &data.rgb_tint, SHADER_UNIFORM_VEC4);
+	/*
+	int loc1 = GetShaderLocation(tendril_shader, "finishingAlpha");
 	float finishing_alpha = data.finishing_alpha;
-	SetShaderValue(tendril_shader, finishing_alpha_loc, &finishing_alpha, SHADER_UNIFORM_FLOAT);
+	SetShaderValue(tendril_shader, loc1, &finishing_alpha, SHADER_UNIFORM_FLOAT);
+	int loc2 = GetShaderLocation(tendril_shader, "rgbTint");
+	Color blah = data.rgb_tint;
+	SetShaderValue(tendril_shader, loc2, &blah, SHADER_UNIFORM_VEC4);
+	*/
 
 	// Later TODO: Make a custom shader for level editor (which is here) cause showing a high level repr of each segment is very different.
 
@@ -237,7 +247,25 @@ void Tree::level_editor_render(const TreeRenderData& data) {
 		WHITE);
 	EndShaderMode();
 
+	BeginShaderMode(trunk_shader);
+	for (const auto& face : trunk_faces) {
+		DrawTexturePro(
+			blank_tex,
+			full_texture(blank_tex),
+			{
+				.x = face.position.x,
+				.y = face.position.y,
+				.width = face.radius * 2,
+				.height = face.radius * 2
+			},
+			{},
+			0,
+			WHITE);
+	}
+	EndShaderMode();
+
 	// Suppose we only render the top
+	/*
 	if (trunk_segments.size() > 0) {
 		auto trunk_layer = trunk_segments[0].top;
 		BeginShaderMode(trunk_shader);
@@ -255,6 +283,7 @@ void Tree::level_editor_render(const TreeRenderData& data) {
 			WHITE);
 		EndShaderMode();
 	}
+	*/
 }
 
 void Tree::render_to_target() {

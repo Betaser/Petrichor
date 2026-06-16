@@ -3,9 +3,6 @@
 
 #include <raylib.h>
 #include <vector>
-#include <iostream>
-
-#include "mylib.hpp"
 
 struct Cam {
     Vector2 pos {};
