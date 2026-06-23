@@ -2,23 +2,24 @@
 #define LEVEL_EDITOR_H
 
 #include <vector>
+#include <bitset>
 
 #include "../globals/game.hpp"
 #include "../scene_elements/button.hpp"
+#include "../scene_elements/ui_element_manager.cpp"
 #include "tree_metadata.cpp"
 
 struct LevelEditor : public Button::Owner {
 	std::vector<std::unique_ptr<Tree>> saved_trees;
-	std::vector<Button> buttons;
-	Button* debug_button;
+	UiElementManager ui_elem_manager;
+	std::map<size_t, std::string> tree_to_managed_buttons;
 	std::vector<TreeMetadata> tree_metadatas;
 	size_t selected_index = 0;
 	std::vector<size_t> deleted_tree_ids;
 	TextureWithCheck selected_tex;
 	Vector2 selection_offset {};
+	bool ui_hovered = false;
 	float time = 0;
-	bool using_depth_ui = false;
-	bool using_view_selector = false;
 
 	struct DepthUi {
 		const float WIDTH = 30;
@@ -26,12 +27,12 @@ struct LevelEditor : public Button::Owner {
 		const float MAX_DEPTH = 100;
 		float height = -9999;
 		Vector2 top_left { -9999, -9999 };
-		float y_pos = -9999;
 		const Color BACKGROUND_COLOR { 0, 0, 30, 255 };
 		const int MARK_SPACING = -5;
 		const int MARK_HEIGHT = 5;
 		const Color MARK_COLOR { 255, 255, 200, 255 };
 	};
+
 	DepthUi depth_ui;
 
 	// Let's see if enum non-class is enough
@@ -44,12 +45,9 @@ struct LevelEditor : public Button::Owner {
 		FocusTreeView,
 		SIZE,
 	};
-	static constexpr std::array<const std::string, SIZE> view_names {
-		"Highlight Selections",
-		"Camera Panning",
-		"Focus Selections",
-	};
-	std::array<View, SIZE> views;
+
+	static std::array<std::string, SIZE> view_names;
+	std::bitset<SIZE> views_active { 0 };
 
 	// Bottom left view selector
 	struct ViewSelector {
@@ -71,65 +69,33 @@ struct LevelEditor : public Button::Owner {
 		// Orange
 		Color view_color { .r = 240, .g = 178, .b = 10, .a = 100 };
 
-		int calc_font_size() const {
-			// ???
-			return 15;
-		}
-
-		void iterate_views(std::function<void(const View, Rectangle dims)> func) const {
-			for (int i = 0; i < SIZE; i++) {
-				const float view_delta_y = (float) i * (view_top_padding + view_height);
-				const Rectangle dims {
-					.x = left_padding + view_left_padding,
-					.y = (float) *screen_height - btm_padding - height + view_top_padding + view_delta_y,
-					.width = view_width,
-					.height = view_height
-				};
-				func((View) i, dims);
-			}
-		}
-
-		Rectangle bounds() const {
-			const float posX = left_padding;
-			// Background
-			const float posY = (float) *screen_height - btm_padding - height;
-			return { posX, posY, width, height };
-		}
-
-		void render() const {
-			DrawRectangleRounded(bounds(), roundness, 1, background_color);
-
-			// Views
-			iterate_views([this](auto view, auto dims) {
-				DrawRectangleRounded(
-					dims,
-					0.4,
-					1,
-					view_color);
-				const int font_size = calc_font_size();
-				const std::string text = view_names[(int) view];
-				DrawText(text.c_str(), (int) dims.x, (int) dims.y, font_size, font_color);
-				});
-		}
+		void update();
+		int calc_font_size() const;
+		void iterate_views(std::function<void(const View, Rectangle dims)> func) const;
+		Rectangle bounds() const;
+		void render() const;
 	};
+
 	ViewSelector view_selector;
 
-	LevelEditor(int* scren_height);
+	LevelEditor(Game& game);
 	~LevelEditor();
 
+	void reinit(Game& game);
 	// if not sure about tree_maker, use game.make_tree();
 	void make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata);
-	void initialize_ui();
+	void initialize_ui(const int screen_width);
 	void randomize_tendrils(Game& game, size_t tree_index);
 	void update_selected_verts(Game& game);
 	void init_selection_texture();
 	void update(Game& game);
 	void render(Game& game) const;
-	void invalidate_selected_index(Game& game);
+	void invalidate_selected_index();
 
 	void duplicate_selected_tendril(Game& game);
 
 	private:
+	std::string debug_btn_str;
 	bool show_instructions = false;
 	Vector2 select_extra_bounds { 10, 10 };
 	ShaderWithCheck select_shader;
@@ -138,13 +104,15 @@ struct LevelEditor : public Button::Owner {
 	float max_cam_depth;
 	bool focus_on_selected = false;
 
-	// Does a full recalculation for every tree, but eh.
-	Rectangle update_tree_for_depth_ui(Game& game, Tree& tree);
 	void render_depth_ui(size_t selected_id) const;
 	void render_cam_depth(Game& game) const;
-	bool is_selecting(Game& game) const;
 	void adjust_cam_depth(Game& game);
 	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
+
+	bool is_selecting(Game& game) const;
+	// Does a full recalculation for every tree, but eh.
+	Rectangle update_tree_for_depth_ui(Game& game, Tree& tree);
+	Button* make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id);
 };
 
 #endif

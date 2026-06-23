@@ -56,7 +56,7 @@ int main() {
 		// Load tree tex once
 		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
 
-		LevelEditor level_editor(&screen_height);
+		LevelEditor level_editor(game);
 		auto metadata_zero = TreeMetadata::zero();
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 
@@ -107,20 +107,19 @@ int main() {
 								game.trees.emplace_back(std::move(tree));
 							level_editor.saved_trees.clear();
 
-							level_editor.time = 0;
+							level_editor.reinit(game);
+
+							// level_editor.time = 0;
 							/*
 							level_editor.deleted_tree_ids.clear();
 							level_editor.tree_metadatas.clear();
 							level_editor.using_depth_ui = false;
 							level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 							*/
-							level_editor.invalidate_selected_index(game);
+							// level_editor.invalidate_selected_index(game);
 						}
-						level_editor.update(game);
 
-						const Vector2 mouse = GetMousePosition();
-						for (auto& button : level_editor.buttons) 
-							button.take_input(mouse);
+						level_editor.update(game);
 					}
 					break;
 					case Credits: break;
@@ -139,9 +138,6 @@ int main() {
 				break;
 				case EditLevel: {
 					level_editor.render(game);
-
-					for (const auto& button : level_editor.buttons)
-						button.render();
 				}
 				break;
 				case Credits: break;

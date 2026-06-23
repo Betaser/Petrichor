@@ -328,7 +328,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 	std::uniform_real_distribution<> uniform_gen(0.0, 1.0);
 	float length_used = 0;
 
-	const auto& length_calc = [this, &total_length, &length_used](std::vector<Branch> subtendril) -> float {
+	const auto& length_calc = [&](std::vector<Branch> subtendril) -> float {
 		(void) subtendril;
 		// for now just go with it being independent of tendril.
 		float rand_length = rand.gen(total_length * 0.04, total_length * 0.13);
@@ -337,7 +337,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 	};
 
 	// Redo so that we follow a straight line given by another parameter; which will be determined by analyizing all tendrils and pathing towards a location that spreads out best.
-	const auto& angle_calc = [this, &length_used, &total_length](float aim, std::vector<Branch> subtendril) -> float {
+	const auto& angle_calc = [&](float aim, std::vector<Branch> subtendril) -> float {
 		// We gotta make sure the tree angles its branches kinda in a straight line.
 		if (subtendril.size() > 1) {
 			float sign = rand.gen(0.0, 1.0) < 0.5 ? -1 : 1;
@@ -358,7 +358,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 		return rand.gen(0.5, 0.9) * rand.gen(0.0, 1.0) < 0.5 ? 1 : -1;
 	};
 
-	const auto& thickness_calc = [this, &length_used, &total_length](std::vector<Branch> subtendril) -> float {
+	const auto& thickness_calc = [&](std::vector<Branch> subtendril) -> float {
 		// for now just randomize it but taper to MIN based on length_used
 		float end_norm = 0.95 - length_used / total_length;
 		const auto& last_branch = subtendril.back();
@@ -378,7 +378,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 
 	const float SPAWN_END_RATIO = 0.9;
 
-	const auto& make_branch_from = [&make_branch, &length_calc, &angle_calc, &thickness_calc, &SPAWN_END_RATIO](std::vector<Branch> tendril, Branch branch) -> Branch {
+	const auto& make_branch_from = [&](std::vector<Branch> tendril, Branch branch) -> Branch {
 		const Vector2 forward = branch.forward();
 		const float forward_angle = angle(forward);
 

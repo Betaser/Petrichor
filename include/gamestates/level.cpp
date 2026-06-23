@@ -89,7 +89,7 @@ static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle
 	return theta;
 }
 
-static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle) {
+static float line_angle(Vector2 a, Vector2 b, const Circle& circle) {
 	const float opp_over_hyp = circle.radius / length(circle.pos - a);
 	const float bnew_angle = asin(opp_over_hyp);
 	const float b_angle = angle_from(b - a, circle.pos - a);
@@ -101,7 +101,7 @@ static float line_angle(const Vector2& a, const Vector2& b, const Circle& circle
 }
 
 // THIS IS ANTI-MATHWISE I THINK?
-void rotate_all(const size_t branch_i, const float amt, const Vector2 origin, Tree& tree) {
+static void rotate_all(const size_t branch_i, const float amt, Vector2 origin, Tree& tree) {
 	if (isnan(amt))
 		return;
 

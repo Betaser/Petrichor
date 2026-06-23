@@ -3,8 +3,9 @@
 
 #include <string>
 #include <random>
-#include <raylib.h>
 #include <array>
+#include <tuple>
+#include <raylib.h>
 
 // Typedef it with shader if we are sure there's no issues
 struct ShaderWithCheck : Shader {
@@ -91,7 +92,12 @@ bool is_overlap(const Rectangle& r1, const Rectangle& r2);
 Rectangle full_texture(const Texture2D& tex);
 Color mix(const Color& a, const Color& b, const float amt);
 Color with_alpha(const Color& c, const float alpha);
-void set_shader_value(ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type); 
+void set_shader_value(const ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type); 
+Rectangle to_rect(const Vector2& pos, const Vector2& dims);
+struct PosDims {
+	Vector2 pos, dims;
+};
+PosDims to_pos_dims(const Rectangle& rect);
 
 // Math, non vector
 float snap(const float f, const float by);

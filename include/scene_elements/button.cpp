@@ -2,76 +2,98 @@
 
 #include "button.hpp"
 
-Button::Button(Button::Owner* owner, Vector2 pos, Vector2 dim, std::string text, 
+int Button::debug_count = 0;
+
+Button::Button(Button::Owner* owner, Rectangle bounds, const std::string& text, 
 	std::function<void(Button&)> on_hover,
-	std::function<void(Button&)> on_hit,
+	std::function<void(Button&)> on_pressed,
 	Color background_color,
 	Color text_color) {
-	state.hovered = false;
+	hovered = false;
+	color = background_color;
 	state.last_hit = false;
 	state.hit = false;
 	state.owner = owner;
 	
-	std::println("created button");
-	state.pos = pos;
-	state.dim = dim;
+	debug_id = debug_count++;
+	std::println("created button #{}", debug_id);
+	this->bounds = bounds;
 	state.text = text;
 	this->on_hover = on_hover;
-	this->on_hit = on_hit;
+	this->on_pressed = on_pressed;
 
 	// Default values
-	state.background_color = background_color;
 	state.text_color = text_color;
 
-	idle_state = state;
+idle_state = state;
+
+	render_fn = [](const UiElement* ui_element) {
+		const auto& self = *dynamic_cast<const Button*>(ui_element);
+		const auto [pos, dims] = to_pos_dims(self.bounds);
+		const auto& text = self.state.text;
+		const auto& text_color = self.state.text_color;
+
+		const auto c = self.hovered
+			? ColorLerp(self.color, BLACK, 0.4)
+			: self.color;
+
+		DrawRectangle(pos.x, pos.y, dims.x, dims.y, c);
+		DrawText(text.c_str(), pos.x, pos.y, 20, text_color);
+	};
 }
 
 Button::~Button() {
-	std::println("deinit button");
+	std::println("deinit button #{}", debug_id);
 }
 
 void Button::take_input(Vector2 cursor) {
-	auto& pos = state.pos;
-	auto& hit = state.hit;
-	auto& last_hit = state.last_hit;
-	auto& dim = state.dim;
-	auto& hovered = state.hovered;
-
-	bool horz = pos.x < cursor.x && cursor.x < pos.x + dim.x;
-	bool vert = pos.y < cursor.y && cursor.y < pos.y + dim.y;
-	bool new_hovered = horz && vert;
-
-	if (new_hovered && !hovered) {
-		// Save idle state, aka this state
-		std::println("copy constructor button");
-		idle_state = state;
-		on_hover(*this);
-	}
-	if (hit && !last_hit) {
-		on_hit(*this);
-		hit = false;
-	}
-	if (!new_hovered && hovered) {
-		state = idle_state;
-	}
-
-	hovered = new_hovered;
-	last_hit = hit;
+	state.last_hovered = hovered;
+	UiElement::take_input(cursor);
 }
 
-void Button::render() const {
-	auto& background_color = state.background_color;
-	auto& hovered = state.hovered;
-	auto& dim = state.dim;
-	auto& pos = state.pos;
-	auto& text = state.text;
-	auto& text_color = state.text_color;
+void Button::update() {
+	auto& hit = state.hit;
+	auto& last_hit = state.last_hit;
+	auto& last_hovered = state.last_hovered;
 
-	auto color = background_color;
-	if (hovered) {
-		color = ColorLerp(background_color, BLACK, 0.4);
+	// Run this first, since on_pressed could adjust hovered.
+	if (state.pressed) {
+		// Then the click has occured.
+		on_pressed(*this);
 	}
-	DrawRectangle(pos.x, pos.y, dim.x, dim.y, color);
 
-	DrawText(text.c_str(), pos.x, pos.y, 20, text_color);
+	// We need to go through a hover state with no click and then a hover state with click to switch to pressed.
+
+	// Update queued state.
+
+	if (!last_hovered && hovered) {
+		// Save idle state, aka this state
+		on_hover(*this);
+
+		if (!state.hit) {
+			auto tmp = idle_state;
+			idle_state = state;
+			state = tmp;
+		}
+	}
+
+	if (hit && !last_hit && hovered && last_hovered)
+		state.pressed = true;
+
+	if (!hit)
+		state.pressed = false;
+
+	// What?
+	last_hit = hit;
+	hit = false;
+
+	if (last_hovered && !hovered && !state.pressed) {
+		auto tmp = idle_state;
+		idle_state = state;
+		state = tmp;
+	}
+}
+
+bool Button::in_use() const {
+	return hovered || state.pressed;
 }

@@ -9,17 +9,26 @@ struct TreeMetadata {
 	// std::vector<Branch> branches;
 	Vector2 offset {};
 	float rotation = 0;
-	Rectangle mark {};
+	// Rectangle mark {};
 
 	static TreeMetadata zero() {
 		return {};
 	}
-	TreeMetadata(float rotation, Vector2 offset, Rectangle mark) {
+	TreeMetadata(float rotation, Vector2 offset) {
 		std::println("init tree metadata");
 		this->rotation = rotation;
 		this->offset = offset;
-		this->mark = mark;
 	}
+
+	/*
+	TreeMetadata(float rotation, Vector2 offset, Rectangle mark) {
+		(void) mark;
+		std::println("init tree metadata");
+		this->rotation = rotation;
+		this->offset = offset;
+		// this->mark = mark;
+	}
+	*/
 
 	~TreeMetadata() {
 		std::println("deinit tree metadata");

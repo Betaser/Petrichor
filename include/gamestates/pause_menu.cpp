@@ -15,8 +15,9 @@ struct PauseMenu {
 			(void) owner;
 		};
 	};
+
 	// Instead of a shader, just render a plain background
-	std::vector<Button> buttons;
+	std::vector<std::unique_ptr<Button>> buttons;
 	std::vector<Setting> settings;
 	const float HORZ_SPACING = 50;
 	const float BUTTON_WIDTH = 130;
@@ -27,15 +28,14 @@ struct PauseMenu {
 	private:
 	void make_button(Vector2 pos, Setting& setting, Game& game) {
 		// Can we leverage emplace_back to construct button in-place in the vector?
-		buttons.emplace_back(Button(
+		buttons.push_back(std::unique_ptr<Button>(new Button(
 			setting.owner,
-			pos,
-			{ BUTTON_WIDTH, BUTTON_HEIGHT },
+			to_rect(pos, { BUTTON_WIDTH, BUTTON_HEIGHT }),
 			setting.text,
 			[](Button& self) {
-				self.state.background_color = ColorLerp(self.state.background_color, { 50, 0, 50, 255 }, 0.4);
+				self.color = ColorLerp(self.color, { 50, 0, 50, 255 }, 0.4);
 			},
-			[this, &game, &setting](Button& self) {
+			[&](Button& self) {
 				setting.immediate_on_press(self.state.owner);
 
 				game.state = setting.state;
@@ -43,7 +43,7 @@ struct PauseMenu {
 			},
 			setting.background_color,
 			WHITE
-		));
+		)));
 	}
 
 	public:
@@ -55,11 +55,6 @@ struct PauseMenu {
 				"Play", 
 				light_blue, 
 				PlayLevel, 
-				[](Button::Owner* o) {
-					(void) o;
-					// auto owner = dynamic_cast<LevelEditor*>(o);
-					// owner->invalidate_selected_index(game);
-				}
 			},
 			{ 
 				nullptr, 
@@ -89,10 +84,11 @@ struct PauseMenu {
 		if (active) {
 			const Vector2 cursor = GetMousePosition();
 			for (auto& button : buttons) {
-				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && button.state.hovered)
-					button.state.hit = true;
+				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && button->hovered)
+					button->state.hit = true;
 
-				button.take_input(cursor);
+				button->take_input(cursor);
+				button->update();
 			}
 		}
 	}
@@ -105,6 +101,6 @@ struct PauseMenu {
 		DrawRectangle(0, 0, screen_width, screen_height, background_color);
 
 		for (const auto& button : buttons)
-			button.render();
+			button->render_fn(button.get());
 	}
 };

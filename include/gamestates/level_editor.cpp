@@ -9,22 +9,43 @@
 #include "level_editor.hpp"
 #include "../globals/constants.cpp"
 #include "tree_metadata.cpp"
+#include "../scene_elements/region.cpp"
 
-LevelEditor::LevelEditor(int* screen_height) {
-	debug_button = nullptr;
-	show_instructions = false;
+std::array<std::string, LevelEditor::SIZE> LevelEditor::view_names = {
+	"Highlight Selections",
+	"Camera Panning",
+	"Focus Selections",
+};
+
+LevelEditor::LevelEditor(Game& game) {
 	std::println("init level editor");
-	time = 0;
-	selected_index = 0;
-	using_depth_ui = false;
 
-	for (int i = 0; i < SIZE; i++)
-		views[i] = (View) i;
-	view_selector.screen_height = screen_height;
+	view_selector.screen_height = &game.screen_height;
 
-	load_shader(select_shader, "assets/select.fs");
 	init_selection_texture();
-	initialize_ui();
+	load_shader(select_shader, "assets/select.fs");
+	reinit(game);
+}
+
+void LevelEditor::reinit(Game& game) {
+	ui_elem_manager.names.clear();
+	ui_elem_manager.named_elements.clear();
+	tree_to_managed_buttons.clear();
+
+	depth_ui.height = (float) game.screen_height - 2 * depth_ui.SPACING;
+	depth_ui.top_left = {
+		(float) game.screen_width - depth_ui.WIDTH - depth_ui.SPACING,
+		depth_ui.SPACING
+	};
+
+	show_instructions = false;
+	std::println("reinit level editor");
+	ui_hovered = false;
+	time = 0;
+
+	invalidate_selected_index();
+	initialize_ui(game.screen_width);
+	std::println("selected index IS {}", selected_index);
 }
 
 LevelEditor::~LevelEditor() {
@@ -35,10 +56,97 @@ LevelEditor::~LevelEditor() {
 	std::println("selected_tex w/ id {} loads/unloads {}", selected_tex.id, selected_tex.load_unloads);
 }
 
+typedef LevelEditor::ViewSelector ViewSelector;
+
+void ViewSelector::update() {
+}
+
+Rectangle ViewSelector::bounds() const {
+	const float posX = left_padding;
+	// Background
+	const float posY = (float) *screen_height - btm_padding - height;
+	return { posX, posY, width, height };
+}
+
+int ViewSelector::calc_font_size() const {
+	// ???
+	return 15;
+}
+
+void ViewSelector::iterate_views(std::function<void(const LevelEditor::View, Rectangle dims)> func) const {
+	for (int i = 0; i < LevelEditor::SIZE; i++) {
+		const float view_delta_y = (float) i * (view_top_padding + view_height);
+		const Rectangle dims {
+			.x = left_padding + view_left_padding,
+			.y = (float) *screen_height - btm_padding - height + view_top_padding + view_delta_y,
+			.width = view_width,
+			.height = view_height
+		};
+		func((View) i, dims);
+	}
+}
+
+void ViewSelector::render() const {
+	DrawRectangleRounded(bounds(), roundness, 1, background_color);
+
+	// Views
+	iterate_views([this](auto view, auto dims) {
+		DrawRectangleRounded(
+			dims,
+			0.4,
+			1,
+			view_color);
+		const int font_size = calc_font_size();
+		const std::string text = view_names[(int) view];
+		DrawText(text.c_str(), (int) dims.x, (int) dims.y, font_size, font_color);
+		});
+}
+
+Button* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id) {
+	auto depth_btn = new Button(
+		nullptr,
+		depth_rect,
+		"",
+		[](auto& _) {},
+		[&](auto& self) {
+			if (!is_selecting(game))
+				return;
+
+			const float MAX_DEPTH = 100;
+			const float cursor_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(depth_ui.SPACING, GetMousePosition().y));
+			auto& selected = game.trees[selected_index];
+			selected->depth = (cursor_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
+			self.bounds = update_tree_for_depth_ui(game, *selected);
+		},
+		ORANGE);
+
+	depth_btn->render_fn = [&, tree_id](auto ui_element) {
+		const auto& self = *dynamic_cast<const Button*>(ui_element);
+		Color color = depth_ui.MARK_COLOR;
+		if (is_selecting(game)) {
+			const size_t selected_id = game.trees[selected_index]->id;
+			if (tree_id == selected_id)
+				color = ColorLerp(self.color, depth_ui.MARK_COLOR, 0.7);
+		}
+		if (self.in_use())
+			color = ColorLerp(color, { 0, 90, 150, 170 }, 0.5);
+		
+		Rectangle render_bounds {
+			self.bounds.x,
+			self.bounds.y + 4,
+			self.bounds.width,
+			self.bounds.height - 8
+		};
+		DrawRectangle((int) render_bounds.x, (int) render_bounds.y, (int) render_bounds.width, (int) render_bounds.height, color);
+	};
+
+	return depth_btn;
+}
+
 void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata) {
 	tree_maker();
 	auto& tree = *game.trees.back();
-	// std::println("make tree w/ id {}", tree.id);
+	std::println("make tree w/ id {}", tree.id);
 
 	bool ids_available = !deleted_tree_ids.empty();
 	if (ids_available) {
@@ -47,13 +155,17 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 		tree.id = popped_id;
 	}
 
-	TreeMetadata temp(metadata.rotation, metadata.offset, update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]));
+	const auto& depth_rect = update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]);
+	TreeMetadata temp(metadata.rotation, metadata.offset);
 	if (ids_available)
 		tree_metadatas[tree.id] = temp;
 	else
 		tree_metadatas.push_back(temp);
 
-	randomize_tendrils(game, game.trees.size() - 1);
+	const size_t selected_copy = selected_index;
+	selected_index = game.trees.size() - 1;
+	randomize_tendrils(game, selected_index);
+	selected_index = selected_copy;
 
 	// Now we're gonna add the trunk.
 	TrunkSegment segment {
@@ -69,7 +181,6 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 		}
 	};
 	tree.trunk_segments.push_back(segment);
-
 	
 	std::vector<TrunkFace> example_faces {
 		{
@@ -85,25 +196,80 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 	};
 	for (auto& face : example_faces)
 		tree.trunk_faces.push_back(face);
+
+	// Create the depth editing button
+
+	const size_t tree_id = tree.id;
+	auto depth_btn = make_depth_button(depth_rect, game, tree_id);
+
+	std::string name = ui_elem_manager.add(std::unique_ptr<UiElement>(depth_btn), "depth_btn");
+	tree_to_managed_buttons[tree.id] = name;
 }
 
-void LevelEditor::initialize_ui() {
-	buttons.clear();
-	int screenWidth = 800;
-	auto debug_btn = Button(
+void LevelEditor::initialize_ui(const int screen_width) {
+	auto debug_btn = new Button(
 		this,
-		{ (float) screenWidth - 190, 110 }, 
-		{ 80, 80 }, 
+		to_rect({ (float) screen_width - 190, 110 }, { 80, 80 }),
 		"Show debug keybinds",
-		[](Button& b) {
-			b.state.text = "Press me to toggle instructions";
+		[](auto& b) {
+			b.idle_state.text = "Press me to toggle instructions";
 		},
-		[](Button& b) {
+		[](auto& b) {
 			auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
 			owner->show_instructions = !owner->show_instructions;
 		});
-	buttons.emplace_back(debug_btn);
-	debug_button = &buttons[0];
+	debug_btn_str = ui_elem_manager.add(std::unique_ptr<UiElement>(debug_btn), "debug_btn");
+
+	struct MyState : Region::State {
+		float last_hovered_time;
+		Color hover_color;
+		MyState(float last_hovered_time, Color hover_color) {
+			this->last_hovered_time = last_hovered_time;
+			this->hover_color = hover_color;
+		}
+	};
+	auto depth_ui_region = new Region(
+		to_rect(depth_ui.top_left, { depth_ui.WIDTH, depth_ui.height }),
+		[&](auto& self) {
+			auto state = dynamic_cast<MyState*>(self.state.get());
+			if (!state->last_hovered)
+				state->last_hovered_time = time;
+
+			float t = std::max(std::min(1.0, (time - state->last_hovered_time) / 1.2), 0.0);
+			// std::println("okay, t {}", t);
+			ColorLerp(self.color, state->hover_color, t);
+		},
+		std::make_unique<MyState>(-999, RED),
+		std::make_unique<MyState>(-999, depth_ui.BACKGROUND_COLOR),
+		depth_ui.BACKGROUND_COLOR);
+
+	depth_ui_region->render_fn = [](auto self) {
+		Color c = self->hovered
+			? with_alpha(self->color, 1)
+			: self->color;
+		DrawRectangleRec(self->bounds, c);
+	};
+
+	/*
+	auto depth_ui_region = new Button(
+		nullptr,
+		to_rect(depth_ui.top_left, { depth_ui.WIDTH, depth_ui.height }),
+		"",
+		// Generalize this UiElement as a Region to have state for transition animation
+		[&](auto _) {},
+		[&](auto _) {},
+		depth_ui.BACKGROUND_COLOR,
+		BLANK);
+
+	depth_ui_region->render_fn = [](auto self) {
+		Color c = self->hovered
+			? with_alpha(self->color, 1)
+			: self->color;
+		DrawRectangleRec(self->bounds, c);
+	};
+	*/
+
+	ui_elem_manager.add(std::unique_ptr<UiElement>(depth_ui_region), "depth_ui_region");
 }
 
 void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
@@ -116,7 +282,7 @@ void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 	tree->tendrils = tendrils;
 
 	const auto& meta = tree_metadatas[tree->id];
-	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset, meta.mark);
+	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset);
 	tree->on_updated_branch();
 
 	update_selected_verts(game);
@@ -127,7 +293,6 @@ void LevelEditor::randomize_tendrils(Game& game, size_t tree_index) {
 void LevelEditor::update_selected_verts(Game& game) {
 	auto& tree = game.trees[selected_index];
 	auto& meta = tree_metadatas[tree->id];
-	// std::println("meta branch origin {}", to_str(branches[0].back(), 2));
 
 	const auto& branches = tree->original_branches;
 
@@ -156,9 +321,9 @@ void LevelEditor::init_selection_texture() {
 void LevelEditor::update(Game& game) {
 	time += GetFrameTime();
 
-	const bool selecting = is_selecting(game);
-
 	const auto mouse_pos = GetMousePosition();
+	auto ui_elem_manager_view = ui_elem_manager.update(mouse_pos);
+
 	// Right click to select, chooses closest tree
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
 		float shortest = INFINITY;
@@ -166,6 +331,9 @@ void LevelEditor::update(Game& game) {
 			const auto& tree = game.trees[i];
 			Vector2 small, big;
 			tree->bounding_box(small, big);
+			if (!pt_in_rect(mouse_pos, { small.x, small.y, big.x - small.x, big.y - small.y }))
+				continue;
+
 			auto mid = (small + big) / 2;
 			float dist = length(mid - mouse_pos);
 			if (dist < shortest) {
@@ -173,22 +341,33 @@ void LevelEditor::update(Game& game) {
 				shortest = dist;
 			}
 		}
+
+		if (shortest == INFINITY)
+			invalidate_selected_index();
+		std::println("selected_index is {}", selected_index);
 	}
 
-	// Yes, let's eventually move this button checking bounds to a designated class
-	const bool using_debug_btn_ui = debug_button->state.hovered;
+	const bool selecting = is_selecting(game);
+
+	auto debug_button = ui_elem_manager.get<Button>(debug_btn_str);
 	
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		if (using_debug_btn_ui)
+		if (debug_button->hovered) {
 			debug_button->state.hit = true;
-
-		// Check if we are hovering over the view_selector
-		using_view_selector = pt_in_rect(mouse_pos, view_selector.bounds());
+		}
 	}
 
-	bool using_ui = using_depth_ui | using_view_selector;
-	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-		using_ui |= using_debug_btn_ui;
+	// Yeah this looks weird but we use hit + hovered to do logic.
+	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+		if (is_selecting(game)) {
+			auto depth_button = ui_elem_manager.get<Button>(tree_to_managed_buttons[selected_index]);
+			depth_button->state.hit = true;
+		}
+	}
+
+	const bool last_ui_hovered = ui_hovered;
+	ui_hovered = ui_elem_manager_view.any_hovered();	
+	const bool using_ui = ui_elem_manager_view.any_in_use();
 
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
 		std::println("Save trees to {}", Constants::test_level_path);
@@ -204,11 +383,20 @@ void LevelEditor::update(Game& game) {
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_O)) {
 		// And, metadatas are zeroed out.
 		tree_metadatas.clear();
+		for (const auto& [_, name] : tree_to_managed_buttons)
+			ui_elem_manager.remove(name);
+
+		tree_to_managed_buttons.clear();
+
 		std::println("Load file {}", Constants::test_level2_path);
 		game.load_trees(
 			Constants::test_level2_path, 
 			[&](TreeMetadata& meta, Tree& tree) {
-				meta.mark = update_tree_for_depth_ui(game, tree);
+				// meta.mark = update_tree_for_depth_ui(game, tree);
+				auto depth_rect = update_tree_for_depth_ui(game, tree);
+				auto button = make_depth_button(depth_rect, game, tree.id);
+				const auto name = ui_elem_manager.add(std::unique_ptr<Button>(button), "depth_btn");
+				tree_to_managed_buttons[tree.id] = name;
 				tree_metadatas.push_back(meta);	
 			});
 
@@ -217,7 +405,7 @@ void LevelEditor::update(Game& game) {
 			update_selected_verts(game);
 			game.trees[i]->update_texture();
 		}
-		invalidate_selected_index(game);
+		invalidate_selected_index();
 
 		return;
 	}
@@ -230,16 +418,20 @@ void LevelEditor::update(Game& game) {
 		if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
 			focus_on_selected = !focus_on_selected;
 
-		if (!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-			selection_offset = GetMousePosition() - meta.offset;
+		if ((!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+		 || (last_ui_hovered != ui_hovered))
+			selection_offset = mouse_pos - meta.offset;
+
+		if (!last_ui_hovered && ui_hovered)
+			std::println("selection offset {}", to_str(selection_offset, 2));
 
 		// Debug testing
 		if (IsKeyPressed(KEY_Q)) {
 			// Delete all but the first tree
 			const size_t selected_id = selected->id;
 			game.trees.erase(game.trees.begin() + 1, game.trees.end());
-			deleted_tree_ids.emplace_back(selected_id);
-			invalidate_selected_index(game);
+			deleted_tree_ids.push_back(selected_id);
+			invalidate_selected_index();
 			return;
 		}
 
@@ -248,38 +440,16 @@ void LevelEditor::update(Game& game) {
 			const size_t selected_id = selected->id;
 			// Make sure to extract everything you need from selected BEFORE erasing it
 			game.trees.erase(game.trees.begin() + selected_index);
-			deleted_tree_ids.emplace_back(selected_id);
+			auto name = tree_to_managed_buttons[selected_index];
+			ui_elem_manager.remove(name);
+
+			deleted_tree_ids.push_back(selected_id);
 
 			// Do NOT delete tree_metadatas, it gets reused.
-			invalidate_selected_index(game);
+			invalidate_selected_index();
 
 			std::println("deleted {}", selected_id);
 			return;
-		}
-
-		// Change depth, by clicking close enough to the mark and moving your mouse while holding click
-		if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-			Rectangle r = meta.mark;
-			// Grow r a bit
-			float margin = 5;
-			r.x -= margin;
-			r.y -= margin;
-			r.width += 2 * margin;
-			r.height += 2 * margin;
-			if (pt_in_rect(GetMousePosition(), r))
-				using_depth_ui = true;
-		} 
-		else
-			using_depth_ui = false;
-
-		if (using_depth_ui) {
-			// Then make depth move to your mouse, and call update
-			// I suppose we make the depth go from 0 at the top to like 100 at the bottom?
-			const float MAX_DEPTH = 100;
-			const float clamped_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(depth_ui.SPACING, GetMousePosition().y));
-			selected->depth = (clamped_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
-
-			meta.mark = update_tree_for_depth_ui(game, *game.trees[selected_index]);
 		}
 
 		// Duplicate. Means we copy over metadata
@@ -311,7 +481,7 @@ void LevelEditor::update(Game& game) {
 
 		// offset
 		if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-			meta.offset = GetMousePosition() - selection_offset;
+			meta.offset = mouse_pos - selection_offset;
 
 			update_selected_verts(game);
 			// just translate it instead of reloading shaders.
@@ -323,7 +493,7 @@ void LevelEditor::update(Game& game) {
 		}
 	}
 
-	// New idea: mouse scroll wheel to control depth
+	// Use mouse scroll wheel to control depth
 	adjust_cam_depth(game);
 }
 
@@ -345,7 +515,7 @@ void LevelEditor::render(Game& game) const {
 		if (tree_view) {
 			// wanes with time staying in tree_view.
 			float tree_view_wane = 1.0;
-			// balsdhfiah
+			// looks kinda ugly, meh.
 			rgb_tint = {
 				.x = 1.0,
 				.y = 0.2,
@@ -361,18 +531,17 @@ void LevelEditor::render(Game& game) const {
 	}
 
 	if (is_selecting(game)) {
-		int loc = GetShaderLocation(select_shader, "time");
-		SetShaderValue(select_shader, loc, &time, SHADER_UNIFORM_FLOAT);
+		set_shader_value(select_shader, "time", &time, SHADER_UNIFORM_FLOAT);
 
 		auto& tree = game.trees[selected_index];
+
 		Vector2 pos { tree->texture_pos - select_extra_bounds / 2 };
 		Vector2 small, big;
 		tree->bounding_box(small, big);
 		auto dims = big - small + select_extra_bounds;
-
-		int dims_loc = GetShaderLocation(select_shader, "dims");
 		auto dims_i = Vector2I(dims);
-		SetShaderValue(select_shader, dims_loc, &dims_i, SHADER_UNIFORM_IVEC2);
+
+		set_shader_value(select_shader, "dims", &dims_i, SHADER_UNIFORM_IVEC2);
 
 		BeginShaderMode(select_shader);
 		DrawTexturePro(
@@ -419,23 +588,16 @@ void LevelEditor::render(Game& game) const {
 		DrawText(s_str.c_str(), 400 - text_size / 2, 80, font_size, { 255, 70, 70, opacity });
 	}
 
-	size_t id = is_selecting(game) ? game.trees[selected_index]->id : selected_index;
-	render_depth_ui(id);
-
 	// Render the camera depth at top of screen
 	render_cam_depth(game);
 
 	// Render view selector
 	view_selector.render();
+
+	ui_elem_manager.render();
 }
 
 Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
-	depth_ui.height = (float) game.screen_height - 2 * depth_ui.SPACING;
-	depth_ui.top_left = {
-		(float) game.screen_width - depth_ui.WIDTH - depth_ui.SPACING,
-		depth_ui.SPACING
-	};
-
 	std::vector<float> depths(game.trees.size());
 	for (size_t i = 0; i < game.trees.size(); i++)
 		depths[i] = game.trees[i]->depth;
@@ -445,13 +607,11 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
 	const float min_depth = std::min(0.0f, depths[0]);
 	const float max_depth = std::max(depth_ui.MAX_DEPTH, depths.back());
 
-	const float depth = tree.depth;
 	const int spacing = -5;
-	const int height = 5;
+	const int height = 21;
 
-	float percent = (depth - min_depth) / (max_depth - min_depth);
+	const float percent = (tree.depth - min_depth) / (max_depth - min_depth);
 	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - (float) height / 2;
-	depth_ui.y_pos = y_pos;
 
 	return { 
 		.x = depth_ui.top_left.x + spacing, 
@@ -459,31 +619,6 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, Tree& tree) {
 		.width = depth_ui.WIDTH - 2 * spacing, 
 		.height = height 
 	};
-}
-
-void LevelEditor::render_depth_ui(size_t selected_id) const {
-	DrawRectangle(depth_ui.top_left.x, depth_ui.top_left.y, 
-		depth_ui.WIDTH, depth_ui.height, depth_ui.BACKGROUND_COLOR);
-
-	std::vector<size_t> tree_ids = deleted_tree_ids;
-	std::sort(tree_ids.begin(), tree_ids.end());
-	size_t id_i = 0;
-
-	for (size_t i = 0; i < tree_metadatas.size(); i++) {
-		// We need to figure out what parts of tree_metadatas are not in use.
-		if (0 <= id_i && id_i < tree_ids.size() && tree_ids[id_i] == i) {
-			id_i++;
-			continue;
-		}
-
-		Rectangle r = tree_metadatas[i].mark;
-		// For now, color differently. Could use a shader maybe.
-		const Color color = i == selected_id 
-			? ColorLerp(ORANGE, depth_ui.MARK_COLOR, 0.7)
-			: depth_ui.MARK_COLOR;
-
-		DrawRectangle(r.x, r.y, r.width, r.height, color);
-	}
 }
 
 bool LevelEditor::is_selecting(Game& game) const {
@@ -542,8 +677,8 @@ void LevelEditor::render_cam_depth(Game& game) const {
 	DrawText("Depth (use scroll)", (int) left, (int) (top - 15), 15, PINK);
 }
 
-void LevelEditor::invalidate_selected_index(Game& game) {
-	selected_index = game.trees.size();
+void LevelEditor::invalidate_selected_index() {
+	selected_index = (size_t) -1;
 }
 
 void LevelEditor::duplicate_selected_tendril(Game& game) {

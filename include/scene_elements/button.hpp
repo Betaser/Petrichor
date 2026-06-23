@@ -4,45 +4,54 @@
 #include <string>
 #include <functional>
 #include <raylib.h>
+#include "ui_element.cpp"
 
 // Add shader support later.
 struct Button;
 struct LevelEditor;
 struct Game;
 
-struct Button {
+struct Button : UiElement {
 	// Destructor exists so we have polymorphic type metadata at runtime.
 	struct Owner {
 		virtual ~Owner() = default;
 	};
+
 	struct State {
 		Owner* owner;
-		Vector2 pos {};
-		Vector2 dim {};
-		bool hovered = false;
+		bool pressed = false;
+		bool last_hovered = false;
 		bool last_hit = false;
 		// Set hit when trying to run on_hit.
 		bool hit = false;
-		Color background_color;
 		Color text_color;
 		std::string text;
-	} state;
+	};
+
+	State state;
 
 	// This is good enough for hovering/not hovering, but we will need another state for pressing or not.
 	// For now, just make pressing not require another state.
 	State idle_state;
 
 	std::function<void(Button&)> on_hover;
-	std::function<void(Button&)> on_hit;
+	std::function<void(Button&)> on_pressed;
 
-	Button(Owner* owner, Vector2 pos, Vector2 dim, std::string text, 
-		std::function<void(Button&)> on_hover,
-		std::function<void(Button&)> on_hit,
+	static int debug_count;
+	int debug_id;
+
+	Button(
+		Owner* owner, Rectangle bounds, const std::string& text, 
+		decltype(on_hover) on_hover,
+		decltype(on_pressed) on_pressed,
 		Color background_color = { 253, 249, 0, 100 },
 		Color text_color = { 0, 0, 0, 255 });
-	~Button();
-	void take_input(Vector2 cursor);
-	void render() const;
+
+	virtual ~Button();
+
+	void take_input(Vector2 cursor) override;
+	void update() override;
+	bool in_use() const override;
 };
 
 #endif

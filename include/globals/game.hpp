@@ -33,6 +33,4 @@ struct Game : Button::Owner {
 	void set_fps(int fps);
 };
 
-Game* Game::_game = nullptr;
-
 #endif

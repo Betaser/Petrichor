@@ -9,6 +9,7 @@ struct LevelEditor;
 struct Petra;
 
 #include "../globals/mylib.hpp"
+#include "../scene_elements/button.hpp"
 
 struct Branch {
 	std::vector<Vector2> verts;
@@ -47,7 +48,7 @@ struct TreeRenderData {
 	Vector4 rgb_tint;
 };
 
-struct Tree {
+struct Tree : Button::Owner {
 	private:
 	static const int MAX = 100;
 	// Controls the horz zoom of texels, bigger = more zoomed in

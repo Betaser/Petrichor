@@ -12,12 +12,10 @@
 struct ArenaAllocator;
 struct ArenaAllocator {
 	// Clearly a bad way to do it
-	char mempool[10];
+	char mempool[10] { 0 };
 	void* ptr = &mempool;
 
-	ArenaAllocator() {
-		std::memset(mempool, 0, sizeof(mempool));
-	}
+	ArenaAllocator() {}
 
 	template <typename T> 
 	T* push() {
@@ -322,8 +320,24 @@ std::string to_str(const Vector2& v, const int decimal_pts) {
 	return std::format("({:.{}f}, {:.{}f})", v.x, decimal_pts, v.y, decimal_pts);
 }
 
-void set_shader_value(ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type) {
+void set_shader_value(const ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type) {
 	SetShaderValue(shader_with, GetShaderLocation(shader_with, uniform_name), data, uniform_type);
+}
+
+Rectangle to_rect(const Vector2& pos, const Vector2& dims) {
+	return {
+		.x = pos.x,
+		.y = pos.y,
+		.width = dims.x,
+		.height = dims.y
+	};
+}
+
+PosDims to_pos_dims(const Rectangle& rect) {
+	return { 
+		.pos = { rect.x, rect.y }, 
+		.dims = { rect.width, rect.height }
+	};
 }
 
 float snap(const float f, const float by) {
