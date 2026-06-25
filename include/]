@@ -346,18 +346,18 @@ void LevelEditor::render(Game& game) const {
 			}
 		}
 
-		// Selected view; highlight all parts of the tree cause it could be confusing what branches belong to which trees
+		// Tree view; highlight all parts of the tree cause it could be confusing what branches belong to which trees
 		Vector4 rgb_tint { .x = 0, .y = 0, .z = 0, .w = 0 };
-		const bool selected_view = get_active(SelectedView);
-		if (selected_view) {
-			// wanes with time staying in Highlight.
-			float wane = 1.0;
+		const bool tree_view = true;
+		if (tree_view) {
+			// wanes with time staying in tree_view.
+			float tree_view_wane = 1.0;
 			// looks kinda ugly, meh.
 			rgb_tint = {
 				.x = 1.0,
 				.y = 0.2,
 				.z = 0.2,
-				.w = (float) (0.4 * sin(time * 6.0) * wane + 0.4)
+				.w = (float) (0.4 * sin(time * 6.0) * tree_view_wane + 0.4)
 			};
 		}
 
@@ -459,12 +459,8 @@ bool LevelEditor::is_selecting(Game& game) const {
 	return selected_index < game.trees.size();
 }
 
-void LevelEditor::set_active(View view, bool active) {
-	views_active.set(view, active);
-}
-
-bool LevelEditor::get_active(View view) const {
-	return views_active.test(view);
+bool LevelEditor::is_active(View view) const {
+	views_active
 }
 
 void LevelEditor::adjust_cam_depth(Game& game) {

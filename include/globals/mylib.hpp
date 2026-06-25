@@ -91,7 +91,6 @@ bool pt_in_rect(const Vector2& pt, const Rectangle& rect);
 bool is_overlap(const Rectangle& r1, const Rectangle& r2);
 Rectangle full_texture(const Texture2D& tex);
 Color mix(const Color& a, const Color& b, const float amt);
-Color with_alpha(const Color& c, const float alpha);
 void set_shader_value(const ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type); 
 Rectangle to_rect(const Vector2& pos, const Vector2& dims);
 struct PosDims {

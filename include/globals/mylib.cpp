@@ -374,12 +374,3 @@ Color mix(const Color& a, const Color& b, const float amt) {
 		.a = (unsigned char) (a.a + amt * (b.a - a.a)),
 	};
 }
-
-Color with_alpha(const Color& c, const float alpha) {
-	return {
-		.r = c.r,
-		.g = c.g,
-		.b = c.b,
-		.a = (unsigned char) (alpha * 255),
-	};
-}

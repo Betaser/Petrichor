@@ -27,7 +27,7 @@ struct LevelEditor : public Button::Owner {
 		const float MAX_DEPTH = 100;
 		float height = -9999;
 		Vector2 top_left { -9999, -9999 };
-		const Color BACKGROUND_COLOR { 0, 0, 30, 255 };
+		const Color BACKGROUND_COLOR { 0, 0, 30, 95 };
 		const int MARK_SPACING = -5;
 		const int MARK_HEIGHT = 5;
 		const Color MARK_COLOR { 255, 255, 200, 255 };
@@ -46,7 +46,12 @@ struct LevelEditor : public Button::Owner {
 		SIZE,
 	};
 
-	static std::array<std::string, SIZE> view_names;
+	std::array<std::string, SIZE> view_names {
+		"Highlight Selections",
+		"Camera Panning",
+		"Focus Selections",
+	};
+	std::array<std::string, SIZE> view_button_names;
 	std::bitset<SIZE> views_active { 0 };
 
 	// Bottom left view selector
@@ -68,12 +73,12 @@ struct LevelEditor : public Button::Owner {
 		Color font_color = WHITE;
 		// Orange
 		Color view_color { .r = 240, .g = 178, .b = 10, .a = 100 };
+		// Yellow
+		Color view_selected_color { .r = 255, .g = 210, .b = 0, .a = 200 };
 
-		void update();
 		int calc_font_size() const;
 		void iterate_views(std::function<void(const View, Rectangle dims)> func) const;
 		Rectangle bounds() const;
-		void render() const;
 	};
 
 	ViewSelector view_selector;
@@ -104,12 +109,14 @@ struct LevelEditor : public Button::Owner {
 	float max_cam_depth;
 	bool focus_on_selected = false;
 
-	void render_depth_ui(size_t selected_id) const;
+	Rectangle get_cam_depth(const int screen_width) const;
 	void render_cam_depth(Game& game) const;
 	void adjust_cam_depth(Game& game);
 	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
 
 	bool is_selecting(Game& game) const;
+	void set_active(View view, bool active);
+	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_tree_for_depth_ui(Game& game, Tree& tree);
 	Button* make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id);

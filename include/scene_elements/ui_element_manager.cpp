@@ -3,22 +3,21 @@
 #include <map>
 #include <memory>
 #include <format>
-#include <print>
 
 #include "ui_element.cpp"
 
 struct UiElementManager {
 	private:
 	struct ManagerView {
-		UiElementManager* manager;
+		UiElementManager& manager;
 
 		~ManagerView() {
 			update();
 		}
 
 		bool any_in_use() const {
-			for (const auto& name : manager->names) {
-				if (manager->named_elements[name]->in_use()) {
+			for (const auto& name : manager.names) {
+				if (manager.named_elements[name]->in_use()) {
 					return true;
 				}
 			}
@@ -26,8 +25,8 @@ struct UiElementManager {
 		}
 		
 		bool any_hovered() const {
-			for (const auto& name : manager->names) {
-				if (manager->named_elements[name]->hovered) {
+			for (const auto& name : manager.names) {
+				if (manager.named_elements[name]->hovered) {
 					return true;
 				}
 			}
@@ -35,13 +34,13 @@ struct UiElementManager {
 		}
 
 		void take_input(Vector2 cursor) {
-			for (const auto& name : manager->names)
-				manager->named_elements[name]->take_input(cursor);
+			for (const auto& name : manager.names)
+				manager.named_elements[name]->take_input(cursor);
 		}
 
 		void update() {
-			for (const auto& name : manager->names)
-				manager->named_elements[name]->update();
+			for (const auto& name : manager.names)
+				manager.named_elements[name]->update();
 		}
 	};
 
@@ -82,7 +81,7 @@ struct UiElementManager {
 	}
 
 	ManagerView update(Vector2 cursor) {
-		ManagerView view { .manager = this };
+		ManagerView view { .manager = *this };
 		view.take_input(cursor);
 
 		return view;

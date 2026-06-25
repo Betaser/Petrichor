@@ -13,7 +13,7 @@ struct UiElement {
 
 	virtual ~UiElement() = default;
 
-	std::function<void(const UiElement*)> render_fn = nullptr;
+	std::function<void(UiElement*)> render_fn = nullptr;
 
 	bool calc_is_hovered(Vector2 cursor) const {
 		return pt_in_rect(cursor, bounds);

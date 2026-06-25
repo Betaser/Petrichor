@@ -30,23 +30,23 @@ static inline void walk_fn(const size_t branch_i, size_t& walk_i, std::vector<Ve
 
 // The stuff for flatten_tree's final form
 enum IntersectionType {
-	LINE,
-	VERT
+	Line,
+	Vert
 };
 
-// Sometimes doesn't do LINE when it should.
+// Sometimes doesn't do Line when it should.
 static IntersectionType find_intersection(Vector2 a, Vector2 b, Vector2 circle_pos) {
 	const Vector2 projection = project_pt(circle_pos, { a, b });
 
 	// Ensure that the projection is inside of a and b
 	if (!is_inside(projection, { a, b }, 0.001)) {
-		return VERT;
+		return Vert;
 	}
-	return LINE;
+	return Line;
 }
 
 static float dist(Vector2 a, Vector2 b, Vector2 circle_pos, IntersectionType intersection) {
-	if (intersection == VERT)
+	if (intersection == Vert)
 		return length(b - circle_pos);
 
 	const float line_dist = dist_pt_from_line(circle_pos, { a, b });
@@ -126,7 +126,7 @@ static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vecto
 	if (ab_dist > circle.radius)
 		return false;
 
-	const float angle = intersection == VERT
+	const float angle = intersection == Vert
 		? vert_angle(a, b, circle)
 		: line_angle(a, b, circle);
 		
@@ -179,7 +179,7 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	if (fmin(ab_dist, cd_dist) > circle.radius)
 		return false;
 
-	const float theta = intersection == VERT
+	const float theta = intersection == Vert
 		? vert_angle(a, b, circle)
 		: line_angle(a, b, circle);
 
@@ -569,7 +569,7 @@ void Level::render(Game& game) {
 		DrawCircle(100, 100, 10, RED);
 	if (debug["should_flatten"] == "true")
 		DrawCircle(150, 100, 15, GREEN);
-	DrawText(debug["rotate_state"].c_str(), 30, 125, 45, with_alpha(WHITE, 0.2));
+	DrawText(debug["rotate_state"].c_str(), 30, 125, 45, ColorAlpha(WHITE, 0.2));
 }
 
 void Level::render_trees_to_target(Game& game) {

@@ -144,7 +144,7 @@ int main() {
 			}
 
 			DrawText(game.level.petra.say_hello().c_str(), 200, 20, 20, GREEN);	
-			DrawFPS(50, 50);
+			DrawFPS(20, 20);
 			pause_menu.render(game.screen_width, game.screen_height);
 			EndDrawing();
 
