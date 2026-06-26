@@ -320,30 +320,6 @@ std::string to_str(const Vector2& v, const int decimal_pts) {
 	return std::format("({:.{}f}, {:.{}f})", v.x, decimal_pts, v.y, decimal_pts);
 }
 
-void set_shader_value(const ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type) {
-	SetShaderValue(shader_with, GetShaderLocation(shader_with, uniform_name), data, uniform_type);
-}
-
-Rectangle to_rect(const Vector2& pos, const Vector2& dims) {
-	return {
-		.x = pos.x,
-		.y = pos.y,
-		.width = dims.x,
-		.height = dims.y
-	};
-}
-
-PosDims to_pos_dims(const Rectangle& rect) {
-	return { 
-		.pos = { rect.x, rect.y }, 
-		.dims = { rect.width, rect.height }
-	};
-}
-
-float snap(const float f, const float by) {
-	return (float) int(f / by) * by;
-}
-
 bool pt_in_rect(const Vector2& pt, const Rectangle& rect) {
 	return rect.x <= pt.x && pt.x <= rect.x + rect.width &&
 		   rect.y <= pt.y && pt.y <= rect.y + rect.height;
@@ -373,4 +349,36 @@ Color mix(const Color& a, const Color& b, const float amt) {
 		.b = (unsigned char) (a.b + amt * (b.b - a.b)),
 		.a = (unsigned char) (a.a + amt * (b.a - a.a)),
 	};
+}
+
+void set_shader_value(const ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type) {
+	SetShaderValue(shader_with, GetShaderLocation(shader_with, uniform_name), data, uniform_type);
+}
+
+Rectangle to_rect(const Vector2& pos, const Vector2& dims) {
+	return {
+		.x = pos.x,
+		.y = pos.y,
+		.width = dims.x,
+		.height = dims.y
+	};
+}
+
+PosDims to_pos_dims(const Rectangle& rect) {
+	return { 
+		.pos = { rect.x, rect.y }, 
+		.dims = { rect.width, rect.height }
+	};
+}
+Vector4 to_vec4(const Color& color) {
+	return {
+		.x = (float) color.r / 255,
+		.y = (float) color.g / 255,
+		.z = (float) color.b / 255,
+		.w = (float) color.a / 255
+	};
+}
+
+float snap(const float f, const float by) {
+	return (float) int(f / by) * by;
 }

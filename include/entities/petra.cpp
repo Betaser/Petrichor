@@ -68,14 +68,7 @@ void Petra::render(Game& game, Level& level) {
 	auto [color, str] = we_are_debugging ? 
 		std::tuple<Color, const char*>(PURPLE, "petra debug movement") :
 		std::tuple<Color, const char*>(ORANGE, "petra standard movement");
-	if (we_are_debugging) {
-		str = "petra debug movement";
-		color = PURPLE;
-	} 
-	else {
-		str = "petra standard movement";
-		color = ORANGE;
-	}
+
 	int text_length = MeasureText(str, font_size);
 	DrawText(str, (game.screen_width - text_length) / 2, game.screen_height / 2 + 200, font_size, color);
 

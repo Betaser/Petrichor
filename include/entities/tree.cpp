@@ -217,16 +217,7 @@ void Tree::level_editor_render(const TreeRenderData& data) {
 	send_vals_to_tendril_shader();
 
 	set_shader_value(tendril_shader, "finishingAlpha", &data.finishing_alpha, SHADER_UNIFORM_FLOAT);
-	// std::println("rgb_tint {} {} {} {}", blah.r, blah.g, blah.g, blah.a);
 	set_shader_value(tendril_shader, "rgbTint", &data.rgb_tint, SHADER_UNIFORM_VEC4);
-	/*
-	int loc1 = GetShaderLocation(tendril_shader, "finishingAlpha");
-	float finishing_alpha = data.finishing_alpha;
-	SetShaderValue(tendril_shader, loc1, &finishing_alpha, SHADER_UNIFORM_FLOAT);
-	int loc2 = GetShaderLocation(tendril_shader, "rgbTint");
-	Color blah = data.rgb_tint;
-	SetShaderValue(tendril_shader, loc2, &blah, SHADER_UNIFORM_VEC4);
-	*/
 
 	// Later TODO: Make a custom shader for level editor (which is here) cause showing a high level repr of each segment is very different.
 
@@ -263,27 +254,6 @@ void Tree::level_editor_render(const TreeRenderData& data) {
 			WHITE);
 	}
 	EndShaderMode();
-
-	// Suppose we only render the top
-	/*
-	if (trunk_segments.size() > 0) {
-		auto trunk_layer = trunk_segments[0].top;
-		BeginShaderMode(trunk_shader);
-		DrawTexturePro(
-			blank_tex,
-			full_texture(blank_tex),
-			{
-				.x = trunk_layer.position.x,
-				.y = trunk_layer.position.y,
-				.width = trunk_layer.radius * 2,
-				.height = trunk_layer.radius * 2
-			},
-			{},
-			0,
-			WHITE);
-		EndShaderMode();
-	}
-	*/
 }
 
 void Tree::render_to_target() {

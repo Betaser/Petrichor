@@ -6,6 +6,8 @@
 #include "../globals/game.hpp"
 #include "../globals/mylib.hpp"
 
+bool Level::debug_apply_rotation = false;
+
 static inline void walk_fn(const size_t branch_i, size_t& walk_i, std::vector<Vector4>& branch_tints, Tree& tree) {
 	Vector3 start_tint { 1, 0, 0 };
 	Vector3 end_tint { 0, 1, 0 };

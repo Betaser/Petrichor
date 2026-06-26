@@ -97,6 +97,7 @@ struct PosDims {
 	Vector2 pos, dims;
 };
 PosDims to_pos_dims(const Rectangle& rect);
+Vector4 to_vec4(const Color& color);
 
 // Math, non vector
 float snap(const float f, const float by);

@@ -56,6 +56,4 @@ struct Level {
     Cam calc_depth_cam(float dist) const;
 };
 
-bool Level::debug_apply_rotation = false;
-
 #endif

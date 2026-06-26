@@ -108,15 +108,6 @@ int main() {
 							level_editor.saved_trees.clear();
 
 							level_editor.reinit(game);
-
-							// level_editor.time = 0;
-							/*
-							level_editor.deleted_tree_ids.clear();
-							level_editor.tree_metadatas.clear();
-							level_editor.using_depth_ui = false;
-							level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
-							*/
-							// level_editor.invalidate_selected_index(game);
 						}
 
 						level_editor.update(game);

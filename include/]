@@ -67,10 +67,7 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 	else
 		tree_metadatas.push_back(temp);
 
-	const size_t selected_copy = selected_index;
-	selected_index = game.trees.size() - 1;
-	randomize_tendrils(game, selected_index);
-	selected_index = selected_copy;
+	randomize_tendrils(game, game.trees.size() - 1);
 
 	// Now we're gonna add the trunk.
 	TrunkSegment segment {

@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "level_editor.hpp"
 #include "../scene_elements/region.cpp"
 
@@ -109,9 +111,7 @@ void LevelEditor::initialize_ui(const int screen_width) {
 				bounds,
 				text,
 				[](auto& _) {},
-				[&, view](auto& self) {
-					auto b = dynamic_cast<Button&>(self);
-					std::println("my text: {}", b.state.text);
+				[&, view](auto& _) {
 					set_active(view, !get_active(view));
 				},
 				vs.view_color);
@@ -141,28 +141,43 @@ void LevelEditor::initialize_ui(const int screen_width) {
 
 Button* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id) {
 	auto depth_btn = new Button(
-	nullptr,
+		nullptr,
 		depth_rect,
 		"",
 		[](auto& _) {},
-		[&](auto& self) {
-			if (!is_selecting(game))
+		[&, tree_id](auto& self) {
+			if (!is_selecting())
 				return;
 
 			const float MAX_DEPTH = 100;
 			const float cursor_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(depth_ui.SPACING, GetMousePosition().y));
-			auto& selected = game.trees[selected_index];
-			selected->depth = (cursor_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
-			self.bounds = update_tree_for_depth_ui(game, *selected);
+			auto& tree = game.trees[from_selected_by_id(game, tree_id)];
+			tree->depth = (cursor_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
+			self.bounds = update_tree_for_depth_ui(game, *tree);
 		},
 		ORANGE);
 
 	depth_btn->render_fn = [&, tree_id](auto ui_element) {
 		const auto& self = *dynamic_cast<const Button*>(ui_element);
 		Color color = depth_ui.MARK_COLOR;
-		if (is_selecting(game)) {
-			const size_t selected_id = game.trees[selected_index]->id;
-			if (tree_id == selected_id)
+		if (from_selected_by_id(game, tree_id) != -1) {
+			// Then draw a triangle pointer too, idk
+			Vector2 leftmost {
+				self.bounds.x + self.bounds.width + 5,
+				self.bounds.y + self.bounds.height / 2
+			};
+			const float tri_width = 10;
+			const float tri_height = 6;
+			DrawTriangle(leftmost, 
+				leftmost + Vector2 { tri_width,  tri_height / 2 }, 
+				leftmost + Vector2 { tri_width, -tri_height / 2 },
+				RED);
+
+			const auto& search = std::find_if(game.trees.begin(), game.trees.end(), 
+				[tree_id](const auto& tree) {
+					return tree->id == tree_id;
+				});
+			if (search != game.trees.end())
 				color = ColorLerp(self.color, depth_ui.MARK_COLOR, 0.7);
 		}
 		if (self.in_use())

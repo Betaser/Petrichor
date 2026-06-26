@@ -10,14 +10,17 @@
 #include "tree_metadata.cpp"
 
 struct LevelEditor : public Button::Owner {
+	struct Selection {
+		size_t index;
+		Vector2 offset;
+	};
 	std::vector<std::unique_ptr<Tree>> saved_trees;
 	UiElementManager ui_elem_manager;
 	std::map<size_t, std::string> tree_to_managed_buttons;
 	std::vector<TreeMetadata> tree_metadatas;
-	size_t selected_index = 0;
+	std::vector<Selection> selections;
 	std::vector<size_t> deleted_tree_ids;
 	TextureWithCheck selected_tex;
-	Vector2 selection_offset {};
 	bool ui_hovered = false;
 	float time = 0;
 
@@ -90,12 +93,12 @@ struct LevelEditor : public Button::Owner {
 	// if not sure about tree_maker, use game.make_tree();
 	void make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata);
 	void initialize_ui(const int screen_width);
-	void randomize_tendrils(Game& game, size_t tree_index);
+	void randomize_tendrils(Game& game, const size_t tree_index);
 	void update_selected_verts(Game& game);
 	void init_selection_texture();
 	void update(Game& game);
 	void render(Game& game) const;
-	void invalidate_selected_index();
+	void invalidate_selections();
 
 	void duplicate_selected_tendril(Game& game);
 
@@ -107,19 +110,24 @@ struct LevelEditor : public Button::Owner {
 	float cam_depth = 0;
 	float min_cam_depth;
 	float max_cam_depth;
-	bool focus_on_selected = false;
 
 	Rectangle get_cam_depth(const int screen_width) const;
 	void render_cam_depth(Game& game) const;
 	void adjust_cam_depth(Game& game);
 	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
 
-	bool is_selecting(Game& game) const;
+	bool is_selecting() const;
 	void set_active(View view, bool active);
 	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
-	Rectangle update_tree_for_depth_ui(Game& game, Tree& tree);
+	Rectangle update_tree_for_depth_ui(Game& game, const Tree& tree);
 	Button* make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id);
+	bool find_cursor_selection(Game& game, Vector2 cursor, Selection* selection);
+	void tree_single_select(Game& game, Vector2 mouse_pos);
+	void tree_multi_select(Game& game, Vector2 mouse_pos);
+	void update_tree_verts(Game& game, const size_t tree_index);
+	bool contains_selection(const size_t index) const;
+	int from_selected_by_id(Game& game, const size_t tree_id) const;
 };
 
 #endif
