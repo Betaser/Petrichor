@@ -12,7 +12,7 @@
 struct Game;
 struct TreeMetadata;
 
-struct Game : Button::Owner {
+struct Game {
 	std::vector<std::unique_ptr<Tree>> trees;
 	int screen_width = 0;
 	int screen_height = 0;

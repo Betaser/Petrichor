@@ -9,20 +9,11 @@
 #include "../scene_elements/ui_element_manager.cpp"
 #include "tree_metadata.cpp"
 
-struct LevelEditor : public Button::Owner {
+struct LevelEditor {
 	struct Selection {
 		size_t index;
 		Vector2 offset;
 	};
-	std::vector<std::unique_ptr<Tree>> saved_trees;
-	UiElementManager ui_elem_manager;
-	std::map<size_t, std::string> tree_to_managed_buttons;
-	std::vector<TreeMetadata> tree_metadatas;
-	std::vector<Selection> selections;
-	std::vector<size_t> deleted_tree_ids;
-	TextureWithCheck selected_tex;
-	bool ui_hovered = false;
-	float time = 0;
 
 	struct DepthUi {
 		const float WIDTH = 30;
@@ -31,12 +22,9 @@ struct LevelEditor : public Button::Owner {
 		float height = -9999;
 		Vector2 top_left { -9999, -9999 };
 		const Color BACKGROUND_COLOR { 0, 0, 30, 95 };
-		const int MARK_SPACING = -5;
-		const int MARK_HEIGHT = 5;
+		const int MARK_HEIGHT = 90;
 		const Color MARK_COLOR { 255, 255, 200, 255 };
 	};
-
-	DepthUi depth_ui;
 
 	// Let's see if enum non-class is enough
 	enum View {
@@ -48,14 +36,6 @@ struct LevelEditor : public Button::Owner {
 		FocusTreeView,
 		SIZE,
 	};
-
-	std::array<std::string, SIZE> view_names {
-		"Highlight Selections",
-		"Camera Panning",
-		"Focus Selections",
-	};
-	std::array<std::string, SIZE> view_button_names;
-	std::bitset<SIZE> views_active { 0 };
 
 	// Bottom left view selector
 	struct ViewSelector {
@@ -84,7 +64,25 @@ struct LevelEditor : public Button::Owner {
 		Rectangle bounds() const;
 	};
 
+	std::vector<std::unique_ptr<Tree>> saved_trees;
+	UiElementManager ui_elem_manager;
+	std::map<Tree::Id, std::string> tree_to_managed_buttons;
+	std::vector<TreeMetadata> tree_metadatas;
+	std::vector<Selection> selections;
+	std::vector<Tree::Id> deleted_tree_ids;
+	TextureWithCheck selected_tex;
+	bool ui_hovered = false;
+	float time = 0;
+	DepthUi depth_ui;
 	ViewSelector view_selector;
+
+	std::array<std::string, SIZE> view_names {
+		"Highlight Selections",
+		"Camera Panning",
+		"Focus Selections",
+	};
+	std::array<std::string, SIZE> view_button_names;
+	std::bitset<SIZE> views_active { 0 };
 
 	LevelEditor(Game& game);
 	~LevelEditor();
@@ -121,13 +119,13 @@ struct LevelEditor : public Button::Owner {
 	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_tree_for_depth_ui(Game& game, const Tree& tree);
-	Button* make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id);
+	Button<Tree::Id>* make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id);
 	bool find_cursor_selection(Game& game, Vector2 cursor, Selection* selection);
 	void tree_single_select(Game& game, Vector2 mouse_pos);
 	void tree_multi_select(Game& game, Vector2 mouse_pos);
 	void update_tree_verts(Game& game, const size_t tree_index);
 	bool contains_selection(const size_t index) const;
-	int from_selected_by_id(Game& game, const size_t tree_id) const;
+	int from_selected_by_id(Game& game, const Tree::Id tree_id) const;
 };
 
 #endif

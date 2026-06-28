@@ -49,25 +49,32 @@ struct UiElementManager {
 	// Must store a ptr because they are polymorphic
 	std::map<std::string, std::unique_ptr<UiElement>> named_elements;
 
-	std::string add(std::unique_ptr<UiElement> element, const std::string& s) {
+	std::string add(UiElement* element, const std::string& s) {
 		const std::string& str = std::format("{}#{}", s, names.size());
-		named_elements[str] = std::move(element);
+		named_elements[str] = std::unique_ptr<UiElement>(element);
 		names.push_back(str);
 		return str;
 	}
 
-	void remove(const std::string& s) {
-		named_elements.erase(s);
+	void remove(const std::string& name) {
+		const bool debug = true;
+		if (debug && !named_elements.contains(name))
+			throw std::runtime_error(std::format("{} NOT IN named_elements", name));
+		named_elements.erase(name);
 		// std::remove just moves elems to end
-		names.erase(std::remove(names.begin(), names.end(), s), names.end());
+		names.erase(std::remove(names.begin(), names.end(), name), names.end());
 	}
 
 	template <typename T>
 	requires std::derived_from<T, UiElement>
 	T* get(const std::string& name) {
-		// std::println("get call at?");
+		// For searchability
+		const bool debug = true;
+		if (debug && !named_elements.contains(name))
+			throw std::runtime_error(std::format("{} NOT IN named_elements", name));
 		T* data = dynamic_cast<T*>(named_elements.at(name).get());
-		// std::println("get did call at");
+		if (debug && data == nullptr)
+			throw std::runtime_error(std::format("BAD CAST for named_elements[{}]", name));
 		return data;
 	}
 

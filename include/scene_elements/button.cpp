@@ -2,11 +2,19 @@
 
 #include "button.hpp"
 
-int Button::debug_count = 0;
+// template <typename T>
+// struct Button;
 
-Button::Button(Button::Owner* owner, Rectangle bounds, const std::string& text, 
-	std::function<void(Button&)> on_hover,
-	std::function<void(Button&)> on_pressed,
+template <typename T>
+int Button<T>::debug_count = 0;
+	
+template <typename T>
+Button<T>::Button(
+	const T& owner, 
+	Rectangle bounds, 
+	const std::string& text, 
+	std::function<void(Button<T>&)> on_hover,
+	std::function<void(Button<T>&)> on_pressed,
 	Color background_color,
 	Color text_color) {
 	hovered = false;
@@ -14,11 +22,11 @@ Button::Button(Button::Owner* owner, Rectangle bounds, const std::string& text,
 	state.last_hit = false;
 	state.hit = false;
 	state.owner = owner;
+	state.text = text;
 	
 	debug_id = debug_count++;
 	std::println("created button #{}", debug_id);
 	this->bounds = bounds;
-	state.text = text;
 	this->on_hover = on_hover;
 	this->on_pressed = on_pressed;
 
@@ -42,16 +50,19 @@ idle_state = state;
 	};
 }
 
-Button::~Button() {
+template <typename T>
+Button<T>::~Button() {
 	std::println("deinit button #{}", debug_id);
 }
 
-void Button::take_input(Vector2 cursor) {
+template <typename T>
+void Button<T>::take_input(Vector2 cursor) {
 	state.last_hovered = hovered;
 	UiElement::take_input(cursor);
 }
 
-void Button::update() {
+template <typename T>
+void Button<T>::update() {
 	auto& hit = state.hit;
 	auto& last_hit = state.last_hit;
 	auto& last_hovered = state.last_hovered;
@@ -94,6 +105,7 @@ void Button::update() {
 	}
 }
 
-bool Button::in_use() const {
+template <typename T>
+bool Button<T>::in_use() const {
 	return hovered || state.pressed;
 }

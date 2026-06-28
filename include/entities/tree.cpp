@@ -6,6 +6,8 @@
 #include "tree.hpp"
 #include "../globals/mylib.hpp"
 
+TextureWithCheck Tree::static_tree_tex;
+
 Branch::Branch(std::vector<Vector2> verts) {
 	this->verts = verts;
 }
@@ -73,7 +75,7 @@ void Tree::on_updated_branch() {
 }
 
 Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
-	id = 0;
+	id = (Tree::Id) 0;
 	std::println("init tree");
 	ShaderWithCheck tendril_shader;
 	load_shader(tendril_shader, "assets/tree_tendril.fs");
@@ -151,8 +153,7 @@ void Tree::send_vals_to_tendril_shader() {
 	Vector2I dims { tree_tex.width, tree_tex.height };
 	SetShaderValue(tendril_shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
 
-	// TODO
-	// HMM, BAD TO RECOMPUTE THESE ALL THE TIME IF WE USE IT FOR NORMALIZATION IN THE FOR LOOP.
+	// BAD TO RECOMPUTE THESE ALL THE TIME IF WE USE IT FOR NORMALIZATION IN THE FOR LOOP.
 	bounding_box(small, big);
 
 	for (size_t n_i = 0; n_i < size; n_i++) {
@@ -160,13 +161,7 @@ void Tree::send_vals_to_tendril_shader() {
 		// Set the really big vertices array of the shader that doesn't exist yet
 		for (size_t branch_i = 0; branch_i < 4; branch_i++) {
 			auto pt = branch.verts[branch_i];
-			// auto tex_size = Vector2I(big - small).to_vec2();
 
-			// Vector2 norm = (pt - texture_pos.to_vec2()) / tex_size;
-			// Vector2 clamped_pt { roundf(pt.x), roundf(pt.y) };
-			// Vector2 norm = (clamped_pt - texture_pos.to_vec2()) / tex_size;
-
-			// I'm sus of these options, but it looks like all of them are bad.
 			Vector2 norm = (pt - small) / (big - small);
 			compressed_branches[branch_i][n_i] = norm;
 		}

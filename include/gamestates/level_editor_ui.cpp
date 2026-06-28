@@ -1,9 +1,7 @@
-#include <iostream>
-
 #include "level_editor.hpp"
 #include "../scene_elements/region.cpp"
 
-typedef LevelEditor::ViewSelector ViewSelector;
+using ViewSelector = LevelEditor::ViewSelector;
 
 Rectangle ViewSelector::bounds() const {
 	const float posX = left_padding;
@@ -31,7 +29,7 @@ void ViewSelector::iterate_views(std::function<void(const LevelEditor::View, Rec
 }
 
 void LevelEditor::initialize_ui(const int screen_width) {
-	auto debug_btn = new Button(
+	auto debug_btn = new Button<LevelEditor*>(
 		this,
 		to_rect({ (float) screen_width - 190, 110 }, { 80, 80 }),
 		"Show debug keybinds",
@@ -42,23 +40,30 @@ void LevelEditor::initialize_ui(const int screen_width) {
 			auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
 			owner->show_instructions = !owner->show_instructions;
 		});
-	debug_btn_str = ui_elem_manager.add(std::unique_ptr<UiElement>(debug_btn), "debug_btn");
+	debug_btn_str = ui_elem_manager.add(debug_btn, "debug_btn");
 
-	typedef TRegion<Color>::TState ColorState;
-	auto color_lerp = [](auto& self, auto& curr, auto& target, float t) {
-		self.color = ColorLerp(target.hover_data, curr.hover_data, t);
+	struct ColorState {
+		float last_hover_time;
+		Color hover_color;
+		ColorState(float last_hover_time, Color hover_color) {
+			this->last_hover_time = last_hover_time;
+			this->hover_color = hover_color;
+		}
+	};
+	auto color_lerp = [](Region<ColorState>& self, Region<ColorState>::State& curr, Region<ColorState>::State& target, float t) {
+		self.color = ColorLerp(target.data.hover_color, curr.data.hover_color, t);
 	};
 	auto adjust_t = [](float t) {
 		return t * t;
 	};
 
-	auto depth_ui_region = new TRegion<Color>(
+	auto depth_ui_region = (new Region<ColorState>())->init(
 		0.9,
 		&time,
 		to_rect(depth_ui.top_left, { depth_ui.WIDTH, depth_ui.height }),
 		color_lerp,
-		std::make_unique<ColorState>(0, depth_ui.BACKGROUND_COLOR),
-		std::make_unique<ColorState>(0, Color { 90, 40, 40, 180 }),
+		{ 0, depth_ui.BACKGROUND_COLOR },
+		{ 0, Color { 90, 40, 40, 180 } },
 		depth_ui.BACKGROUND_COLOR);
 
 	depth_ui_region->adjust_t = adjust_t;
@@ -66,47 +71,47 @@ void LevelEditor::initialize_ui(const int screen_width) {
 		DrawRectangleRec(self->bounds, self->color);
 	};
 
-	ui_elem_manager.add(std::unique_ptr<UiElement>(depth_ui_region), "depth_ui_region");
+	ui_elem_manager.add(depth_ui_region, "depth_ui_region");
 
 	// A horz bar at the top of the screen
 	{
-		auto cam_depth_region = new TRegion<Color>(
+		auto cam_depth_region = (new Region<ColorState>)->init(
 			0.9,
 			&time,
 			get_cam_depth(screen_width),
 			color_lerp,
-			std::make_unique<ColorState>(0, ColorAlpha(DARKGRAY, 0.5)),
-			std::make_unique<ColorState>(0, Color { 90, 40, 40, 180 }),
+			{ 0, ColorAlpha(DARKGRAY, 0.5) },
+			{ 0, Color { 90, 40, 40, 180 } },
 			depth_ui.BACKGROUND_COLOR);
 		cam_depth_region->adjust_t = adjust_t;
 		cam_depth_region->render_fn = [](auto self) {
 			DrawRectangleRounded(self->bounds, 0.4, 1, self->color);
 		};
 
-		ui_elem_manager.add(std::unique_ptr<UiElement>(cam_depth_region), "cam_depth_region");
+		ui_elem_manager.add(cam_depth_region, "cam_depth_region");
 	}
 
 	// View selector
 	{
-		auto view_selector_region = new TRegion<Color>(
+		auto view_selector_region = (new Region<ColorState>)->init(
 			0.9,
 			&time,
 			view_selector.bounds(),
 			color_lerp,
-			std::make_unique<ColorState>(0, view_selector.background_color),
-			std::make_unique<ColorState>(0, Color { 90, 40, 40, 180 }),
+			{ 0, view_selector.background_color },
+			{ 0, Color { 90, 40, 40, 180 } },
 			view_selector.background_color);
 		view_selector_region->adjust_t = adjust_t;
 		view_selector_region->render_fn = [&](auto self) {
 			DrawRectangleRounded(self->bounds, view_selector.roundness, 1, self->color);
 		};
 
-		ui_elem_manager.add(std::unique_ptr<UiElement>(view_selector_region), "view_selector_region");
+		ui_elem_manager.add(view_selector_region, "view_selector_region");
 
 		size_t vbn_i = 0;
 		view_selector.iterate_views([&, &vs = view_selector](auto view, auto bounds) {
 			const std::string text = view_names[(int) view];
-			auto vs_btn = new Button(
+			auto vs_btn = new Button<nullptr_t>(
 				nullptr,
 				bounds,
 				text,
@@ -120,7 +125,7 @@ void LevelEditor::initialize_ui(const int screen_width) {
 				const auto base_color = get_active(view)
 					? vs.view_selected_color
 					: vs.view_color;
-				const auto color = self->hovered
+				const auto color = self->hovered && !get_active(view)
 					? ColorLerp(base_color, BLACK, 0.4)
 					: base_color;
 		
@@ -134,14 +139,16 @@ void LevelEditor::initialize_ui(const int screen_width) {
 				DrawText(text.c_str(), (int) self->bounds.x, (int) self->bounds.y, font_size, vs.font_color);
 			};
 
-			view_button_names[vbn_i++] = ui_elem_manager.add(std::unique_ptr<UiElement>(vs_btn), "vs_button");
+			view_button_names[vbn_i++] = ui_elem_manager.add(vs_btn, "vs_button");
 		});
 	}
 }
 
-Button* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const size_t tree_id) {
-	auto depth_btn = new Button(
-		nullptr,
+Button<Tree::Id>* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id) {
+	// TODO
+	// Rework button to have a T owner
+	auto depth_btn = new Button<Tree::Id>(
+		tree_id,
 		depth_rect,
 		"",
 		[](auto& _) {},
@@ -158,8 +165,9 @@ Button* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, 
 		ORANGE);
 
 	depth_btn->render_fn = [&, tree_id](auto ui_element) {
-		const auto& self = *dynamic_cast<const Button*>(ui_element);
+		const auto& self = *dynamic_cast<decltype(depth_btn)>(ui_element);
 		Color color = depth_ui.MARK_COLOR;
+
 		if (from_selected_by_id(game, tree_id) != -1) {
 			// Then draw a triangle pointer too, idk
 			Vector2 leftmost {

@@ -7,17 +7,13 @@
 
 struct PauseMenu {
 	struct Setting {
-		Button::Owner* owner;
 		std::string text;
 		Color background_color;
 		State state;
-		std::function<void(Button::Owner* owner)> immediate_on_press = [](auto* owner) {
-			(void) owner;
-		};
 	};
 
 	// Instead of a shader, just render a plain background
-	std::vector<std::unique_ptr<Button>> buttons;
+	std::vector<std::unique_ptr<Button<nullptr_t>>> buttons;
 	std::vector<Setting> settings;
 	const float HORZ_SPACING = 50;
 	const float BUTTON_WIDTH = 130;
@@ -27,37 +23,32 @@ struct PauseMenu {
 
 	private:
 	void make_button(Vector2 pos, Setting& setting, Game& game) {
-		// Can we leverage emplace_back to construct button in-place in the vector?
-		buttons.push_back(std::unique_ptr<Button>(new Button(
-			setting.owner,
+		buttons.push_back(std::make_unique<Button<nullptr_t>>(
+			nullptr,
 			to_rect(pos, { BUTTON_WIDTH, BUTTON_HEIGHT }),
 			setting.text,
-			[](Button& self) {
+			[](Button<nullptr_t>& self) {
 				self.color = ColorLerp(self.color, { 50, 0, 50, 255 }, 0.4);
 			},
-			[&](Button& self) {
-				setting.immediate_on_press(self.state.owner);
-
+			[&](Button<nullptr_t>& _) {
 				game.state = setting.state;
 				active = false;
 			},
 			setting.background_color,
 			WHITE
-		)));
+		));
 	}
 
 	public:
-	PauseMenu(Game& game, LevelEditor* level_editor) {
+	PauseMenu(Game& game) {
 		Color light_blue { 0, 50, 255, 255 };
 		settings = {
 			{ 
-				level_editor,
 				"Play", 
 				light_blue, 
 				PlayLevel, 
 			},
 			{ 
-				nullptr, 
 				"Edit Level", 
 				ORANGE, 
 				EditLevel 

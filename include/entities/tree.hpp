@@ -48,7 +48,7 @@ struct TreeRenderData {
 	Vector4 rgb_tint;
 };
 
-struct Tree : Button::Owner {
+struct Tree {
 	private:
 	static const int MAX = 100;
 	// Controls the horz zoom of texels, bigger = more zoomed in
@@ -65,10 +65,11 @@ struct Tree : Button::Owner {
 	void unload_textures();
 
 	public:
+	enum class Id : size_t {};
 	float depth = 0;
 	Vector2 small {};
 	Vector2 big {};
-	size_t id = 0;
+	Id id = (Id) 0;
 	ShaderWithCheck tendril_shader;
 	ShaderWithCheck trunk_shader;
 	Rand rand;
@@ -112,7 +113,5 @@ struct Tree : Button::Owner {
 	std::vector<std::vector<Branch>> random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5);
 	bool past_me(const Petra& petra, const float epsilon = 0) const;
 };
-
-TextureWithCheck Tree::static_tree_tex;
 
 #endif

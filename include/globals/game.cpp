@@ -68,7 +68,7 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			auto& tree = trees.back();
 			tree->depth = depth;
 			tree->rand = Rand(seed);
-			tree->id = trees.size() - 1;
+			tree->id = (Tree::Id) (trees.size() - 1);
 
 			const Vector2 start_location { 100, 100 };
 			auto tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
@@ -95,5 +95,5 @@ void Game::make_tree() {
 	// trees.emplace_back(std::move(t));
 	
 	trees.push_back(std::unique_ptr<Tree>(new Tree({}, rand)));	
-	trees.back()->id = trees.size() - 1;
+	trees.back()->id = (Tree::Id) (trees.size() - 1);
 }

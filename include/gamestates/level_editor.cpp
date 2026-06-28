@@ -2,7 +2,6 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <numeric>
 #include <format>
 
 #include "level_editor.hpp"
@@ -52,11 +51,11 @@ LevelEditor::~LevelEditor() {
 void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata) {
 	tree_maker();
 	auto& tree = *game.trees.back();
-	std::println("make tree w/ id {}", tree.id);
+	std::println("make tree w/ id {}", (size_t) tree.id);
 
 	bool ids_available = !deleted_tree_ids.empty();
 	if (ids_available) {
-		size_t popped_id = deleted_tree_ids[0];
+		auto popped_id = deleted_tree_ids[0];
 		deleted_tree_ids.erase(deleted_tree_ids.begin());
 		tree.id = popped_id;
 	}
@@ -64,7 +63,7 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 	const auto& depth_rect = update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]);
 	TreeMetadata temp(metadata.rotation, metadata.offset);
 	if (ids_available)
-		tree_metadatas[tree.id] = temp;
+		tree_metadatas[(size_t) tree.id] = temp;
 	else
 		tree_metadatas.push_back(temp);
 
@@ -103,7 +102,7 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 	// Create the depth editing button
 	auto depth_btn = make_depth_button(depth_rect, game, tree.id);
 
-	std::string name = ui_elem_manager.add(std::unique_ptr<UiElement>(depth_btn), "depth_btn");
+	std::string name = ui_elem_manager.add(depth_btn, "depth_btn");
 	tree_to_managed_buttons[tree.id] = name;
 }
 
@@ -116,8 +115,8 @@ void LevelEditor::randomize_tendrils(Game& game, const size_t tree_index) {
 	tree->branches = Tree::branches_from_tendrils(tendrils);
 	tree->tendrils = tendrils;
 
-	const auto& meta = tree_metadatas[tree->id];
-	tree_metadatas[tree->id] = TreeMetadata(meta.rotation, meta.offset);
+	const auto& meta = tree_metadatas[(size_t) tree->id];
+	tree_metadatas[(size_t) tree->id] = TreeMetadata(meta.rotation, meta.offset);
 	tree->on_updated_branch();
 
 	update_tree_verts(game, tree_index);
@@ -156,14 +155,15 @@ void LevelEditor::update(Game& game) {
 
 	const bool selecting = is_selecting();
 
-	auto debug_button = ui_elem_manager.get<Button>(debug_btn_str);
+	// Let's test that it fails.
+	auto debug_button = ui_elem_manager.get<Button<LevelEditor*>>(debug_btn_str);
 	
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		if (debug_button->hovered)
 			debug_button->state.hit = true;
 
 		for (const auto& name : view_button_names)
-			ui_elem_manager.get<Button>(name)->state.hit = true;
+			ui_elem_manager.get<Button<nullptr_t>>(name)->state.hit = true;
 	}
 
 	// Yeah this looks weird but we use hit + hovered to do logic.
@@ -171,7 +171,7 @@ void LevelEditor::update(Game& game) {
 		if (selecting) {
 			for (const auto& [selected_index, _] : selections) {
 				auto& id = game.trees[selected_index]->id;
-				auto depth_button = ui_elem_manager.get<Button>(tree_to_managed_buttons[id]);
+				auto depth_button = ui_elem_manager.get<Button<Tree::Id>>(tree_to_managed_buttons[id]);
 				depth_button->state.hit = true;
 			}
 		}
@@ -207,15 +207,16 @@ void LevelEditor::update(Game& game) {
 				// meta.mark = update_tree_for_depth_ui(game, tree);
 				auto depth_rect = update_tree_for_depth_ui(game, tree);
 				auto button = make_depth_button(depth_rect, game, tree.id);
-				const auto name = ui_elem_manager.add(std::unique_ptr<Button>(button), "depth_btn");
+				const auto name = ui_elem_manager.add(button, "depth_btn");
 				tree_to_managed_buttons[tree.id] = name;
 				tree_metadatas.push_back(meta);	
 			});
 
 		std::println("Resize?");
 		selections.resize(game.trees.size());
+		size_t n = 0;
 		std::generate(selections.begin(), selections.end(), 
-			[&, n = (size_t) 0]() mutable { 
+			[&]() { 
 				return Selection { n, tree_metadatas[n++].offset };
 			});
 		std::println("Resize success!");
@@ -228,32 +229,20 @@ void LevelEditor::update(Game& game) {
 	}
 
 	if (selecting) {
-		/*
-		// Debug testing
-		if (IsKeyPressed(KEY_Q)) {
-			// Delete all but the first tree
-			const size_t selected_id = selected->id;
-			game.trees.erase(game.trees.begin() + 1, game.trees.end());
-			deleted_tree_ids.push_back(selected_id);
-			invalidate_selected_index();
-			return;
-		}
-		*/
-
 		// Deletion, should be tough
 		if (IsKeyPressed(KEY_BACKSPACE) && game.trees.size() > 1) {
 			for (auto& [selected_index, _] : selections) {
 				auto& selected = game.trees[selected_index];
-				const size_t selected_id = selected->id;
-				// Make sure to extract everything you need from selected BEFORE erasing it
-				game.trees.erase(game.trees.begin() + selected_index);
+				const auto selected_id = selected->id;
 				auto name = tree_to_managed_buttons[selected_id];
 				ui_elem_manager.remove(name);
 				tree_to_managed_buttons.erase(selected_id);
 
 				deleted_tree_ids.push_back(selected_id);
+				// Make sure to extract everything you need from selected BEFORE erasing it
+				game.trees.erase(game.trees.begin() + selected_index);
 
-				std::println("deleted {}", selected_id);
+				std::println("deleted {}", (size_t) selected_id);
 			}
 			invalidate_selections();
 
@@ -270,7 +259,7 @@ void LevelEditor::update(Game& game) {
 
 			// Selected tree is not a thing yet.
 			auto& selected = game.trees[selected_index];
-			auto& meta = tree_metadatas[selected->id];
+			auto& meta = tree_metadatas[(size_t) selected->id];
 
 			if ((!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 			 || (last_ui_hovered != ui_hovered))
@@ -435,10 +424,10 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, const Tree& tree) {
 	const float max_depth = std::max(depth_ui.MAX_DEPTH, depths.back());
 
 	const int spacing = -5;
-	const int height = 90;
+	const float height = (float) depth_ui.MARK_HEIGHT;
 
 	const float percent = (tree.depth - min_depth) / (max_depth - min_depth);
-	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - (float) height / 2;
+	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - height / 2;
 
 	return { 
 		.x = depth_ui.top_left.x + spacing, 
@@ -517,7 +506,7 @@ void LevelEditor::tree_multi_select(Game& game, Vector2 mouse_pos) {
 
 void LevelEditor::update_tree_verts(Game& game, const size_t tree_index) {
 	auto& tree = game.trees[tree_index];
-	auto& meta = tree_metadatas[tree->id];
+	auto& meta = tree_metadatas[(size_t) tree->id];
 
 	const auto& branches = tree->original_branches;
 
@@ -541,7 +530,7 @@ bool LevelEditor::contains_selection(const size_t index) const {
 		}) != selections.end();
 }
 
-int LevelEditor::from_selected_by_id(Game& game, const size_t tree_id) const {
+int LevelEditor::from_selected_by_id(Game& game, const Tree::Id tree_id) const {
 	const auto& search = std::find_if(selections.begin(), selections.end(),
 		[&](auto& sel) {
 			return game.trees[sel.index]->id == tree_id;
@@ -610,17 +599,16 @@ void LevelEditor::duplicate_selected_tendril(Game& game) {
 	// Depth is stored on tree, so it differs from treemetadata
 	std::vector<Selection> new_selections;
 	for (const auto& [selected_index, _] : selections) {
-		auto& selected = game.trees[selected_index];
-		// Don't use selected directly after make_initialized_tree, because it gets deleted as the vector reallocates
-		const float depth = selected->depth;
-		const auto& meta = tree_metadatas[selected->id];
+		const Tree* selected = game.trees[selected_index].get();
+		const auto& meta = tree_metadatas[(size_t) selected->id];
 
 		new_selections.push_back({ game.trees.size(), meta.offset });
 
-		make_initialized_tree([&game, &depth]() { 
+		make_initialized_tree([&]() { 
 			game.make_tree();
 			auto& tree = *game.trees.back();
-			tree.depth = depth;
+			tree.depth = selected->depth;
+			tree.rand.set_seed(selected->rand.seed);
 		}, game, meta);
 	}
 	selections = new_selections;
@@ -629,7 +617,7 @@ void LevelEditor::duplicate_selected_tendril(Game& game) {
 std::string LevelEditor::convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const {
 	std::string ret = "";
 	for (const auto& tree : trees) {
-		auto& meta = tree_metadatas[tree->id];
+		auto& meta = tree_metadatas[(size_t) tree->id];
 		ret = std::format(
 			"{}"
 			"rotation:{:.6f}\n"

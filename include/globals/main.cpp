@@ -51,8 +51,6 @@ int main() {
 		Game game(screen_width, screen_height, fps);
 		game._game = &game;
 
-		// PauseMenu pause_menu(game);
-
 		// Load tree tex once
 		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
 
@@ -60,7 +58,7 @@ int main() {
 		auto metadata_zero = TreeMetadata::zero();
 		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
 
-		PauseMenu pause_menu(game, &level_editor);
+		PauseMenu pause_menu(game);
 
 		bool slow_down = false;
 

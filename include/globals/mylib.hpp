@@ -4,7 +4,6 @@
 #include <string>
 #include <random>
 #include <array>
-#include <tuple>
 #include <raylib.h>
 
 // Typedef it with shader if we are sure there's no issues
