@@ -10,7 +10,7 @@ int Button<T>::debug_count = 0;
 	
 template <typename T>
 Button<T>::Button(
-	const T& owner, 
+	const T& data, 
 	Rectangle bounds, 
 	const std::string& text, 
 	std::function<void(Button<T>&)> on_hover,
@@ -21,11 +21,11 @@ Button<T>::Button(
 	color = background_color;
 	state.last_hit = false;
 	state.hit = false;
-	state.owner = owner;
 	state.text = text;
 	
 	debug_id = debug_count++;
 	std::println("created button #{}", debug_id);
+	this->data = data;
 	this->bounds = bounds;
 	this->on_hover = on_hover;
 	this->on_pressed = on_pressed;
@@ -67,12 +67,6 @@ void Button<T>::update() {
 	auto& last_hit = state.last_hit;
 	auto& last_hovered = state.last_hovered;
 
-	// Run this first, since on_pressed could adjust hovered.
-	if (state.pressed) {
-		// Then the click has occured.
-		on_pressed(*this);
-	}
-
 	// We need to go through a hover state with no click and then a hover state with click to switch to pressed.
 
 	// Update queued state.
@@ -93,6 +87,12 @@ void Button<T>::update() {
 
 	if (!hit)
 		state.pressed = false;
+
+	// Run this first, since on_pressed could adjust hovered.
+	if (state.pressed) {
+		// Then the click has occured.
+		on_pressed(*this);
+	}
 
 	// What?
 	last_hit = hit;

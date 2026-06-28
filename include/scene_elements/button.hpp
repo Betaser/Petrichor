@@ -13,15 +13,8 @@ struct Game;
 template <typename T>
 struct Button : UiElement {
 	// Destructor exists so we have polymorphic type metadata at runtime.
-	/*
-	struct Owner {
-		virtual ~Owner() = default;
-	};
-	*/
 
 	struct State {
-		// Owner* owner;
-		T owner;
 		bool pressed = false;
 		bool last_hovered = false;
 		bool last_hit = false;
@@ -36,6 +29,8 @@ struct Button : UiElement {
 	// This is good enough for hovering/not hovering, but we will need another state for pressing or not.
 	// For now, just make pressing not require another state.
 	State idle_state;
+	
+	T data;
 
 	std::function<void(Button<T>&)> on_hover;
 	std::function<void(Button<T>&)> on_pressed;
@@ -44,7 +39,7 @@ struct Button : UiElement {
 	int debug_id;
 
 	Button(
-		const T& owner, 
+		const T& data, 
 		Rectangle bounds, 
 		const std::string& text, 
 		std::function<void(Button<T>&)> on_hover,

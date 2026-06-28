@@ -5,9 +5,7 @@
 // Is probably a given.
 #define PLATFORM_DESKTOP
 
-#include <fstream>
 #include <string>
-#include <memory>
 #include <raylib.h>
 
 #include "mylib.cpp"
@@ -21,11 +19,6 @@
 #include "../gamestates/pause_menu.cpp"
 #include "../gamestates/level.cpp"
 #include "../scene_elements/camera.cpp"
-
-// TODO: Reuse the same buffer of textures and just use DrawTextureEx with the scale option. Of course, I hope that works alongside the tree shader.
-// Or the dumb solution of making textures the size of the screen and just specifying a boundary as uniform
-	// This dumb solution could involve some weird strategies of juggling textures of closer sizes to give to other trees, but ehhhh
-// Also why is in the examples is RenderTexture? see raylib [shaders] example - mandelbrot set. This seems to be most promising.
 
 #if defined(PLATFORM_DESKTOP)
 	#define GLSL_VERSION 330

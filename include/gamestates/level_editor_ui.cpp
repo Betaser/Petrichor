@@ -29,16 +29,15 @@ void ViewSelector::iterate_views(std::function<void(const LevelEditor::View, Rec
 }
 
 void LevelEditor::initialize_ui(const int screen_width) {
-	auto debug_btn = new Button<LevelEditor*>(
-		this,
+	auto debug_btn = new Button<nullptr_t>(
+		nullptr,
 		to_rect({ (float) screen_width - 190, 110 }, { 80, 80 }),
 		"Show debug keybinds",
 		[](auto& b) {
 			b.idle_state.text = "Press me to toggle instructions";
 		},
-		[](auto& b) {
-			auto owner = dynamic_cast<LevelEditor*>(b.state.owner);
-			owner->show_instructions = !owner->show_instructions;
+		[this](auto& _) {
+			show_instructions = !show_instructions;
 		});
 	debug_btn_str = ui_elem_manager.add(debug_btn, "debug_btn");
 
@@ -144,31 +143,41 @@ void LevelEditor::initialize_ui(const int screen_width) {
 	}
 }
 
-Button<Tree::Id>* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id) {
-	// TODO
-	// Rework button to have a T owner
-	auto depth_btn = new Button<Tree::Id>(
-		tree_id,
+Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id) {
+	auto depth_btn = new Button<DepthState>(
+		{ tree_id, 0 },
 		depth_rect,
 		"",
 		[](auto& _) {},
-		[&, tree_id](auto& self) {
+		[&](auto& self) {
 			if (!is_selecting())
 				return;
 
 			const float MAX_DEPTH = 100;
-			const float cursor_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(depth_ui.SPACING, GetMousePosition().y));
-			auto& tree = game.trees[from_selected_by_id(game, tree_id)];
-			tree->depth = (cursor_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
+			// const float cursor_sidebar_y_pos = std::min(depth_ui.SPACING + depth_ui.height, std::max(depth_ui.SPACING, GetMousePosition().y));
+			const float cursor_sidebar_y_pos = GetMousePosition().y;
+			const float cursor_depth = (cursor_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
+			auto& tree = game.trees[from_selected_by_id(game, (Tree::Id) self.data.id)];
+
+			// I mean I think this is close
+			if (!self.state.last_hit) {
+				self.data.selection_offset = cursor_depth - tree->depth;
+			}
+			const float true_depth = std::min(MAX_DEPTH, std::max(0.0f, cursor_depth - self.data.selection_offset));
+			if (!self.state.last_hit) {
+				std::println("instead of tree depth being {} its {}", cursor_depth, true_depth);
+			}
+
+			tree->depth = true_depth;
 			self.bounds = update_tree_for_depth_ui(game, *tree);
 		},
 		ORANGE);
 
-	depth_btn->render_fn = [&, tree_id](auto ui_element) {
-		const auto& self = *dynamic_cast<decltype(depth_btn)>(ui_element);
+	depth_btn->render_fn = [&](const UiElement* ui_element) {
+		auto& self = *dynamic_cast<const Button<DepthState>*>(ui_element);
 		Color color = depth_ui.MARK_COLOR;
 
-		if (from_selected_by_id(game, tree_id) != -1) {
+		if (from_selected_by_id(game, self.data.id) != -1) {
 			// Then draw a triangle pointer too, idk
 			Vector2 leftmost {
 				self.bounds.x + self.bounds.width + 5,
@@ -181,22 +190,24 @@ Button<Tree::Id>* LevelEditor::make_depth_button(const Rectangle& depth_rect, Ga
 				leftmost + Vector2 { tri_width, -tri_height / 2 },
 				RED);
 
-			const auto& search = std::find_if(game.trees.begin(), game.trees.end(), 
-				[tree_id](const auto& tree) {
-					return tree->id == tree_id;
-				});
-			if (search != game.trees.end())
-				color = ColorLerp(self.color, depth_ui.MARK_COLOR, 0.7);
+			color = ColorLerp(self.color, RED, 0.7);
 		}
+
 		if (self.in_use())
 			color = ColorLerp(color, { 0, 90, 150, 170 }, 0.5);
 		
+		const float SEL_BUFFER = 0.15;
 		Rectangle render_bounds {
 			self.bounds.x,
-			self.bounds.y + 4,
+			self.bounds.y + depth_ui.MARK_HEIGHT * SEL_BUFFER,
 			self.bounds.width,
-			self.bounds.height - 8
+			self.bounds.height - depth_ui.MARK_HEIGHT * SEL_BUFFER * 2
 		};
+
+		if (get_active(FocusTreeView)) {
+			// if (!contains_selection(
+		}
+
 		DrawRectangle((int) render_bounds.x, (int) render_bounds.y, (int) render_bounds.width, (int) render_bounds.height, color);
 	};
 

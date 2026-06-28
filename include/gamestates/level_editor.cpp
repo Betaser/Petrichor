@@ -156,7 +156,7 @@ void LevelEditor::update(Game& game) {
 	const bool selecting = is_selecting();
 
 	// Let's test that it fails.
-	auto debug_button = ui_elem_manager.get<Button<LevelEditor*>>(debug_btn_str);
+	auto debug_button = ui_elem_manager.get<Button<nullptr_t>>(debug_btn_str);
 	
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		if (debug_button->hovered)
@@ -171,7 +171,7 @@ void LevelEditor::update(Game& game) {
 		if (selecting) {
 			for (const auto& [selected_index, _] : selections) {
 				auto& id = game.trees[selected_index]->id;
-				auto depth_button = ui_elem_manager.get<Button<Tree::Id>>(tree_to_managed_buttons[id]);
+				auto depth_button = ui_elem_manager.get<Button<DepthState>>(tree_to_managed_buttons[id]);
 				depth_button->state.hit = true;
 			}
 		}
@@ -204,7 +204,6 @@ void LevelEditor::update(Game& game) {
 		game.load_trees(
 			Constants::test_level2_path, 
 			[&](TreeMetadata& meta, Tree& tree) {
-				// meta.mark = update_tree_for_depth_ui(game, tree);
 				auto depth_rect = update_tree_for_depth_ui(game, tree);
 				auto button = make_depth_button(depth_rect, game, tree.id);
 				const auto name = ui_elem_manager.add(button, "depth_btn");
@@ -305,13 +304,17 @@ void LevelEditor::update(Game& game) {
 }
 
 void LevelEditor::render(Game& game) const {
-	for (size_t i = 0; i < game.trees.size(); i++) {
-		auto& tree = game.trees[i];
+	// Sort trees by depth-based proximity, no?
+	const auto& depth_indices = calc_depth_indices(game);
+
+	for (const size_t& depth_i : depth_indices) {
+		auto& tree = game.trees[depth_i];
 		const float eff_depth = abs(tree->depth - cam_depth);
 		float depth_alpha = std::max(0.0, 1.0 - eff_depth / (depth_ui.MAX_DEPTH * 0.8));
 		Vector4 rgb_tint { .x = 0, .y = 0, .z = 0, .w = 0 };
 
-		const bool tree_selected = contains_selection(i);
+		// Ew this won't align with what we're doing.
+		const bool tree_selected = contains_selection(depth_i);
 
 		if (get_active(FocusTreeView)) {
 			if (!tree_selected) {
@@ -321,24 +324,24 @@ void LevelEditor::render(Game& game) const {
 
 		// Selected view; highlight all parts of the tree cause it could be confusing what branches belong to which trees
 		if (get_active(SelectedView)) {
+			// Tint with non-waning rainbow colors
+			const Color unselected_tints[] {
+				ORANGE, YELLOW, GREEN, BLUE, MAGENTA, PURPLE	
+			};
+			Color color = ColorAlpha(unselected_tints[depth_i % (sizeof(unselected_tints) / sizeof(unselected_tints[0]))], 0.5);
+			rgb_tint = to_vec4(color);
+
 			if (tree_selected) {
 				// wanes with time staying in Highlight.
-				float wane = 1.0;
-				// looks kinda ugly, meh.
-				rgb_tint = {
-					.x = 1.0,
-					.y = 0.2,
-					.z = 0.2,
-					.w = (float) (0.4 * sin(time * 6.0) * wane + 0.4)
+				float wane_speed = 1.0;
+				Color highlight = {
+					.r = 255,
+					.g = 50,
+					.b = 50,
+					.a = color.a
 				};
-			}
-			// Tint with non-waning rainbow colors
-			else {
-				const Color unselected_tints[] {
-					ORANGE, YELLOW, GREEN, BLUE, MAGENTA, PURPLE	
-				};
-				Color color = unselected_tints[i % (sizeof(unselected_tints) / sizeof(unselected_tints[0]))];
-				rgb_tint = to_vec4(ColorAlpha(color, 0.5));
+				float wane = 0.4 * sin(time * 6.0) * wane_speed + 0.4;
+				rgb_tint = to_vec4(ColorLerp(color, highlight, wane));
 			}
 		}
 
@@ -538,6 +541,26 @@ int LevelEditor::from_selected_by_id(Game& game, const Tree::Id tree_id) const {
 	if (search == selections.end())
 		return -1;
 	return search->index;
+}
+
+std::vector<size_t> LevelEditor::calc_depth_indices(Game& game) {
+	std::vector<size_t> depth_indices(game.trees.size());
+	for (size_t i = 0; i < game.trees.size(); i++) {
+		auto& tree = game.trees[i];
+		size_t j = i;
+		for (; j > 0; j--) {
+			size_t depth_index = depth_indices[j - 1];
+			auto& existing_tree = game.trees[depth_index];
+			if (tree->depth <= existing_tree->depth)
+				break;
+
+			// Shift it over. Insert after the loop.
+			depth_indices[j] = depth_indices[j - 1];
+		}
+		depth_indices[j] = i;
+	}
+
+	return depth_indices;
 }
 
 void LevelEditor::adjust_cam_depth(Game& game) {

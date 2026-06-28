@@ -22,7 +22,7 @@ struct LevelEditor {
 		float height = -9999;
 		Vector2 top_left { -9999, -9999 };
 		const Color BACKGROUND_COLOR { 0, 0, 30, 95 };
-		const int MARK_HEIGHT = 90;
+		const int MARK_HEIGHT = 20;
 		const Color MARK_COLOR { 255, 255, 200, 255 };
 	};
 
@@ -62,6 +62,11 @@ struct LevelEditor {
 		int calc_font_size() const;
 		void iterate_views(std::function<void(const View, Rectangle dims)> func) const;
 		Rectangle bounds() const;
+	};
+
+	struct DepthState {
+		Tree::Id id;
+		float selection_offset;
 	};
 
 	std::vector<std::unique_ptr<Tree>> saved_trees;
@@ -119,13 +124,14 @@ struct LevelEditor {
 	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_tree_for_depth_ui(Game& game, const Tree& tree);
-	Button<Tree::Id>* make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id);
+	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id);
 	bool find_cursor_selection(Game& game, Vector2 cursor, Selection* selection);
 	void tree_single_select(Game& game, Vector2 mouse_pos);
 	void tree_multi_select(Game& game, Vector2 mouse_pos);
 	void update_tree_verts(Game& game, const size_t tree_index);
 	bool contains_selection(const size_t index) const;
 	int from_selected_by_id(Game& game, const Tree::Id tree_id) const;
+	static std::vector<size_t> calc_depth_indices(Game& game);
 };
 
 #endif
