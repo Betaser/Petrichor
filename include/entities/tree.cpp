@@ -6,7 +6,7 @@
 #include "tree.hpp"
 #include "../globals/mylib.hpp"
 
-TextureWithCheck Tree::static_tree_tex;
+TextureWithCheck Tree::branch_sampling_tex;
 
 Branch::Branch(std::vector<Vector2> verts) {
 	this->verts = verts;
@@ -39,30 +39,14 @@ Branch Branch::clone() const {
 	return { vs };
 }
 
-void Tree::init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand) {
-	this->branches = branches;
-	this->tendril_shader = tendril_shader;
-	this->trunk_shader = trunk_shader;
-	this->rand = rand;
+void TendrilConfig::init_gfx(ShaderWithCheck branch_shader) {
+	this->branch_shader = branch_shader;
 
-	this->tendrils = {};
-	tree_tex = static_tree_tex;
-	// This resolution actually matters. Lower looks ps1-like. It seems like 1000x1000 (1000, 1000) is practically perfect, but too slow to render more than like 5 branches at.
-	target = LoadRenderTexture(400, 400);
+	sample_tex = Tree::branch_sampling_tex;
 	init_texture();
 }
 
-void Tree::dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to) {
-	to.clear();
-	
-	for (auto& branch : from) {
-		Branch b(branch.verts);
-		b.nexts = branch.nexts;
-		to.push_back(b);
-	}
-}
-
-void Tree::on_updated_branch() {
+void TendrilConfig::on_updated_branch() {
 	branch_twists.clear();
 	prev_rel_dirs.clear();
 
@@ -71,40 +55,36 @@ void Tree::on_updated_branch() {
 		prev_rel_dirs.push_back({ 0, 0 });
 	}
 
-	dup_branches(branches, original_branches);
+	Tree::dup_branches(branches, original_branches);
 }
 
-Tree::Tree(std::vector<Branch> branches, Rand& rand) : rand(rand) {
-	id = (Tree::Id) 0;
-	std::println("init tree");
+TendrilConfig::TendrilConfig(Id id, const Rand& rand) : rand(rand) {
+	this->id = id;
+	std::println("init tendril config with id {}", (size_t) id);
 	ShaderWithCheck tendril_shader;
 	load_shader(tendril_shader, "assets/tree_tendril.fs");
 	ShaderWithCheck trunk_shader;
 	load_shader(trunk_shader, "assets/tree_trunk.fs");
 
-	init(branches, tendril_shader, trunk_shader, rand);
+	init_gfx(tendril_shader);
 }
 
-Tree::~Tree() {
-	std::println("deinit tree");
+TendrilConfig::~TendrilConfig() {
+	std::println("deinit tendril config");
 	unload_textures();
-	std::println("unload tendril shader!");
-	unload_shader(tendril_shader);
-	std::println("unload trunk shader!");
-	unload_shader(trunk_shader);
-	std::println("tendril shader w/ id {} loads/unloads {}", tendril_shader.id, tendril_shader.load_unloads);
-	std::println("trunk shader w/ id {} loads/unloads {}", trunk_shader.id, trunk_shader.load_unloads);
+	std::println("unload branch shader!");
+	unload_shader(branch_shader);
+	std::println("branch shader w/ id {} loads/unloads {}", branch_shader.id, branch_shader.load_unloads);
 
-	std::println("tree blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
-	UnloadRenderTexture(target);
+	std::println("tendril config blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
 }
 
-void Tree::unload_textures() {
+void TendrilConfig::unload_textures() {
 	std::println("unload texs");
 	unload_texture(blank_tex);
 }
 
-void Tree::bounding_box(Vector2& small, Vector2& big) {
+void TendrilConfig::bounding_box(Vector2& small, Vector2& big) {
 	small.x = small.y = 9999;
 	big.x = big.y = -9999;
 	for (const auto& branch : branches) {
@@ -117,10 +97,8 @@ void Tree::bounding_box(Vector2& small, Vector2& big) {
 	}
 }
 
-// Will be out of date if branch verts are changed.
-void Tree::init_texture() {
+void TendrilConfig::init_texture() {
 	std::println("init tree texture");
-	// unload_textures();
 
 	// Bounding box it
 	update_texture();
@@ -129,31 +107,23 @@ void Tree::init_texture() {
 	load_texture_from_image(blank_tex, blank);
 	UnloadImage(blank);
 
-	int loc = GetShaderLocation(tendril_shader, "tex");
-	SetShaderValueTexture(tendril_shader, loc, tree_tex);
+	int loc = GetShaderLocation(branch_shader, "tex");
+	SetShaderValueTexture(branch_shader, loc, sample_tex);
 }
 
 // Needed to reposition texture.
-void Tree::update_texture() {
+void TendrilConfig::update_texture() {
 	Vector2 _;
 	bounding_box(texture_pos, _);
 }
 
-void Tree::send_vals_to_tendril_shader() {
-	int color_loc = GetShaderLocation(tendril_shader, "finishing_color");
-	Vector4 color { 1, 1, 1, 1 };
-	// Create a color for this branch.
-	SetShaderValue(tendril_shader, color_loc, &color, SHADER_UNIFORM_VEC4);
-
-	int loc = GetShaderLocation(tendril_shader, "N");
+void TendrilConfig::send_vals_to_branch_shader() {
 	size_t size = branches.size();
-	SetShaderValue(tendril_shader, loc, &size, SHADER_UNIFORM_INT);
+	set_shader_value(branch_shader, "N", &size, SHADER_UNIFORM_INT);
 
-	int dims_loc = GetShaderLocation(tendril_shader, "dims");
-	Vector2I dims { tree_tex.width, tree_tex.height };
-	SetShaderValue(tendril_shader, dims_loc, &dims, SHADER_UNIFORM_IVEC2);
+	Vector2I dims { sample_tex.width, sample_tex.height };
+	set_shader_value(branch_shader, "dims", &dims, SHADER_UNIFORM_IVEC2);
 
-	// BAD TO RECOMPUTE THESE ALL THE TIME IF WE USE IT FOR NORMALIZATION IN THE FOR LOOP.
 	bounding_box(small, big);
 
 	for (size_t n_i = 0; n_i < size; n_i++) {
@@ -167,17 +137,17 @@ void Tree::send_vals_to_tendril_shader() {
 		}
 	}
 
-	int branch_i = 0;
+	size_t branch_i = 0;
 	// Given: branches is the flattened version of tendrils.
-	Rand render_rand(rand.seed);
-
-	const float branch_width = fmodf((tendrils[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
+	const float branch_width = fmodf((structured_branches[0][0].back_thickness() * 2) / MAX_WIDTH, 1.0);
 	// But the texture is at this width, so branch_width should be a multiple of that
 
-	for (const auto& tendril : tendrils) {
+	Rand render_rand(rand.seed);
+	for (size_t i = 0; i < structured_branches.size(); i++) {
+		const auto& tendril = structured_branches[i];
 		// Start from the bottom of the texture, work your way up
 		// x_small and x_big chosen from start_thickness, perhaps
-		const float left_bound = snap(render_rand.gen(0, 1.0 - branch_width), (float) tree_tex.width);
+		const float left_bound = snap(render_rand.gen(0, 1.0 - branch_width), (float) sample_tex.width);
 		float btm_height = 0;
 
 		for (const auto& branch : tendril) {
@@ -195,43 +165,25 @@ void Tree::send_vals_to_tendril_shader() {
 	}
 
 	// texture regions
-	int btm_left_locs = GetShaderLocation(tendril_shader, "btmLefts");
-	int top_right_locs = GetShaderLocation(tendril_shader, "topRights");
+	int btm_left_locs = GetShaderLocation(branch_shader, "btmLefts");
+	int top_right_locs = GetShaderLocation(branch_shader, "topRights");
 
-	SetShaderValueV(tendril_shader, btm_left_locs, btm_lefts, SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(tendril_shader, top_right_locs, top_rights, SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(branch_shader, btm_left_locs, btm_lefts, SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(branch_shader, top_right_locs, top_rights, SHADER_UNIFORM_VEC2, size);
 
-	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt1s"), compressed_branches[0], SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt2s"), compressed_branches[1], SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt3s"), compressed_branches[2], SHADER_UNIFORM_VEC2, size);
-	SetShaderValueV(tendril_shader, GetShaderLocation(tendril_shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(branch_shader, GetShaderLocation(branch_shader, "pt1s"), compressed_branches[0], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(branch_shader, GetShaderLocation(branch_shader, "pt2s"), compressed_branches[1], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(branch_shader, GetShaderLocation(branch_shader, "pt3s"), compressed_branches[2], SHADER_UNIFORM_VEC2, size);
+	SetShaderValueV(branch_shader, GetShaderLocation(branch_shader, "pt4s"), compressed_branches[3], SHADER_UNIFORM_VEC2, size);
 }
 
 // ONLY FOR LEVEL EDITOR
-void Tree::level_editor_render(const TreeRenderData& data) {
-	send_vals_to_tendril_shader();
-
-	set_shader_value(tendril_shader, "finishingAlpha", &data.finishing_alpha, SHADER_UNIFORM_FLOAT);
-	set_shader_value(tendril_shader, "rgbTint", &data.rgb_tint, SHADER_UNIFORM_VEC4);
-
-	// Later TODO: Make a custom shader for level editor (which is here) cause showing a high level repr of each segment is very different.
-
-	BeginShaderMode(tendril_shader);
-	DrawTexturePro(
-		blank_tex,
-		// source rect
-		full_texture(blank_tex),
-		// dest rect, I think its the whole screen
-		{
-			.x = texture_pos.x,
-			.y = texture_pos.y,
-			.width = (big - small).x,
-			.height = (big - small).y,
-		},
-		{},
-		0,
-		WHITE);
-	EndShaderMode();
+void Tree::level_editor_render(const std::vector<TendrilRenderData>& tendrils_data) {
+	for (size_t i = 0; i < tendril_configs.size(); i++) {
+		auto& config = tendril_configs[i];
+		auto& data = tendrils_data[i];
+		config.level_editor_render(data);
+	}
 
 	BeginShaderMode(trunk_shader);
 	for (const auto& face : trunk_faces) {
@@ -251,28 +203,56 @@ void Tree::level_editor_render(const TreeRenderData& data) {
 	EndShaderMode();
 }
 
-void Tree::render_to_target() {
-	BeginTextureMode(target);
-	ClearBackground(BLANK);
+void TendrilConfig::level_editor_render(const TendrilRenderData& data) {
+	send_vals_to_branch_shader();
 
-	send_vals_to_tendril_shader();
-	auto src = full_texture(blank_tex);
-	auto dest = full_texture(target.texture);
-	src.height *= -1;
+	set_shader_value(branch_shader, "finishingAlpha", &data.finishing_alpha, SHADER_UNIFORM_FLOAT);
+	set_shader_value(branch_shader, "rgbTint", &data.rgb_tint, SHADER_UNIFORM_VEC4);
 
-	BeginShaderMode(tendril_shader);
+	// Later TODO: Make a custom shader for level editor (which is here) cause showing a high level repr of each segment is very different.
+
+	BeginShaderMode(branch_shader);
 	DrawTexturePro(
 		blank_tex,
-		src,
-		dest,
+		// source rect
+		full_texture(blank_tex),
+		// dest rect, I think its the whole screen
+		{
+			.x = texture_pos.x,
+			.y = texture_pos.y,
+			.width = (big - small).x,
+			.height = (big - small).y,
+		},
 		{},
 		0,
 		WHITE);
 	EndShaderMode();
+}
+
+void Tree::render_to_target() {
+	BeginTextureMode(target);
+	ClearBackground(BLANK);
+
+	for (auto& tendril_config : tendril_configs) {
+		tendril_config.send_vals_to_branch_shader();
+		auto src = full_texture(blank_tex);
+		auto dest = full_texture(target.texture);
+		src.height *= -1;
+
+		BeginShaderMode(tendril_config.branch_shader);
+		DrawTexturePro(
+			blank_tex,
+			src,
+			dest,
+			{},
+			0,
+			WHITE);
+		EndShaderMode();
+	}
 	EndTextureMode();
 }
 
-constexpr Vector2 Tree::origin() const {
+constexpr Vector2 TendrilConfig::origin() const {
 	return branches[0].back();
 }
 
@@ -288,8 +268,8 @@ std::vector<Branch> Tree::branches_from_tendrils(std::vector<std::vector<Branch>
 	return branches;
 }
 
-std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS) {
-	start_thickness = snap(start_thickness, (float) tree_tex.width / MAX_WIDTH);
+std::vector<std::vector<Branch>> TendrilConfig::gen_structured_branches(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS) {
+	start_thickness = snap(start_thickness, (float) sample_tex.width / MAX_WIDTH);
 	std::uniform_real_distribution<> uniform_gen(0.0, 1.0);
 	float length_used = 0;
 
@@ -298,7 +278,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 		// for now just go with it being independent of tendril.
 		float rand_length = rand.gen(total_length * 0.04, total_length * 0.13);
 		float ret = fmin(total_length - length_used, rand_length);
-		return snap(ret, (float) tree_tex.width / MAX_WIDTH);
+		return snap(ret, (float) sample_tex.width / MAX_WIDTH);
 	};
 
 	// Redo so that we follow a straight line given by another parameter; which will be determined by analyizing all tendrils and pathing towards a location that spreads out best.
@@ -362,7 +342,9 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 
 	auto start_branch = make_branch(start_location, start_rotation, total_length * 0.2, start_thickness * 0.8, start_thickness);
 
-	std::vector<std::vector<Branch>> tendrils;
+	// Not important, but this does avoid the most unnecessary moves
+	std::vector<std::vector<Branch>> structured_branches {};
+
 	// In a for loop, allocate tendril vectors
 	std::vector<Branch> curr_tendril { start_branch, start_branch };
 
@@ -372,7 +354,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 	std::vector<SplitIdx> splittable_indices;
 	SplitIdx indices;
 
-	while ((int) tendrils.size() < MAX_TENDRILS) {
+	while ((int) structured_branches.size() < MAX_TENDRILS) {
 		length_used = 0;
 		
 		// Below is the process of building out a tendril.
@@ -386,7 +368,7 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 
 			// Let's adjust nexts.
 			if (curr_tendril.size() == 1)
-				tendrils[indices.i][indices.j].nexts.push_back(next_index++);
+				structured_branches[indices.i][indices.j].nexts.push_back(next_index++);
 			else
 				branch.nexts.push_back(next_index++);
 
@@ -418,17 +400,17 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 		// Base building a tendril off of a branch as above, but don't repeat branches across tendrils.
 		curr_tendril.erase(curr_tendril.begin());
 
-		tendrils.push_back(curr_tendril);
+		structured_branches.push_back(curr_tendril);
 
 		for (int i = 0; i < (int) curr_tendril.size() - 2; i++)
-			splittable_indices.push_back({ (int) tendrils.size() - 1, i });
+			splittable_indices.push_back({ (int) structured_branches.size() - 1, i });
 		if (splittable_indices.size() == 0)
 			break;
 
 		const int random_index = (int) rand.gen(0, (float) splittable_indices.size());
 
 		indices = splittable_indices[random_index];
-		const auto& random_branch = tendrils[indices.i][indices.j];
+		const auto& random_branch = structured_branches[indices.i][indices.j];
 
 		// We want to capture this data conceptually, though this index value is kind of weird.
 		// Specifically, we care about which branch this random_branch "split off from". In actuality, it is that a tendril is shared between two branches.
@@ -439,18 +421,48 @@ std::vector<std::vector<Branch>> Tree::random_tendril_config(float total_length,
 		// We want construct a collection of branch indexes/pointers with more structure than an array, 
 		// because we need to determine the "earlyness" of branches. This algorithm has to be at least in part constructed in this algorithm, and it turns out that branches that are "shared" by splittable branches are actually duplicated.
 
-		// Ideas:
 		// Suppose we return an dictionary of {split_branch_id: {branch_ids_2[...], branch_ids_2[...]}, ...}
 		// This lets us enumerate the different split branches, and go down the two branches that correspond to that branch.
-		// However, we need to figure out the split "earlyness", and I am going to sketch that out to figure something out.
 
 		curr_tendril = { random_branch };
 		splittable_indices.erase(splittable_indices.begin() + random_index);
 	}
 
-	return tendrils;
+	return structured_branches;
 }
 
-bool Tree::past_me(const Petra& petra, const float epsilon) const {
+bool TendrilConfig::past_me(const Petra& petra, const float epsilon) const {
 	return petra.depth <= depth + epsilon;
+}
+
+Tree::Tree(ShaderWithCheck trunk_shader) {
+	this->trunk_shader = trunk_shader;
+	std::println("init tree");
+	auto blank = GenImageColor(blank_tex_dims.x, blank_tex_dims.y, BLANK);
+	load_texture_from_image(blank_tex, blank);
+	UnloadImage(blank);
+
+	// This resolution actually matters. Lower looks ps1-like. It seems like 1000x1000 (1000, 1000) is practically perfect, but too slow to render more than like 5 branches at.
+	target = LoadRenderTexture(400, 400);
+}
+
+Tree::~Tree() {
+	std::println("deinit tree");
+	std::println("unload texs");
+	unload_texture(blank_tex);
+	std::println("tendril config blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
+	std::println("unload trunk shader!");
+	unload_shader(trunk_shader);
+	std::println("trunk shader w/ id {} loads/unloads {}", trunk_shader.id, trunk_shader.load_unloads);
+	UnloadRenderTexture(target);
+}
+
+void Tree::dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to) {
+	to.clear();
+	
+	for (auto& branch : from) {
+		Branch b(branch.verts);
+		b.nexts = branch.nexts;
+		to.push_back(b);
+	}
 }

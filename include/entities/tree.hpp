@@ -3,13 +3,9 @@
 
 #include <raylib.h>
 
-struct Branch;
-struct Game;
-struct LevelEditor;
 struct Petra;
 
 #include "../globals/mylib.hpp"
-#include "../scene_elements/button.hpp"
 
 struct Branch {
 	std::vector<Vector2> verts;
@@ -25,32 +21,37 @@ struct Branch {
 	Branch clone() const;
 };
 
-struct TrunkLayer {
-	float depth = 0;
-	Vector2 position {};
-	float radius = 0;
-};
-
-// I'm thinking of rendering the top segment differently, but it's not a pressing matter.
-struct TrunkSegment {
-	const TrunkLayer top;
-	const TrunkLayer bottom;
-};
-
 struct TrunkFace {
 	float depth = 0;
 	Vector2 position {};
 	float radius = 10;
 };
 
-struct TreeRenderData {
+struct TendrilRenderData {
 	float finishing_alpha;
 	Vector4 rgb_tint;
 };
 
-struct Tree {
-	private:
+struct TendrilConfig {
+	public:
+	enum class Id : size_t {};
+
 	static const int MAX = 100;
+
+	TextureWithCheck blank_tex;
+	ShaderWithCheck branch_shader;
+	Vector2 texture_pos {};
+	Vector2 small {};
+	Vector2 big {};
+
+	void send_vals_to_branch_shader();
+	void level_editor_render(const TendrilRenderData& data);
+	// Does not figure out how we want to render it.
+	std::vector<std::vector<Branch>> gen_structured_branches(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5);
+
+	~TendrilConfig();
+
+	private:
 	// Controls the horz zoom of texels, bigger = more zoomed in
 	const float MAX_WIDTH = 300;
 	const float MAX_HEIGHT = MAX_WIDTH;
@@ -60,58 +61,55 @@ struct Tree {
 	Vector2 top_rights[MAX] {};
 	// Default to this resolution, it might not matter what this really is.
 	const Vector2I blank_tex_dims { 10, 10 };
-
-	void init_texture();
-	void unload_textures();
-
-	public:
-	enum class Id : size_t {};
-	float depth = 0;
-	Vector2 small {};
-	Vector2 big {};
-	Id id = (Id) 0;
-	ShaderWithCheck tendril_shader;
-	ShaderWithCheck trunk_shader;
 	Rand rand;
-	RenderTexture2D target;
-	// Contains same branches as in tendrils
+	Id id = (Id) 0;
+	float depth = 0;
+	TextureWithCheck sample_tex;
+	// Contains same branches as in structured_branches
 	std::vector<Branch> branches;
+	std::vector<std::vector<Branch>> structured_branches;
 	// Needed to simulate branch resistance to dome "bending"
 	std::vector<Branch> original_branches;
 	// Needed to simulate branch "twisting"
 	std::vector<Vector2> prev_rel_dirs;
 	std::vector<float> branch_twists;
-	Vector2 texture_pos {};
-	std::vector<std::vector<Branch>> tendrils;
-	std::vector<TrunkSegment> trunk_segments;
+
+	TendrilConfig(Id id, const Rand& rand);
+
+	void init_gfx(ShaderWithCheck branch_shader);
+	void init_texture();
+	void unload_textures();
+	void bounding_box(Vector2& small, Vector2& big);
+	void on_updated_branch();
+	void update_texture();
+	constexpr Vector2 origin() const;
+	bool past_me(const Petra& petra, const float epsilon = 0) const;
+};
+
+struct Tree {
+	// Default to this resolution, it might not matter what this really is.
+	const Vector2I blank_tex_dims { 10, 10 };
+
+	TextureWithCheck blank_tex;
+	ShaderWithCheck trunk_shader;
+	RenderTexture2D target;
+
+	public:
+	std::vector<TendrilConfig> tendril_configs;
 
 	// Current idea for trunk
 	std::vector<TrunkFace> trunk_faces;
 
-	// Hold onto tree_tex just to unload it.
-	TextureWithCheck blank_tex, tree_tex;
-
-	static TextureWithCheck static_tree_tex;
+	static TextureWithCheck branch_sampling_tex;
 	static void dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to);
 
-	Tree(std::vector<Branch> branches, Rand& rand);
+	Tree(ShaderWithCheck trunk_shader);
 	~Tree();
 
-	void bounding_box(Vector2& small, Vector2& big);
-	void init(std::vector<Branch> branches, ShaderWithCheck tendril_shader, ShaderWithCheck trunk_shader, Rand& rand);
-	void on_updated_branch();
-	void update_texture();
-	void send_vals_to_tendril_shader();
-	void level_editor_render(const TreeRenderData& data);
+	void level_editor_render(const std::vector<TendrilRenderData>& tendrils_data);
 	void render_to_target();
 
-	constexpr Vector2 origin() const;
-
-	static std::vector<Branch> branches_from_tendrils(std::vector<std::vector<Branch>> tendrils);
-
-	// Does not figure out how we want to render it.
-	std::vector<std::vector<Branch>> random_tendril_config(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5);
-	bool past_me(const Petra& petra, const float epsilon = 0) const;
+	static std::vector<Branch> branches_from_tendrils(std::vector<std::vector<Branch>> tendril_config);
 };
 
 #endif

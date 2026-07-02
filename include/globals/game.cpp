@@ -94,6 +94,6 @@ void Game::make_tree() {
 	// t->id = trees.size();
 	// trees.emplace_back(std::move(t));
 	
-	trees.push_back(std::unique_ptr<Tree>(new Tree({}, rand)));	
+	trees.push_back(std::make_unique<Tree>(std::vector<Branch> {}));	
 	trees.back()->id = (Tree::Id) (trees.size() - 1);
 }

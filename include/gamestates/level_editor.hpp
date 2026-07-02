@@ -26,13 +26,13 @@ struct LevelEditor {
 		const Color MARK_COLOR { 255, 255, 200, 255 };
 	};
 
-	// Let's see if enum non-class is enough
 	enum View {
 		// Pulse red for selected trees
 		SelectedView,
 		// (TODO) Can click and drag anywhere to alter the camera
 		CameraView,
-		// Only shows selected trees and scrolling now shows each branch sorted by depth
+		// Only shows selected trees
+		// (TODO) and scrolling now shows each branch sorted by depth, so scrolling jumps by depth
 		FocusTreeView,
 		SIZE,
 	};
@@ -95,18 +95,29 @@ struct LevelEditor {
 	void reinit(Game& game);
 	// if not sure about tree_maker, use game.make_tree();
 	void make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata);
-	void initialize_ui(const int screen_width);
-	void randomize_tendrils(Game& game, const size_t tree_index);
+	void randomize_tendrils(Game& game, const size_t tree_index, const Rand& rand);
 	void update_selected_verts(Game& game);
 	void init_selection_texture();
 	void update(Game& game);
 	void render(Game& game) const;
 	void invalidate_selections();
-
 	void duplicate_selected_tendril(Game& game);
 
 	private:
+	enum ExtraButtonState {
+		// Handle the none case without using an enum member
+		OnCameraView, // Go to Petra
+		OnMultipleSelected, // Merge trees
+		None,
+		EXTRA_SIZE
+	};
+
+	// Initialized while "initialize_ui" runs.
+	ExtraButtonState active_extra_button;
+	std::array<UiElementGroup, EXTRA_SIZE> extra_state_to_group;
+	std::string extra_buttons_region_name;
 	std::string debug_btn_str;
+	// Don't need to have this around tbh, should be part of the ui_elem_manager
 	bool show_instructions = false;
 	Vector2 select_extra_bounds { 10, 10 };
 	ShaderWithCheck select_shader;
@@ -117,20 +128,26 @@ struct LevelEditor {
 	Rectangle get_cam_depth(const int screen_width) const;
 	void render_cam_depth(Game& game) const;
 	void adjust_cam_depth(Game& game);
-	std::string convert_trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
+	std::string trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
 
 	bool is_selecting() const;
 	void set_active(View view, bool active);
 	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_tree_for_depth_ui(Game& game, const Tree& tree);
-	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id);
 	bool find_cursor_selection(Game& game, Vector2 cursor, Selection* selection);
 	void tree_single_select(Game& game, Vector2 mouse_pos);
 	void tree_multi_select(Game& game, Vector2 mouse_pos);
 	void update_tree_verts(Game& game, const size_t tree_index);
 	bool contains_selection(const size_t index) const;
 	int from_selected_by_id(Game& game, const Tree::Id tree_id) const;
+	void set_active_extra_button_group(ExtraButtonState button_state);
+	void delete_tree(Game& game, const size_t tree_index);
+
+	// Impl extracted out to level_editor_ui.cpp
+	void initialize_ui(Game& game);
+	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id);
+
 	static std::vector<size_t> calc_depth_indices(Game& game);
 };
 

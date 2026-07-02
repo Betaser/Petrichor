@@ -45,11 +45,13 @@ int main() {
 		game._game = &game;
 
 		// Load tree tex once
-		load_texture(Tree::static_tree_tex, "assets/tree_texture.png");
+		load_texture(Tree::branch_sampling_tex, "assets/tree_texture.png");
 
 		LevelEditor level_editor(game);
-		auto metadata_zero = TreeMetadata::zero();
-		level_editor.make_initialized_tree([&game]() { game.make_tree(); }, game, metadata_zero);
+		level_editor.make_initialized_tree(
+			[&game]() { 
+				game.make_tree(); 
+			}, game, { {} });
 
 		PauseMenu pause_menu(game);
 
@@ -72,7 +74,7 @@ int main() {
 						if (game.last_state == EditLevel) {
 							// But refill game.trees with our edit level contents.
 							for (auto& tree : game.trees)
-								level_editor.saved_trees.emplace_back(std::move(tree));
+								level_editor.saved_trees.push_back(std::move(tree));
 							game.load_trees(
 								Constants::test_level_path,
 								[](TreeMetadata& meta, Tree& tree) {
@@ -136,10 +138,10 @@ int main() {
 		// do a bad, this is indeed caught by ubuntu -fsanitize=leak
 		// void* volatile blah = malloc(1);
 		// (void) blah;
-		unload_texture(Tree::static_tree_tex);
+		unload_texture(Tree::branch_sampling_tex);
 		unload_texture(Main::dummy_tex);
 
-		std::println("static tree tex w/ id {} loads/unloads {}", Tree::static_tree_tex.id, Tree::static_tree_tex.load_unloads);
+		std::println("branch sampling tex w/ id {} loads/unloads {}", Tree::branch_sampling_tex.id, Tree::branch_sampling_tex.load_unloads);
 		std::println("dummy tex w/ id {} loads/unloads {}", Main::dummy_tex.id, Main::dummy_tex.load_unloads);
 	}
 

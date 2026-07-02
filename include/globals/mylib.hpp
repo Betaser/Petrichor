@@ -33,9 +33,9 @@ struct Vector2I {
 };
 
 struct Rand {
-	Rand(int seed); 
-
 	int seed = 0;
+
+	Rand(int seed); 
 
 	void set_seed(int seed);
 	float gen(float a, float b);
