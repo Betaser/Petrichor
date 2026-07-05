@@ -141,10 +141,8 @@ void LevelEditor::initialize_ui(Game& game) {
 		});
 	}
 
-	// TODO
-	// Extra buttons region for generic use
-	// Example usage: Selecting multiple different tree branches gives you an option to merge them into one tree.
 	Region<ColorState>* extra_buttons_region = nullptr;
+
 	{
 		Color extra_buttons_bg_color {
 			.r = 40,
@@ -207,39 +205,52 @@ void LevelEditor::initialize_ui(Game& game) {
 		extra_state_to_group[OnCameraView] = { { name } };
 	}
 
-	// Make merge trees button
+	// Make merge tendrils button
 	{
 		auto button = new Button<LevelEditor*>(
 			this,
 			make_centered_rect(
 				{ 110, 40 },
 				extra_buttons_region->bounds),
-			"Merge trees",
+			"Merge tendrils",
 			[](auto& _) {
-				std::println("HOVER merge trees");
+				std::println("HOVER merge tendrils");
 			},
 			[&](Button<LevelEditor*>& self) {
 				// Default to the merged tree output being based on the first selection.
-				const auto& kept_sel = self.data->selections[0];
+				Tree* kept_tree_addr = all_config_info[self.data->selections[0].index].ptr->tree_owner;
 
 				// Move branches to chosen tree
-				auto& kept_tree = game.trees[kept_sel.index];
 				for (const auto& selection : self.data->selections) {
-					if (selection.index == kept_sel.index)
+					auto& sel_config_info = all_config_info[selection.index];
+					Tree* sel_tree_addr = sel_config_info.ptr->tree_owner;
+					if (sel_tree_addr == kept_tree_addr)
 						continue;
 
-					auto& tree = game.trees[selection.index];
-					for (auto& branch : tree->branches)
-						kept_tree->branches.push_back(branch);
+					// auto& sel_tree_config = sel_tree_addr->tendril_configs[sel_config_info.tree_owner_index];
+					auto it = sel_tree_addr->tendril_configs.begin() + sel_config_info.tree_owner_index;
+					// Pretty sure this should work tbh?
+					kept_tree_addr->tendril_configs.push_back(std::move(*it));
+					sel_tree_addr->tendril_configs.erase(it);
+
+					sel_config_info.ptr->tree_owner = kept_tree_addr;
 				}
 
 				// Delete the other selected trees
-				for (const auto& selection : self.data->selections) {
-					if (selection.index != kept_sel.index) {
-						delete_tree(game, selection.index);
-					}
+				std::vector<size_t> saved_selection_indices(selections.size());
+				for (size_t i = 0; i < selections.size(); i++)
+					saved_selection_indices[i] = selections[i].index;
+
+				/*
+				for (const auto& sel_index : saved_selection_indices) {
+					const Tree* sel_tree_addr = all_config_info[sel_index].ptr->tree_owner;
+					if (sel_tree_addr == kept_tree_addr)
+						continue;
+
+					delete_config(sel_index);
 				}
-				// We do print this, so what breaks now?
+				*/
+
 				std::println("deleted other trees");
 				set_active_extra_button_group(None);
 			},
@@ -257,9 +268,9 @@ void LevelEditor::initialize_ui(Game& game) {
 	extra_state_to_group[None] = { {} };
 }
 
-Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id) {
-	auto depth_btn = new Button<DepthState>(
-		{ tree_id, 0 },
+Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id) {
+	auto depth_btn = new Button<LevelEditor::DepthState>(
+		{ config_id, 0 },
 		depth_rect,
 		"",
 		[](auto& _) {},
@@ -270,18 +281,14 @@ Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle&
 			const float MAX_DEPTH = 100;
 			const float cursor_sidebar_y_pos = GetMousePosition().y;
 			const float cursor_depth = (cursor_sidebar_y_pos - depth_ui.SPACING) / depth_ui.height * MAX_DEPTH;
-			auto& tree = game.trees[from_selected_by_id(game, (Tree::Id) self.data.id)];
+			auto& config = all_config_info[from_selected_by_id((TendrilConfig::Id) self.data.id)].ptr;
 
-			// I mean I think this is close
 			if (!self.state.last_hit)
-				self.data.selection_offset = cursor_depth - tree->depth;
+				self.data.selection_offset = cursor_depth - config->depth;
 
 			const float true_depth = std::min(MAX_DEPTH, std::max(0.0f, cursor_depth - self.data.selection_offset));
-			if (!self.state.last_hit)
-				std::println("instead of tree depth being {} its {}", cursor_depth, true_depth);
-
-			tree->depth = true_depth;
-			self.bounds = update_tree_for_depth_ui(game, *tree);
+			config->depth = true_depth;
+			self.bounds = update_config_for_depth_ui(*config);
 		},
 		ORANGE);
 
@@ -289,7 +296,7 @@ Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle&
 		auto& self = *dynamic_cast<Button<DepthState>*>(ui_element);
 		Color color = depth_ui.MARK_COLOR;
 
-		const bool is_selected = from_selected_by_id(game, self.data.id) != -1;
+		const bool is_selected = from_selected_by_id(self.data.id) != -1;
 		if (is_selected) {
 			// Then draw a triangle pointer too, idk
 			Vector2 leftmost {

@@ -1,8 +1,6 @@
 #ifndef TREE_META_H
 #define TREE_META_H
 
-#include <vector>
-#include <print>
 #include <raylib.h>
 
 // TODO:
@@ -12,14 +10,16 @@
 // And that means each branch needs its own seed value; which probably becomes a vector on metadata.
 // Which means a lot of functions inside game.load_trees has to change too.
 struct BranchMetadata {
-	Vector2 offset;
-	float rotation;
+	Vector2 offset {};
+	float rotation = 0;
+	BranchMetadata() {}
 	BranchMetadata(Vector2 offset, float rotation) {
 		this->offset = offset;
 		this->rotation = rotation;
 	}
 };
 
+/*
 struct TreeMetadata {
 	std::vector<BranchMetadata> each_branch;
 
@@ -34,6 +34,7 @@ struct TreeMetadata {
 
 	TreeMetadata() = delete;
 };
+*/
 
 /*
 struct TreeMetadata {

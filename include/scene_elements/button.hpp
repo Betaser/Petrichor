@@ -10,6 +10,10 @@
 struct LevelEditor;
 struct Game;
 
+namespace DebugButton {
+	static int debug_count = 0;
+}
+
 template <typename T>
 struct Button : UiElement {
 	// Destructor exists so we have polymorphic type metadata at runtime.
@@ -35,7 +39,6 @@ struct Button : UiElement {
 	std::function<void(Button<T>&)> on_hover;
 	std::function<void(Button<T>&)> on_pressed;
 
-	static int debug_count;
 	int debug_id;
 
 	Button(

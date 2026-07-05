@@ -10,7 +10,7 @@
 #include "../gamestates/level.hpp"
 
 struct Game;
-struct TreeMetadata;
+struct BranchMetadata;
 
 struct Game {
 	std::vector<std::unique_ptr<Tree>> trees;
@@ -28,7 +28,7 @@ struct Game {
 	static Game* _game;
 	static Game* get();
 
-	void load_trees(const char* filepath, std::function<void(TreeMetadata&, Tree&)> accept_metadata);
+	void load_trees(const char* filepath, std::function<void(BranchMetadata&, TendrilConfig*, size_t)> accept_metadata);
 	void make_tree();
 	void set_fps(int fps);
 };

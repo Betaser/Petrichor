@@ -39,6 +39,29 @@ Branch Branch::clone() const {
 	return { vs };
 }
 
+TendrilConfig::TendrilConfig(Id id, const Rand& rand, Tree* tree_owner) : rand(rand) {
+	this->id = id;
+	this->tree_owner = tree_owner;
+	std::println("init tendril config with id {}", (size_t) id);
+	ShaderWithCheck tendril_shader;
+	load_shader(tendril_shader, "assets/tree_tendril.fs");
+	init_gfx(tendril_shader);
+
+	// This resolution actually matters. Lower looks ps1-like. It seems like 1000x1000 (1000, 1000) is practically perfect, but too slow to render more than like 5 branches at.
+	target = LoadRenderTexture(400, 400);
+}
+
+TendrilConfig::~TendrilConfig() {
+	std::println("deinit tendril config");
+	unload_textures();
+	std::println("unload branch shader!");
+	unload_shader(branch_shader);
+	std::println("branch shader w/ id {} loads/unloads {}", branch_shader.id, branch_shader.load_unloads);
+
+	std::println("tendril config blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
+	UnloadRenderTexture(target);
+}
+
 void TendrilConfig::init_gfx(ShaderWithCheck branch_shader) {
 	this->branch_shader = branch_shader;
 
@@ -56,27 +79,6 @@ void TendrilConfig::on_updated_branch() {
 	}
 
 	Tree::dup_branches(branches, original_branches);
-}
-
-TendrilConfig::TendrilConfig(Id id, const Rand& rand) : rand(rand) {
-	this->id = id;
-	std::println("init tendril config with id {}", (size_t) id);
-	ShaderWithCheck tendril_shader;
-	load_shader(tendril_shader, "assets/tree_tendril.fs");
-	ShaderWithCheck trunk_shader;
-	load_shader(trunk_shader, "assets/tree_trunk.fs");
-
-	init_gfx(tendril_shader);
-}
-
-TendrilConfig::~TendrilConfig() {
-	std::println("deinit tendril config");
-	unload_textures();
-	std::println("unload branch shader!");
-	unload_shader(branch_shader);
-	std::println("branch shader w/ id {} loads/unloads {}", branch_shader.id, branch_shader.load_unloads);
-
-	std::println("tendril config blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
 }
 
 void TendrilConfig::unload_textures() {
@@ -182,7 +184,7 @@ void Tree::level_editor_render(const std::vector<TendrilRenderData>& tendrils_da
 	for (size_t i = 0; i < tendril_configs.size(); i++) {
 		auto& config = tendril_configs[i];
 		auto& data = tendrils_data[i];
-		config.level_editor_render(data);
+		config->level_editor_render(data);
 	}
 
 	BeginShaderMode(trunk_shader);
@@ -229,37 +231,38 @@ void TendrilConfig::level_editor_render(const TendrilRenderData& data) {
 	EndShaderMode();
 }
 
-void Tree::render_to_target() {
+void TendrilConfig::render_to_target(const Petra& petra) {
 	BeginTextureMode(target);
 	ClearBackground(BLANK);
 
-	for (auto& tendril_config : tendril_configs) {
-		tendril_config.send_vals_to_branch_shader();
-		auto src = full_texture(blank_tex);
-		auto dest = full_texture(target.texture);
-		src.height *= -1;
+	if (past_me(petra))
+		return;
 
-		BeginShaderMode(tendril_config.branch_shader);
-		DrawTexturePro(
-			blank_tex,
-			src,
-			dest,
-			{},
-			0,
-			WHITE);
-		EndShaderMode();
-	}
+	send_vals_to_branch_shader();
+	auto src = full_texture(blank_tex);
+	auto dest = full_texture(target.texture);
+	src.height *= -1;
+
+	BeginShaderMode(branch_shader);
+	DrawTexturePro(
+		blank_tex,
+		src,
+		dest,
+		{},
+		0,
+		WHITE);
+	EndShaderMode();
 	EndTextureMode();
 }
 
-constexpr Vector2 TendrilConfig::origin() const {
+Vector2 TendrilConfig::origin() const {
 	return branches[0].back();
 }
 
-std::vector<Branch> Tree::branches_from_tendrils(std::vector<std::vector<Branch>> tendrils) {
+std::vector<Branch> Tree::branches_from_structured_branches(std::vector<std::vector<Branch>> structured_branches) {
 	std::vector<Branch> branches;
 
-	for (const auto& tendril : tendrils) {
+	for (const auto& tendril : structured_branches) {
 		for (const auto& branch : tendril) {
 			branches.push_back(branch);
 		}
@@ -342,7 +345,6 @@ std::vector<std::vector<Branch>> TendrilConfig::gen_structured_branches(float to
 
 	auto start_branch = make_branch(start_location, start_rotation, total_length * 0.2, start_thickness * 0.8, start_thickness);
 
-	// Not important, but this does avoid the most unnecessary moves
 	std::vector<std::vector<Branch>> structured_branches {};
 
 	// In a for loop, allocate tendril vectors
@@ -435,15 +437,12 @@ bool TendrilConfig::past_me(const Petra& petra, const float epsilon) const {
 	return petra.depth <= depth + epsilon;
 }
 
-Tree::Tree(ShaderWithCheck trunk_shader) {
-	this->trunk_shader = trunk_shader;
+Tree::Tree() {
+	load_shader(trunk_shader, "assets/tree_trunk.fs");
 	std::println("init tree");
 	auto blank = GenImageColor(blank_tex_dims.x, blank_tex_dims.y, BLANK);
 	load_texture_from_image(blank_tex, blank);
 	UnloadImage(blank);
-
-	// This resolution actually matters. Lower looks ps1-like. It seems like 1000x1000 (1000, 1000) is practically perfect, but too slow to render more than like 5 branches at.
-	target = LoadRenderTexture(400, 400);
 }
 
 Tree::~Tree() {
@@ -454,7 +453,6 @@ Tree::~Tree() {
 	std::println("unload trunk shader!");
 	unload_shader(trunk_shader);
 	std::println("trunk shader w/ id {} loads/unloads {}", trunk_shader.id, trunk_shader.load_unloads);
-	UnloadRenderTexture(target);
 }
 
 void Tree::dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to) {

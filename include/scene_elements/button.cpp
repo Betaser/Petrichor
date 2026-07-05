@@ -2,12 +2,6 @@
 
 #include "button.hpp"
 
-// template <typename T>
-// struct Button;
-
-template <typename T>
-int Button<T>::debug_count = 0;
-	
 template <typename T>
 Button<T>::Button(
 	const T& data, 
@@ -23,7 +17,7 @@ Button<T>::Button(
 	state.hit = false;
 	state.text = text;
 	
-	debug_id = debug_count++;
+	debug_id = DebugButton::debug_count++;
 	std::println("created button #{}", debug_id);
 	this->data = data;
 	this->bounds = bounds;

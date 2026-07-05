@@ -27,11 +27,11 @@ struct LevelEditor {
 	};
 
 	enum View {
-		// Pulse red for selected trees
+		// Pulse red for selected tendril configs
 		SelectedView,
 		// (TODO) Can click and drag anywhere to alter the camera
 		CameraView,
-		// Only shows selected trees
+		// Only shows the trees that selected configs belong to
 		// (TODO) and scrolling now shows each branch sorted by depth, so scrolling jumps by depth
 		FocusTreeView,
 		SIZE,
@@ -65,16 +65,16 @@ struct LevelEditor {
 	};
 
 	struct DepthState {
-		Tree::Id id;
+		TendrilConfig::Id id;
 		float selection_offset;
 	};
 
 	std::vector<std::unique_ptr<Tree>> saved_trees;
 	UiElementManager ui_elem_manager;
-	std::map<Tree::Id, std::string> tree_to_managed_buttons;
-	std::vector<TreeMetadata> tree_metadatas;
+	std::map<TendrilConfig::Id, std::string> config_to_managed_buttons;
+	std::vector<BranchMetadata> branch_metadatas;
 	std::vector<Selection> selections;
-	std::vector<Tree::Id> deleted_tree_ids;
+	std::vector<TendrilConfig::Id> deleted_config_ids;
 	TextureWithCheck selected_tex;
 	bool ui_hovered = false;
 	float time = 0;
@@ -84,7 +84,7 @@ struct LevelEditor {
 	std::array<std::string, SIZE> view_names {
 		"Highlight Selections",
 		"Camera Panning",
-		"Focus Selections",
+		"Focus Trees",
 	};
 	std::array<std::string, SIZE> view_button_names;
 	std::bitset<SIZE> views_active { 0 };
@@ -93,15 +93,14 @@ struct LevelEditor {
 	~LevelEditor();
 
 	void reinit(Game& game);
-	// if not sure about tree_maker, use game.make_tree();
-	void make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata);
-	void randomize_tendrils(Game& game, const size_t tree_index, const Rand& rand);
-	void update_selected_verts(Game& game);
+	void make_initialized_config(Tree& tree, const Rand& rand, const BranchMetadata& metadata);
+	void randomize_tendrils(size_t config_index);
+	void update_selected_verts();
 	void init_selection_texture();
 	void update(Game& game);
 	void render(Game& game) const;
 	void invalidate_selections();
-	void duplicate_selected_tendril(Game& game);
+	void duplicate_selected_tendril();
 
 	private:
 	enum ExtraButtonState {
@@ -110,6 +109,11 @@ struct LevelEditor {
 		OnMultipleSelected, // Merge trees
 		None,
 		EXTRA_SIZE
+	};
+
+	struct ConfigInfo {
+		TendrilConfig* ptr;
+		size_t tree_owner_index;
 	};
 
 	// Initialized while "initialize_ui" runs.
@@ -124,31 +128,31 @@ struct LevelEditor {
 	float cam_depth = 0;
 	float min_cam_depth;
 	float max_cam_depth;
+	std::vector<ConfigInfo> all_config_info;
 
 	Rectangle get_cam_depth(const int screen_width) const;
 	void render_cam_depth(Game& game) const;
-	void adjust_cam_depth(Game& game);
+	void adjust_cam_depth();
 	std::string trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const;
 
 	bool is_selecting() const;
 	void set_active(View view, bool active);
 	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
-	Rectangle update_tree_for_depth_ui(Game& game, const Tree& tree);
-	bool find_cursor_selection(Game& game, Vector2 cursor, Selection* selection);
-	void tree_single_select(Game& game, Vector2 mouse_pos);
-	void tree_multi_select(Game& game, Vector2 mouse_pos);
-	void update_tree_verts(Game& game, const size_t tree_index);
-	bool contains_selection(const size_t index) const;
-	int from_selected_by_id(Game& game, const Tree::Id tree_id) const;
+	Rectangle update_config_for_depth_ui(const TendrilConfig& config);
+	bool find_cursor_selection(Vector2 cursor, Selection* selection);
+	void tree_single_select(Vector2 mouse_pos);
+	void tree_multi_select(Vector2 mouse_pos);
+	void branch_verts_from_metadata(size_t config_index);
+	bool contains_selection(size_t index) const;
+	int from_selected_by_id(TendrilConfig::Id config_id) const;
 	void set_active_extra_button_group(ExtraButtonState button_state);
-	void delete_tree(Game& game, const size_t tree_index);
+	void delete_config(size_t config_index);
 
 	// Impl extracted out to level_editor_ui.cpp
 	void initialize_ui(Game& game);
-	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, Game& game, const Tree::Id tree_id);
-
-	static std::vector<size_t> calc_depth_indices(Game& game);
+	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id);
+	std::vector<size_t> calc_depth_indices() const;
 };
 
 #endif

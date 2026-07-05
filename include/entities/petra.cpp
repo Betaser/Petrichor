@@ -21,7 +21,7 @@ Circle Petra::get_hitbox() const {
 	};
 }
 
-void Petra::update(Level& level, std::vector<std::unique_ptr<Tree>>& trees) {
+void Petra::update(Level& level, Game& game) {
 	if (IsKeyPressed(KEY_LEFT_SHIFT))
 		we_are_debugging = !we_are_debugging;
 
@@ -30,31 +30,27 @@ void Petra::update(Level& level, std::vector<std::unique_ptr<Tree>>& trees) {
 	else
 		update_movement();
 
-	collision_detection(level, trees);
+	collision_detection(level, game);
 }
 
-void Petra::collision_detection(Level& level, std::vector<std::unique_ptr<Tree>>& trees) {
-	for (size_t tree_index = 0; tree_index < trees.size(); tree_index++) {
-		const auto& tree = trees[tree_index];
-		// past us
-		if (tree->depth - depth < level.collision_dist) 
-			continue;
+void Petra::collision_detection(Level& level, Game& game) {
+	for (size_t tree_index = 0; tree_index < game.trees.size(); tree_index++) {
+		const auto& tree = game.trees[tree_index];
+		for (size_t config_index = 0; config_index < tree->tendril_configs.size(); config_index++) {
+			const auto& config = tree->tendril_configs[config_index];
+			// past us
+			if (config->depth - depth < level.collision_dist) 
+				continue;
 
-		if ((tree->depth - depth) / level.collision_dist > 1.2)
-			continue;
+			if ((config->depth - depth) / level.collision_dist > 1.2)
+				continue;
 
-		for (const auto& branch : tree->branches) {
-			// Seriously is it not rhr???
-			const float dist = dist_from_pt_to_polygon(pos, branch.verts);
-			// But only using dist that assumes line are infintely long, so I can't just do this.
-			// TODO, figure out a diff algo.
-			if (dist < 0) {
-				collision = std::unique_ptr<Collision>(new Collision(tree_index, 0));
-				return;
-			}
-			else if (dist / hitbox_radius < 0.99) {
-				collision = std::unique_ptr<Collision>(new Collision(tree_index, 0));
-				return;
+			for (const auto& branch : config->branches) {
+				const float dist = dist_from_pt_to_polygon(pos, branch.verts);
+				if (dist < 0 || dist / hitbox_radius < 0.99) {
+					collision = std::unique_ptr<Collision>(new Collision(tree_index, config_index));
+					return;
+				}
 			}
 		}
 	}

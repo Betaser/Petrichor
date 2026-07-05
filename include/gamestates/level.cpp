@@ -8,28 +8,6 @@
 
 bool Level::debug_apply_rotation = false;
 
-static inline void walk_fn(const size_t branch_i, size_t& walk_i, std::vector<Vector4>& branch_tints, Tree& tree) {
-	Vector3 start_tint { 1, 0, 0 };
-	Vector3 end_tint { 0, 1, 0 };
-	const float amt = ((float) walk_i) / (float) branch_tints.size();
-
-	Vector3 interp_color = (end_tint - start_tint) * amt + start_tint;
-	branch_tints[branch_i] = {
-		.x = interp_color.x,
-		.y = interp_color.y,
-		.z = interp_color.z,
-		.w = amt * 0.2f + 0.5f,
-	};
-	walk_i++;
-
-	Branch& branch = tree.branches[branch_i];
-	for (size_t i = 0; i < 4; i++)
-		branch.verts[i] += Vector2(0.2, 0);
-
-	for (const size_t next : branch.nexts)
-		walk_fn(next, walk_i, branch_tints, tree);
-}
-
 // The stuff for flatten_tree's final form
 enum IntersectionType {
 	Line,
@@ -55,16 +33,16 @@ static float dist(Vector2 a, Vector2 b, Vector2 circle_pos, IntersectionType int
 	return line_dist;
 }
 
-static std::tuple<Vector2, Vector2> to_wireframe(const Tree& tree, const size_t cur_i, const size_t next_i) {
-	const Branch& branch = tree.branches[cur_i];
+static std::tuple<Vector2, Vector2> to_wireframe(const TendrilConfig& config, size_t cur_i, size_t next_i) {
+	const Branch& branch = config.branches[cur_i];
 	if (branch.nexts.size() == 0) {
 		// End branch case
 		return { branch.back(), branch.front() };
 	}
-	return { branch.back(), tree.branches[next_i].back() };
+	return { branch.back(), config.branches[next_i].back() };
 }
 
-static float vert_angle(const Vector2& a, const Vector2& b, const Circle& circle) {
+static float vert_angle(Vector2 a, Vector2 b, const Circle& circle) {
 	// For 2 circles intersecting, one from a to b and the other c (for circle),
 	// b' and b' in the wrong theta direction can be found. Finding the correct of those 2 
 	// aforementioned solutions requires comparing the rhr-ness of a-b-c.pos vs a-b'-c.pos, 
@@ -102,12 +80,15 @@ static float line_angle(Vector2 a, Vector2 b, const Circle& circle) {
 	return ang;
 }
 
-// THIS IS ANTI-MATHWISE I THINK?
-static void rotate_all(const size_t branch_i, const float amt, Vector2 origin, Tree& tree) {
+// THIS IS ANTI-MATHWISE
+static void rotate_all(size_t branch_i, float amt, Vector2 origin, TendrilConfig& config) {
+	if (isnan(amt))
+		std::println("ROTATE_ALL() GIVEN NAN AMT");
+
 	if (isnan(amt))
 		return;
 
-	Branch& branch = tree.branches[branch_i];
+	Branch& branch = config.branches[branch_i];
 
 	for (auto& vert : branch.verts) {
 		const auto& rotated = rotate(origin, vert, amt);
@@ -116,11 +97,11 @@ static void rotate_all(const size_t branch_i, const float amt, Vector2 origin, T
 	}
 
 	for (const size_t next : branch.nexts)
-		rotate_all(next, amt, origin, tree);
+		rotate_all(next, amt, origin, config);
 };
 
 
-static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vector2 b, const Circle& circle) {
+static bool flatten(TendrilConfig& config, size_t cur_i, Vector2 a, Vector2 b, const Circle& circle) {
 	const auto intersection = find_intersection(a, b, circle.pos);
 	const float ab_dist = dist(a, b, circle.pos, intersection);
 	// Check if the closer dist is even intersecting at all, if not return, thereby doing nothing.
@@ -133,34 +114,34 @@ static bool flatten(Tree& tree, const size_t cur_i, const Vector2 a, const Vecto
 		: line_angle(a, b, circle);
 		
 	// Rotate the closer branch to edge of the circle
-	rotate_all(cur_i, angle, tree.branches[cur_i].back(), tree);
+	rotate_all(cur_i, angle, config.branches[cur_i].back(), config);
 
 	return true;
 }
 
 // This assume cur_i has 2 nexts, which both need to be rotated.
-bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float interp_radius) {
-	const Branch& branch = tree.branches[cur_i];
+bool flatten_fork(TendrilConfig& config, size_t cur_i, Circle& circle, float interp_radius) {
+	const Branch& branch = config.branches[cur_i];
 	const auto& nexts = branch.nexts;
 
 	// First rotate our branch!
 	{
 		const auto either_back = nexts[0];
-		auto [a, b] = to_wireframe(tree, cur_i, either_back);
-		flatten(tree, cur_i, a, b, circle);
+		const auto& [a, b] = to_wireframe(config, cur_i, either_back);
+		flatten(config, cur_i, a, b, circle);
 	}
 
 	circle.radius = interp_radius;
 
-	const size_t ab_next_next_i = tree.branches[nexts[0]].nexts.size() > 0 
-		? tree.branches[nexts[0]].nexts[0]
+	const size_t ab_next_next_i = config.branches[nexts[0]].nexts.size() > 0 
+		? config.branches[nexts[0]].nexts[0]
 		: 0;
-	const size_t cd_next_next_i = tree.branches[nexts[1]].nexts.size() > 0 
-		? tree.branches[nexts[1]].nexts[0]
+	const size_t cd_next_next_i = config.branches[nexts[1]].nexts.size() > 0 
+		? config.branches[nexts[1]].nexts[0]
 		: 0;
 
-	auto [a, b] = to_wireframe(tree, nexts[0], ab_next_next_i);
-	auto [c, d] = to_wireframe(tree, nexts[1], cd_next_next_i);
+	auto [a, b] = to_wireframe(config, nexts[0], ab_next_next_i);
+	auto [c, d] = to_wireframe(config, nexts[1], cd_next_next_i);
 
 	size_t closer_branch_i = nexts[0];
 	size_t further_branch_i = nexts[1];
@@ -186,7 +167,7 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 		: line_angle(a, b, circle);
 
 	// Rotate the closer branch to edge of the circle
-	rotate_all(closer_branch_i, theta, tree.branches[closer_branch_i].back(), tree);
+	rotate_all(closer_branch_i, theta, config.branches[closer_branch_i].back(), config);
 
 	// Seems to rotate in the wrong direction sometimes
 
@@ -207,9 +188,9 @@ bool flatten_fork(Tree& tree, const size_t cur_i, Circle& circle, const float in
 	return true;
 }
 
-void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, std::string>& debug) const {
+void Dome::flatten_tendril_config(TendrilConfig& config, const Circle& circle, std::map<std::string, std::string>& debug) const {
 	// We have to like have a buffer that gets smaller the more we "walk"
-	const std::function<void(size_t, size_t, Circle)> walk = [&walk, &tree, &debug](const size_t walk_i, const size_t branch_depth, Circle circle) {
+	const std::function<void(size_t, size_t, Circle)> walk = [&](const size_t walk_i, const size_t branch_depth, Circle circle) {
 		// Circle radius buffer
 		float radius_buffer = circle.radius * 0.001;
 		for (size_t i = 0; i < branch_depth; i++)
@@ -217,7 +198,7 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 		const float original_radius = circle.radius;
 		circle.radius += radius_buffer;
 
-		const Branch& branch = tree.branches[walk_i];
+		const Branch& branch = config.branches[walk_i];
 
 		// Before we do the next iter, shrink circle radius a little.
 		float radius_buffer2 = circle.radius * 0.001;
@@ -228,17 +209,17 @@ void Dome::flatten_tree(Tree& tree, const Circle& circle, std::map<std::string, 
 		if (debug["rotate_state"] != "None") {
 			if (branch.nexts.size() == 2) {
 				// Let's isolate the problem
-				flatten_fork(tree, walk_i, circle, interp_radius);
+				flatten_fork(config, walk_i, circle, interp_radius);
 			}
 			else if (branch.nexts.size() == 1) {
 				const size_t next_i = branch.nexts[0];
-				auto [a, b] = to_wireframe(tree, walk_i, next_i);
-				if (flatten(tree, walk_i, a, b, circle))
+				auto [a, b] = to_wireframe(config, walk_i, next_i);
+				if (flatten(config, walk_i, a, b, circle))
 					debug["should_flatten"] = "true";
 			}
 			else if (branch.nexts.size() == 0) {
-				auto [a, b] = to_wireframe(tree, walk_i, 0);
-				if (flatten(tree, walk_i, a, b, circle))
+				auto [a, b] = to_wireframe(config, walk_i, 0);
+				if (flatten(config, walk_i, a, b, circle))
 					debug["should_flatten"]	= "true";
 			}
 			else
@@ -292,11 +273,11 @@ Level::~Level() {
 	std::println("tree foggy blur shader loads/unloads {}", tree_foggy_blur_shader.load_unloads);
 }
 
-static float interpolate_rotation(const float twist, const size_t cur, const Branch& child, Tree& tree) {
+static float interpolate_rotation(const float twist, const size_t cur, const Branch& child, TendrilConfig& config) {
 	const float theta = fmin(0.13, 0.06 * abs(twist)) * (twist < 0 ? -1 : 1);
 
 	if (abs(theta) > 0.005)
-		rotate_all(cur, theta, child.back(), tree);
+		rotate_all(cur, theta, child.back(), config);
 
 	return theta;
 }
@@ -307,20 +288,20 @@ struct BranchOffsetBundle {
 	const Vector2 cur_rel_dir;
 	const size_t cur;
 	const Branch& child;
-	Tree& tree;
+	TendrilConfig& config;
 };
-static void walk_branch_offsets_helper(std::function<void(BranchOffsetBundle&&)> bundle_fn, Tree& tree, const size_t i) {
-	const std::vector<unsigned int>& nexts = tree.branches[i].nexts;
+static void walk_branch_offsets_helper(std::function<void(BranchOffsetBundle&&)> bundle_fn, TendrilConfig& config, size_t i) {
+	const std::vector<unsigned int>& nexts = config.branches[i].nexts;
 
 	for (const auto& next : nexts) {
 		// The first iterated branch will not rotate, fix that outside of this fn.
 		const size_t parent_i = i;
 		const size_t child_i = next;
-		const auto& parent = tree.branches[parent_i];
-		const auto& child = tree.branches[child_i];
+		const auto& parent = config.branches[parent_i];
+		const auto& child = config.branches[child_i];
 
-		const auto& original_parent = tree.original_branches[parent_i];
-		const auto& original_child = tree.original_branches[child_i];
+		const auto& original_parent = config.original_branches[parent_i];
+		const auto& original_child = config.original_branches[child_i];
 
 		const auto& parent_to_child = child.back() - parent.back();
 		const auto& cur_forward = child.forward();
@@ -332,43 +313,43 @@ static void walk_branch_offsets_helper(std::function<void(BranchOffsetBundle&&)>
 
 		// Read from the current twist and edit it
 		bundle_fn({
-			tree.branch_twists[child_i],
+			config.branch_twists[child_i],
 			original_rel_dir,
 			cur_rel_dir,
 			child_i,
 			child,
-			tree
+			config
 		});
 
-		walk_branch_offsets_helper(bundle_fn, tree, next);
+		walk_branch_offsets_helper(bundle_fn, config, next);
 	}
 }
 
-static void walk_branch_offsets(std::function<void(BranchOffsetBundle&&)> bundle_fn, Tree& tree, const size_t i) {
+static void walk_branch_offsets(std::function<void(BranchOffsetBundle&&)> bundle_fn, TendrilConfig& config, size_t i) {
 	if (i == 0) {
 		// Do I want to do the 0th iteration here too?
-		const auto& first = tree.branches[0];
+		const auto& first = config.branches[0];
 		bundle_fn({
-			tree.branch_twists[0],
-			rel_dir(tree.original_branches[0].forward(), { 1, 0 }),
+			config.branch_twists[0],
+			rel_dir(config.original_branches[0].forward(), { 1, 0 }),
 			rel_dir(first.forward(), { 1, 0 }),
 			0,
 			first,
-			tree});
+			config});
 	}
 	
-	walk_branch_offsets_helper(bundle_fn, tree, i);
+	walk_branch_offsets_helper(bundle_fn, config, i);
 }
 
-void Level::tree_interp_rigid(Tree& tree) {
+void Level::tendril_config_interp_rigid(TendrilConfig& config) {
 	auto interpolate_rotation_bundled = [](BranchOffsetBundle&& b) {
 		interpolate_rotation(
 			b.twist, 
 			b.cur,
 			b.child,
-			b.tree);
+			b.config);
 	};
-	walk_branch_offsets(interpolate_rotation_bundled, tree, 0);
+	walk_branch_offsets(interpolate_rotation_bundled, config, 0);
 }
 
 void Level::manage_debug_rotate_state() {
@@ -397,56 +378,56 @@ void Level::manage_debug_spring_state() {
 	}
 }
 
-void Level::move_tree_thats_too_close(Tree& tree, const float boundary_dist) {
-	// TODO: Then FIX this erroneous method of moving the tree. 
-	const auto& out = normalize(tree.origin() - dome.pos);
+void Level::move_nearby_tendril_config(TendrilConfig& config, float boundary_dist) {
+	const auto& out = normalize(config.origin() - dome.pos);
 	const auto& new_origin = dome.pos + out * boundary_dist;
-	const auto& offset = new_origin - tree.origin();
+	const auto& offset = new_origin - config.origin();
 	// Move all vertices of the tree.
-	for (auto& branch : tree.branches) {
+	for (auto& branch : config.branches) {
 		for (auto& vert : branch.verts)
 			vert += offset;
 	}
 }
 
-std::vector<Vector2> Level::calc_rel_dirs(Tree& tree) {
+std::vector<Vector2> Level::calc_rel_dirs(TendrilConfig& config) {
 	std::vector<Vector2> cur_rel_dirs;
 	auto walk_fn = [&cur_rel_dirs](BranchOffsetBundle&& b) {
 		cur_rel_dirs.push_back(b.cur_rel_dir);
 	};
-	walk_branch_offsets(walk_fn, tree, 0);
+	walk_branch_offsets(walk_fn, config, 0);
 
 	return cur_rel_dirs;
 }
 
-void Level::calc_twist(Tree& tree) {
-	const auto& cur_rel_dirs = calc_rel_dirs(tree);
+void Level::calc_twist(TendrilConfig& config) {
+	const auto& cur_rel_dirs = calc_rel_dirs(config);
 
 	size_t nxt = 0;
-	auto fn = [&tree, &cur_rel_dirs, &nxt](BranchOffsetBundle&& b) {
-		const Vector2& prev_rel_dir = tree.prev_rel_dirs[nxt];
+	auto fn = [&](BranchOffsetBundle&& b) {
+		const Vector2& prev_rel_dir = config.prev_rel_dirs[nxt];
 		const Vector2& cur_rel_dir = cur_rel_dirs[nxt++];
 
 		const float theta = signed_angle_from(prev_rel_dir, cur_rel_dir);
 		b.twist += theta;
 	};
-	walk_branch_offsets(fn, tree, 0);
+	walk_branch_offsets(fn, config, 0);
 
-	tree.prev_rel_dirs.clear();
+	config.prev_rel_dirs.clear();
 	for (const auto& dir : cur_rel_dirs)
-		tree.prev_rel_dirs.push_back(dir);
+		config.prev_rel_dirs.push_back(dir);
 }
 
-void Level::push_trees_aside(Tree& tree, const float cam_dist) {
+// TODO: This should take into account the tree trunk face for a specific tendrilconfig's depth
+void Level::push_tendril_config_aside(TendrilConfig& config, float cam_dist) {
 	const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - cam_dist));
-	const float dist_tree_dome = length(dome.pos - tree.origin());
+	const float dist_tree_dome = length(dome.pos - config.origin());
 
 	// But we also want to move trees out of the way of the dome as necessary.
 	const float boundary_dist = radius * 1.3;
 	const bool tree_getting_close = dist_tree_dome < boundary_dist;
 
 	if (tree_getting_close && debug["spring"] == "true")
-		move_tree_thats_too_close(tree, boundary_dist);
+		move_nearby_tendril_config(config, boundary_dist);
 	else {
 		// TODO: Then we move the tree back to the original position.
 	}
@@ -466,25 +447,25 @@ void Level::push_trees_aside(Tree& tree, const float cam_dist) {
 	};
 
 	if (debug["spring"] == "true") {
-		tree_interp_rigid(tree);
+		tendril_config_interp_rigid(config);
 
-		dome.flatten_tree(tree, dome_circle, debug);
+		dome.flatten_tendril_config(config, dome_circle, debug);
 
 		// For twisting purposes, capture diff in twist caused by flatten_tree
-		calc_twist(tree);
+		calc_twist(config);
 	}
 	else {
-		Tree::dup_branches(tree.original_branches, tree.branches);
+		Tree::dup_branches(config.original_branches, config.branches);
 	
-		dome.flatten_tree(tree, dome_circle, debug);
+		dome.flatten_tendril_config(config, dome_circle, debug);
 	}
 
 	// Not even computationally hard to do this
-	tree.update_texture();
+	config.update_texture();
 }
 
 void Level::update(Game& game) {
-	petra.update(*this, game.trees);
+	petra.update(*this, game);
 	dome.pos = petra.pos;
 
 	debug["should_flatten"] = "false";
@@ -494,14 +475,17 @@ void Level::update(Game& game) {
 
 	for (const auto& tree_ptr : game.trees) {
 		auto& tree = *tree_ptr;
-		if (!tree.past_me(petra))
-			continue;
 
-		const float cam_dist = dist_from_cam(tree);
-		if (cam_dist >= collision_dist)
-			continue;
+		for (auto& config : tree.tendril_configs) {
+			if (!config->past_me(petra))
+				continue;
 
-		push_trees_aside(tree, cam_dist);
+			const float cam_dist = dist_from_cam(*config);
+			if (cam_dist >= collision_dist)
+				continue;
+
+			push_tendril_config_aside(*config, cam_dist);
+		}
 	}
 }
 
@@ -522,28 +506,31 @@ void Level::render(Game& game) {
 	DrawRectangleV(camera.screen_offset, { 10, 10 }, { 45, 20, 45, 255 });
 
 	// Render in reverse depth order
-	std::vector<Tree*> trees(game.trees.size());
-	for (size_t i = 0; i < game.trees.size(); i++)
-		trees[i] = game.trees[i].get();
-	std::sort(trees.begin(), trees.end(), 
-		[](Tree* t1, Tree* t2) { return t1->depth > t2->depth; });
+	std::vector<TendrilConfig*> configs;
+	for (const auto& tree : game.trees) {
+		for (const auto& config : tree->tendril_configs) {
+			configs.push_back(config.get());
+		}
+	}
+	std::sort(configs.begin(), configs.end(), 
+		[](auto t1, auto t2) { 
+			return t1->depth > t2->depth;
+		});
+
+	set_shader_value(tree_foggy_blur_shader, "collisionDist", &collision_dist, SHADER_UNIFORM_FLOAT);
 
 	render_trees_to_target(game);
 
-	for (const auto& tree_ptr : trees) {
-		const auto& tree = *tree_ptr;
+	for (const auto& config_ptr: configs) {
+		const auto& config = *config_ptr;
 
 		// We are past it then.
-		if (!tree.past_me(petra))
+		if (!config.past_me(petra))
 			continue;
 
-		const float dist = dist_from_cam(tree);
+		const float dist = dist_from_cam(config);
 		
-		const int dfc_loc = GetShaderLocation(tree_foggy_blur_shader, "distFromCam");
-		SetShaderValue(tree_foggy_blur_shader, dfc_loc, &dist, SHADER_UNIFORM_FLOAT);
-
-		const int cd_loc = GetShaderLocation(tree_foggy_blur_shader, "collisionDist");
-		SetShaderValue(tree_foggy_blur_shader, cd_loc, &collision_dist, SHADER_UNIFORM_FLOAT);
+		set_shader_value(tree_foggy_blur_shader, "distFromCam", &dist, SHADER_UNIFORM_FLOAT);
 
 		Cam depth_cam = calc_depth_cam(dist);
 		// Change depth_cam if the tree is past the collision point
@@ -551,14 +538,14 @@ void Level::render(Game& game) {
 		// This dest perfectly matches the bounding_box call that yields a diff result every time verts is adjusted
 		// But the jitter is fairly hard to tell now.
 		Rectangle dest {
-			.x = tree.texture_pos.x,
-			.y = tree.texture_pos.y,
-			.width = (tree.big - tree.small).x,
-			.height = (tree.big - tree.small).y
+			.x = config.texture_pos.x,
+			.y = config.texture_pos.y,
+			.width = (config.big - config.small).x,
+			.height = (config.big - config.small).y
 		};
 		BeginShaderMode(tree_foggy_blur_shader);
-		// Render tree.target.texture to the screen
-		depth_cam.draw_texture(clip, tree.target.texture, full_texture(tree.target.texture), dest);
+		// Render config.target.texture to the screen
+		depth_cam.draw_texture(clip, config.target.texture, full_texture(config.target.texture), dest);
 		EndShaderMode();
 	}
 
@@ -580,14 +567,10 @@ void Level::render_trees_to_target(Game& game) {
 
 	// BeginTextureMode(trees_target);
 	// ClearBackground(BLANK);
-	for (const auto& tree_ptr : game.trees) {
-		auto& tree = *tree_ptr;
-
-		// We are past it then.
-		if (!tree.past_me(petra))
-			continue;
-
-		tree.render_to_target();
+	for (const auto& tree : game.trees) {
+		for (const auto& config : tree->tendril_configs) {
+			config->render_to_target(petra);
+		}
 	}
 }
 
@@ -614,8 +597,8 @@ void Level::render_fog(Game& game) {
 		screen_rect);
 }
 
-constexpr float Level::dist_from_cam(const Tree& tree) const {
-	return tree.depth - petra.depth;
+constexpr float Level::dist_from_cam(const TendrilConfig& config) const {
+	return config.depth - petra.depth;
 }
 
 std::vector<std::tuple<size_t, float>> Level::calc_dome_radii(const Dome& dome, std::vector<std::unique_ptr<Tree>>& trees) const {
@@ -623,17 +606,19 @@ std::vector<std::tuple<size_t, float>> Level::calc_dome_radii(const Dome& dome, 
 	std::vector<std::tuple<size_t, float>> dome_radii;
 
 	for (const auto& tree : trees) {
-		if (!tree->past_me(petra))
-			continue;	
+		for (const auto& config : tree->tendril_configs) {
+			if (!config->past_me(petra))
+				continue;	
 
-		const auto& dist = dist_from_cam(*tree);
+			const auto& dist = dist_from_cam(*config);
 
-		if (dist >= collision_dist)
-			continue;
+			if (dist >= collision_dist)
+				continue;
 
-		const Cam depth_cam = calc_depth_cam(dist);
-		const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - dist));
-		dome_radii.push_back({ tree->depth, radius * depth_cam.scale });
+			const Cam depth_cam = calc_depth_cam(dist);
+			const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - dist));
+			dome_radii.push_back({ config->depth, radius * depth_cam.scale });
+		}
 	}
 
 	return dome_radii;

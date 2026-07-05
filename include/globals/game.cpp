@@ -1,4 +1,5 @@
 #include <fstream>
+#include <print>
 
 #include "../tree_metadata.cpp"
 #include "game.hpp"
@@ -26,7 +27,7 @@ Game* Game::get() {
 	return Game::_game;
 }
 
-void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tree&)> accept_metadata) {
+void Game::load_trees(const char* filepath, std::function<void(BranchMetadata&, TendrilConfig*, size_t)> accept_metadata) {
 	trees.clear();
 	std::string line;
 	std::ifstream file;
@@ -36,6 +37,8 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 	Vector2 offset;
 	int seed;
 	float depth;
+	int tree_id;
+	size_t num_tendril_configs = 0;
 
 	std::string name;
 	while (!file.eof()) {
@@ -46,9 +49,15 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			break;
 		
 		name = line.substr(0, separator_at);
+		std::println("name: {}", name);
 		const auto value = line.substr(separator_at + 1);
 
-		if (name == "rotation") {
+		if (name == "tree") {
+			tree_id = std::stoi(value);
+			(void) tree_id;
+			make_tree();
+		}
+		else if (name == "rotation") {
 			rotation = std::stof(value);
 		}
 		else if (name == "offset") {
@@ -61,25 +70,28 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 			seed = std::stoi(value);
 		}
 		else if (name == "depth") {
+			// This is the start of a config.
 			depth = std::stof(value);
 
-			make_tree();
-
-			auto& tree = trees.back();
-			tree->depth = depth;
-			tree->rand = Rand(seed);
-			tree->id = (Tree::Id) (trees.size() - 1);
+			auto curr_tree = trees.back().get();
+			curr_tree->tendril_configs.push_back(
+				std::make_unique<TendrilConfig>(
+					(TendrilConfig::Id) num_tendril_configs++, 
+					Rand(seed),
+					curr_tree));
+			auto config = curr_tree->tendril_configs.back().get();
+			config->depth = depth;
 
 			const Vector2 start_location { 100, 100 };
-			auto tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
-			tree->branches = Tree::branches_from_tendrils(tendrils);
-			tree->tendrils = tendrils;
+			auto structured_branches = config->gen_structured_branches(400, 20, 1.2, 0.1, start_location);
+			config->branches = Tree::branches_from_structured_branches(structured_branches);
+			config->structured_branches = structured_branches;
 
-			TreeMetadata metadata(rotation, offset);
-			accept_metadata(metadata, *tree);
+			BranchMetadata metadata(offset, rotation);
+			accept_metadata(metadata, config, trees.size() - 1);
 
-			tree->on_updated_branch();
-			tree->update_texture();
+			config->on_updated_branch();
+			config->update_texture();
 		}
 	}
 
@@ -87,13 +99,5 @@ void Game::load_trees(const char* filepath, std::function<void(TreeMetadata&, Tr
 }
 
 void Game::make_tree() {
-	Rand rand(69);
-
-	// Black magic that is required to ensure trees are not created and copied, even though that would be fine.
-	// auto t = std::unique_ptr<Tree>(new Tree({}, rand));
-	// t->id = trees.size();
-	// trees.emplace_back(std::move(t));
-	
-	trees.push_back(std::make_unique<Tree>(std::vector<Branch> {}));	
-	trees.back()->id = (Tree::Id) (trees.size() - 1);
+	trees.push_back(std::make_unique<Tree>());	
 }

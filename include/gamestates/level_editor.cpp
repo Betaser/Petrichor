@@ -1,5 +1,4 @@
-#include <iostream>
-#include <fstream>
+#include <unordered_set>
 #include <sstream>
 #include <algorithm>
 #include <format>
@@ -29,9 +28,9 @@ LevelEditor::~LevelEditor() {
 }
 
 void LevelEditor::reinit(Game& game) {
-	tree_metadatas.clear();
+	branch_metadatas.clear();
 	ui_elem_manager.init();
-	tree_to_managed_buttons.clear();
+	config_to_managed_buttons.clear();
 
 	depth_ui.height = (float) game.screen_height - 2 * depth_ui.SPACING;
 	depth_ui.top_left = {
@@ -48,42 +47,32 @@ void LevelEditor::reinit(Game& game) {
 	std::println("reinit level editor");
 }
 
-void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& game, const TreeMetadata& metadata) {
-	tree_maker();
-	auto& tree = *game.trees.back();
-	std::println("make tree w/ id {}", (size_t) tree.id);
-
-	bool ids_available = !deleted_tree_ids.empty();
+void LevelEditor::make_initialized_config(Tree& tree, const Rand& rand, const BranchMetadata& metadata) {
+	TendrilConfig::Id config_index_and_id = (TendrilConfig::Id) all_config_info.size();
+	const bool ids_available = !deleted_config_ids.empty();
 	if (ids_available) {
-		auto popped_id = deleted_tree_ids[0];
-		deleted_tree_ids.erase(deleted_tree_ids.begin());
-		tree.id = popped_id;
+		auto popped_id = deleted_config_ids[0];
+		deleted_config_ids.erase(deleted_config_ids.begin());
+		config_index_and_id = popped_id;
 	}
-
-	const auto& depth_rect = update_tree_for_depth_ui(game, *game.trees[game.trees.size() - 1]);
-	TreeMetadata temp(metadata.rotation, metadata.offset);
-	if (ids_available)
-		tree_metadatas[(size_t) tree.id] = temp;
-	else
-		tree_metadatas.push_back(temp);
-
-	randomize_tendrils(game, game.trees.size() - 1);
-
-	// Now we're gonna add the trunk.
-	TrunkSegment segment {
-		.top {
-			.depth = 0,
-			.position { 300, 300 },
-			.radius = 20
-		},
-		.bottom {
-			.depth = 100,
-			.position { 300, 200 },
-			.radius = 15
-		}
-	};
-	tree.trunk_segments.push_back(segment);
 	
+	tree.tendril_configs.push_back(std::make_unique<TendrilConfig>(config_index_and_id, Rand(rand.seed), &tree));
+	auto& config = tree.tendril_configs.back();
+	all_config_info.push_back({ config.get(), all_config_info.size() });
+
+	std::println("make config w/ id {}", (size_t) config->id);
+
+	const auto& depth_rect = update_config_for_depth_ui(*config);
+	BranchMetadata temp(metadata.offset, metadata.rotation);
+	if (ids_available)
+		branch_metadatas[(size_t) config->id] = temp;
+	else
+		branch_metadatas.push_back(temp);
+
+	randomize_tendrils((size_t) config_index_and_id);
+
+	/*
+	// MAKING AN INIT'D TREE INVOLVES THIS, RN WE CAN'T MAKE A TREE
 	std::vector<TrunkFace> example_faces {
 		{
 			.depth = 0,
@@ -98,36 +87,36 @@ void LevelEditor::make_initialized_tree(std::function<void()> tree_maker, Game& 
 	};
 	for (auto& face : example_faces)
 		tree.trunk_faces.push_back(face);
+	*/
 
 	// Create the depth editing button
-	auto depth_btn = make_depth_button(depth_rect, game, tree.id);
+	auto depth_btn = make_depth_button(depth_rect, config->id);
 
 	std::string name = ui_elem_manager.add(depth_btn, "depth_btn");
-	tree_to_managed_buttons[tree.id] = name;
+	config_to_managed_buttons[config->id] = name;
 }
 
-CHANGETHIS
-void LevelEditor::randomize_tendrils(Game& game, const size_t tree_index, const Rand& rand) {
+void LevelEditor::randomize_tendrils(size_t config_index) {
+	auto& config = *all_config_info[config_index].ptr;
 	// Try using randomly generated tendrils too
 	const Vector2 start_location { 100, 100 };
 
-	auto& tree = game.trees[tree_index];
-	std::vector<std::vector<Branch>> tendrils = tree->random_tendril_config(400, 20, 1.2, 0.1, start_location);
-	tree->branches = Tree::branches_from_tendrils(tendrils);
-	tree->tendrils = tendrils;
+	auto structured_branches = config.gen_structured_branches(400, 20, 1.2, 0.1, start_location);
+	config.branches = Tree::branches_from_structured_branches(structured_branches);
+	config.structured_branches = structured_branches;
 
-	const auto& meta = tree_metadatas[(size_t) tree->id];
-	tree_metadatas[(size_t) tree->id] = TreeMetadata(meta.rotation, meta.offset);
-	tree->on_updated_branch();
+	const auto& meta = branch_metadatas[(size_t) config.id];
+	branch_metadatas[(size_t) config.id] = BranchMetadata(meta.offset, meta.rotation);
+	config.on_updated_branch();
 
-	update_tree_verts(game, tree_index);
+	branch_verts_from_metadata(config_index);
 
-	tree->update_texture();
+	config.update_texture();
 }
 
-void LevelEditor::update_selected_verts(Game& game) {
+void LevelEditor::update_selected_verts() {
 	for (const auto& [selected_index, _] : selections)
-		update_tree_verts(game, selected_index);
+		branch_verts_from_metadata(selected_index);
 }
 
 // Selection is slightly larger than size of tree texture.
@@ -148,9 +137,9 @@ void LevelEditor::update(Game& game) {
 	// Right click to select, chooses closest tree
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
 		if (IsKeyDown(KEY_LEFT_SHIFT))
-			tree_multi_select(game, mouse_pos);
+			tree_multi_select(mouse_pos);
 		else 
-			tree_single_select(game, mouse_pos);
+			tree_single_select(mouse_pos);
 		set_active_extra_button_group(selections.size() > 1
 			? OnMultipleSelected
 			: None);
@@ -179,8 +168,8 @@ void LevelEditor::update(Game& game) {
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
 		if (selecting) {
 			for (const auto& [selected_index, _] : selections) {
-				auto& id = game.trees[selected_index]->id;
-				auto depth_button = ui_elem_manager.get<Button<DepthState>>(tree_to_managed_buttons[id]);
+				auto& id = all_config_info[selected_index].ptr->id;
+				auto depth_button = ui_elem_manager.get<Button<DepthState>>(config_to_managed_buttons[id]);
 				depth_button->state.hit = true;
 			}
 		}
@@ -191,13 +180,16 @@ void LevelEditor::update(Game& game) {
 	const bool using_ui = ui_elem_manager_view.any_in_use();
 
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
+		std::println("SAVE INTIATED, BUT IMPL DELAYED FOR NOW");
+		/*
 		std::println("Save trees to {}", Constants::test_level_path);
 
-		auto repr = trees_to_chars(game.trees);
+		auto repr = trees_to_chars(game_dot_trees);
 		std::ofstream file;
 		file.open(Constants::test_level_path);
 		file << repr;
 		file.close();
+		*/
 	}
 
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_O)) {
@@ -205,25 +197,28 @@ void LevelEditor::update(Game& game) {
 		reinit(game);
 
 		std::println("Load file {}", Constants::test_level2_path);
+		all_config_info.clear();
 		game.load_trees(
 			Constants::test_level2_path, 
-			[&](TreeMetadata& meta, Tree& tree) {
-				auto depth_rect = update_tree_for_depth_ui(game, tree);
-				auto button = make_depth_button(depth_rect, game, tree.id);
+			[&](BranchMetadata& meta, TendrilConfig* config, size_t tree_owner_index) {
+				all_config_info.push_back({ config, tree_owner_index });
+				auto depth_rect = update_config_for_depth_ui(*config);
+				auto button = make_depth_button(depth_rect, config->id);
 				const auto name = ui_elem_manager.add(button, "depth_btn");
-				tree_to_managed_buttons[tree.id] = name;
-				tree_metadatas.push_back(meta);	
+				config_to_managed_buttons[config->id] = name;
+
+				// Set the branches, which will be copied to the original_branches after this callback runs
+				const auto& origin = config->branches[0].back();
+				for (size_t i = 0; i < config->branches.size(); i++) {
+					auto& verts = config->branches[i].verts;
+					for (size_t j = 0; j < verts.size(); j++)
+						verts[j] = rotate(origin, verts[j], meta.rotation) + meta.offset;
+				}
 			});
 
-		selections.resize(game.trees.size());
-		size_t n = 0;
-		std::generate(selections.begin(), selections.end(), 
-			[&]() { 
-				return Selection { n, tree_metadatas[n++].offset };
-			});
-		update_selected_verts(game);
-		for (const auto& tree : game.trees)
-			tree->update_texture();
+		// metadata is zero to start with?
+		branch_metadatas = std::vector<BranchMetadata>(all_config_info.size());
+
 		invalidate_selections();
 
 		return;
@@ -233,10 +228,10 @@ void LevelEditor::update(Game& game) {
 		// Deletion, should be tough
 		if (IsKeyPressed(KEY_BACKSPACE)) {
 			for (auto& [selected_index, _] : selections) {
-				if (game.trees.size() == 1)
+				if (all_config_info.size() == 1)
 					break;
 
-				delete_tree(game, selected_index);
+				delete_config(selected_index);
 			}
 
 			return;
@@ -245,14 +240,14 @@ void LevelEditor::update(Game& game) {
 		for (auto& [selected_index, selection_offset] : selections) {
 			// Duplicate. Means we copy over metadata
 			if (IsKeyPressed(KEY_F)) {
-				duplicate_selected_tendril(game);
+				duplicate_selected_tendril();
 				// Don't want to deal with selection having changed during this if statement affecting expectations for the rest of this function
 				return;
 			}
 
 			// Selected tree is not a thing yet.
-			auto& selected = game.trees[selected_index];
-			auto& meta = tree_metadatas[(size_t) selected->id];
+			auto& selected = all_config_info[selected_index].ptr;
+			auto& meta = branch_metadatas[(size_t) selected->id];
 
 			if ((!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 			 || (last_ui_hovered != ui_hovered))
@@ -268,21 +263,21 @@ void LevelEditor::update(Game& game) {
 			meta.rotation += rotation_input;
 
 			if (rotation_input != 0) {
-				update_selected_verts(game);
+				update_selected_verts();
 				selected->update_texture();
 			}
 
 			// Adapted from main's while loop
 			if (IsKeyPressed(KEY_R)) {
 				selected->rand.set_seed(++selected->rand.seed);
-				randomize_tendrils(game, selected_index);
+				randomize_tendrils(selected_index);
 			}
 
 			// offset
 			if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
 				meta.offset = mouse_pos - selection_offset;
 
-				update_selected_verts(game);
+				update_selected_verts();
 				// just translate it instead of reloading shaders.
 				Vector2 small, big;
 				selected->bounding_box(small, big);
@@ -294,24 +289,32 @@ void LevelEditor::update(Game& game) {
 	}
 
 	// Use mouse scroll wheel to control depth
-	adjust_cam_depth(game);
+	adjust_cam_depth();
 }
 
 void LevelEditor::render(Game& game) const {
-	// Sort trees by depth-based proximity, no?
-	const auto& depth_indices = calc_depth_indices(game);
+	// Sort tendril_configs by depth-based proximity
+	const auto& depth_indices = calc_depth_indices();
 
-	for (const size_t& depth_i : depth_indices) {
-		auto& tree = game.trees[depth_i];
-		const float eff_depth = abs(tree->depth - cam_depth);
+	std::unordered_set<Tree*> selected_trees;
+	for (const size_t i : depth_indices) {
+		if (contains_selection(i)) {
+			auto& tree = all_config_info[i].ptr->tree_owner;
+			selected_trees.insert(tree);
+		}
+	}
+
+	for (const size_t depth_i : depth_indices) {
+		auto& config = all_config_info[depth_i].ptr;
+		const float eff_depth = abs(config->depth - cam_depth);
 		float depth_alpha = std::max(0.0, 1.0 - eff_depth / (depth_ui.MAX_DEPTH * 0.8));
 		Vector4 rgb_tint { .x = 0, .y = 0, .z = 0, .w = 0 };
 
 		// Ew this won't align with what we're doing.
-		const bool tree_selected = contains_selection(depth_i);
+		const bool tree_selected = selected_trees.contains(config->tree_owner);
 
 		if (get_active(FocusTreeView)) {
-			if (!tree_selected) {
+			if (!tree_selected ) {
 				depth_alpha *= 0.1 * (0.5 * sin(time * 2.3) + 0.5);
 			}
 		}
@@ -339,7 +342,7 @@ void LevelEditor::render(Game& game) const {
 			}
 		}
 
-		tree->level_editor_render({
+		config->level_editor_render({
 			.finishing_alpha = depth_alpha,
 			.rgb_tint = rgb_tint
 		});
@@ -349,11 +352,11 @@ void LevelEditor::render(Game& game) const {
 		set_shader_value(select_shader, "time", &time, SHADER_UNIFORM_FLOAT);
 
 		for (const auto& [selected_index, _] : selections) {
-			auto& tree = game.trees[selected_index];
+			auto& config = all_config_info[selected_index].ptr;
 
-			Vector2 pos { tree->texture_pos - select_extra_bounds / 2 };
+			Vector2 pos { config->texture_pos - select_extra_bounds / 2 };
 			Vector2 small, big;
-			tree->bounding_box(small, big);
+			config->bounding_box(small, big);
 			auto dims = big - small + select_extra_bounds;
 			auto dims_i = Vector2I(dims);
 
@@ -408,6 +411,23 @@ void LevelEditor::render(Game& game) const {
 	render_cam_depth(game);
 
 	ui_elem_manager.render();
+
+	// A little scuffed, but will be helpful for debugging later.
+	{
+		const float HEIGHT = 40;
+		float y_pos = (float) game.screen_height / 2 - (float) game.trees.size() / 2 * HEIGHT;
+		const int SHADOW_X = 1;
+		const int SHADOW_Y = 1;
+		for (const auto& tree : game.trees) {
+			DrawText(std::format("tree tendrils: {}", tree->tendril_configs.size()).c_str(), 
+				100 - SHADOW_X, (int) y_pos - SHADOW_Y, 24, WHITE);
+			DrawText(std::format("tree tendrils: {}", tree->tendril_configs.size()).c_str(), 
+				100 + SHADOW_X, (int) y_pos + SHADOW_Y, 24, WHITE);
+			DrawText(std::format("tree tendrils: {}", tree->tendril_configs.size()).c_str(), 
+				100, (int) y_pos, 24, BROWN);
+			y_pos += HEIGHT;
+		}
+	}
 }
 
 void LevelEditor::invalidate_selections() {
@@ -415,22 +435,18 @@ void LevelEditor::invalidate_selections() {
 	set_active_extra_button_group(None);
 }
 
-void LevelEditor::duplicate_selected_tendril(Game& game) {
+void LevelEditor::duplicate_selected_tendril() {
 	// Make sure we do this first.
 	// Depth is stored on tree, so it differs from treemetadata
 	std::vector<Selection> new_selections;
 	for (const auto& [selected_index, _] : selections) {
-		const Tree* selected = game.trees[selected_index].get();
-		const auto& meta = tree_metadatas[(size_t) selected->id];
+		const auto& selected = all_config_info[selected_index].ptr;
+		const auto& meta = branch_metadatas[(size_t) selected->id];
 
-		new_selections.push_back({ game.trees.size(), meta.offset });
+		new_selections.push_back({ all_config_info.size(), meta.offset });
 
-		make_initialized_tree([&]() { 
-			game.make_tree();
-			auto& tree = *game.trees.back();
-			tree.depth = selected->depth;
-			tree.rand.set_seed(selected->rand.seed);
-		}, game, meta);
+		// Use the tree that selected belongs to.
+		make_initialized_config(*selected->tree_owner, selected->rand, meta);
 	}
 	selections = new_selections;
 }
@@ -467,15 +483,15 @@ void LevelEditor::render_cam_depth(Game& game) const {
 	DrawText("Depth (use scroll)", (int) left, (int) (top - 15), 15, PINK);
 }
 
-void LevelEditor::adjust_cam_depth(Game& game) {
+void LevelEditor::adjust_cam_depth() {
 	const float scroll = GetMouseWheelMove();
 
 	cam_depth += scroll;
 
 	// Bounds are the same bounds that depth_ui uses
-	std::vector<float> depths(game.trees.size());
-	for (size_t i = 0; i < game.trees.size(); i++)
-		depths[i] = game.trees[i]->depth;
+	std::vector<float> depths(all_config_info.size());
+	for (size_t i = 0; i < depths.size(); i++)
+		depths[i] = all_config_info[i].ptr->depth;
 	
 	std::sort(depths.begin(), depths.end());
 
@@ -485,7 +501,8 @@ void LevelEditor::adjust_cam_depth(Game& game) {
 	cam_depth = std::min(std::max(min_cam_depth, cam_depth), max_cam_depth);
 }
 
-std::string LevelEditor::trees_to_chars(std::vector<std::unique_ptr<Tree>>& trees) const {
+std::string LevelEditor::trees_to_chars(std::vector<std::unique_ptr<Tree>>& _) const {
+	/*
 	std::string ret = "";
 	for (const auto& tree : trees) {
 		auto& meta = tree_metadatas[(size_t) tree->id];
@@ -497,6 +514,8 @@ std::string LevelEditor::trees_to_chars(std::vector<std::unique_ptr<Tree>>& tree
 			"depth:{:.6f}\n", ret, meta.rotation, meta.offset.x, meta.offset.y, tree->rand.seed, tree->depth);
 	}
 	return ret;
+	*/
+	return "TODO IMPL of TREES_TO_CHARS";
 }
 
 bool LevelEditor::is_selecting() const {
@@ -511,10 +530,10 @@ bool LevelEditor::get_active(View view) const {
 	return views_active.test(view);
 }
 
-Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, const Tree& tree) {
-	std::vector<float> depths(game.trees.size());
-	for (size_t i = 0; i < game.trees.size(); i++)
-		depths[i] = game.trees[i]->depth;
+Rectangle LevelEditor::update_config_for_depth_ui(const TendrilConfig& config) {
+	std::vector<float> depths(all_config_info.size());
+	for (size_t i = 0; i < depths.size(); i++)
+		depths[i] = all_config_info[i].ptr->depth;
 	
 	std::sort(depths.begin(), depths.end());
 
@@ -524,7 +543,7 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, const Tree& tree) {
 	const int spacing = -5;
 	const float height = (float) depth_ui.MARK_HEIGHT;
 
-	const float percent = (tree.depth - min_depth) / (max_depth - min_depth);
+	const float percent = (config.depth - min_depth) / (max_depth - min_depth);
 	const float y_pos = percent * depth_ui.height + depth_ui.SPACING - height / 2;
 
 	return { 
@@ -535,13 +554,13 @@ Rectangle LevelEditor::update_tree_for_depth_ui(Game& game, const Tree& tree) {
 	};
 }
 
-bool LevelEditor::find_cursor_selection(Game& game, Vector2 cursor, Selection* selection) {
+bool LevelEditor::find_cursor_selection(Vector2 cursor, Selection* selection) {
 	float shortest = INFINITY;
 
-	for (size_t i = 0; i < game.trees.size(); i++) {
-		const auto& tree = game.trees[i];
+	for (size_t i = 0; i < all_config_info.size(); i++) {
+		const auto& config = all_config_info[i].ptr;
 		Vector2 small, big;
-		tree->bounding_box(small, big);
+		config->bounding_box(small, big);
 		if (!pt_in_rect(cursor, { small.x, small.y, big.x - small.x, big.y - small.y }))
 			continue;
 
@@ -549,7 +568,7 @@ bool LevelEditor::find_cursor_selection(Game& game, Vector2 cursor, Selection* s
 		float dist = length(mid - cursor);
 		if (dist < shortest) {
 			selection->index = i;
-			selection->offset = tree_metadatas[i].offset;
+			selection->offset = branch_metadatas[i].offset;
 			shortest = dist;
 		}
 	}
@@ -557,17 +576,17 @@ bool LevelEditor::find_cursor_selection(Game& game, Vector2 cursor, Selection* s
 	return shortest != INFINITY;
 }
 
-void LevelEditor::tree_single_select(Game& game, Vector2 mouse_pos) {
+void LevelEditor::tree_single_select(Vector2 mouse_pos) {
 	Selection selection;
-	if (find_cursor_selection(game, mouse_pos, &selection))
+	if (find_cursor_selection(mouse_pos, &selection))
 		selections = { selection };
 	else
 		invalidate_selections();
 }
 
-void LevelEditor::tree_multi_select(Game& game, Vector2 mouse_pos) {
+void LevelEditor::tree_multi_select(Vector2 mouse_pos) {
 	Selection selection;
-	if (find_cursor_selection(game, mouse_pos, &selection)) {
+	if (find_cursor_selection(mouse_pos, &selection)) {
 		if (!contains_selection(selection.index)) {
 			selections.push_back(selection);
 		}
@@ -583,36 +602,32 @@ void LevelEditor::tree_multi_select(Game& game, Vector2 mouse_pos) {
 		invalidate_selections();
 }
 
-void LevelEditor::update_tree_verts(Game& game, const size_t tree_index) {
-	auto& tree = game.trees[tree_index];
-	auto& meta = tree_metadatas[(size_t) tree->id];
-
-	const auto& branches = tree->original_branches;
-
-	if (branches.size() != tree->branches.size())
-		std::cerr << "metadata branches size " << branches.size() << " selected branches size " << tree->branches.size() << "\n";
+void LevelEditor::branch_verts_from_metadata(size_t config_index) {
+	auto& config = all_config_info[config_index].ptr;
+	auto& meta = branch_metadatas[(size_t) config->id];
 
 	const float rotation = snap(meta.rotation, 2.0 * PI / 30);
 
-	for (size_t i = 0; i < branches.size(); i++) {
-		auto& sel_verts = tree->branches[i].verts;
-		const auto& verts = branches[i].verts;
+	const auto& origin = config->original_branches[0].back();
+	for (size_t i = 0; i < config->original_branches.size(); i++) {
+		auto& sel_verts = config->branches[i].verts;
+		const auto& verts = config->original_branches[i].verts;
 		for (size_t j = 0; j < verts.size(); j++)
-			sel_verts[j] = rotate(branches[0].back(), verts[j], rotation) + meta.offset;
+			sel_verts[j] = rotate(origin, verts[j], rotation) + meta.offset;
 	}
 }
 
-bool LevelEditor::contains_selection(const size_t index) const {
+bool LevelEditor::contains_selection(size_t index) const {
 	return std::find_if(selections.begin(), selections.end(), 
 		[&](auto& sel) {
 			return sel.index == index;
 		}) != selections.end();
 }
 
-int LevelEditor::from_selected_by_id(Game& game, const Tree::Id tree_id) const {
+int LevelEditor::from_selected_by_id(TendrilConfig::Id config_id) const {
 	const auto& search = std::find_if(selections.begin(), selections.end(),
 		[&](auto& sel) {
-			return game.trees[sel.index]->id == tree_id;
+			return all_config_info[sel.index].ptr->id == config_id;
 		});
 	if (search == selections.end())
 		return -1;
@@ -633,29 +648,29 @@ void LevelEditor::set_active_extra_button_group(ExtraButtonState button_state) {
 	ui_elem_manager.set_active(extra_buttons_region_name, button_state != None);
 }
 
-void LevelEditor::delete_tree(Game& game, const size_t tree_index) {
-	auto& tree = game.trees[tree_index];
-	const auto tree_id = tree->id;
-	auto name = tree_to_managed_buttons[tree_id];
+void LevelEditor::delete_config(size_t config_index) {
+	auto& config = all_config_info[config_index].ptr;
+	const auto config_id = config->id;
+	auto name = config_to_managed_buttons[config_id];
 	ui_elem_manager.remove(name);
-	tree_to_managed_buttons.erase(tree_id);
+	config_to_managed_buttons.erase(config_id);
 
-	deleted_tree_ids.push_back(tree_id);
-	game.trees.erase(game.trees.begin() + tree_index);
+	deleted_config_ids.push_back(config_id);
+	all_config_info.erase(all_config_info.begin() + config_index);
 
-	std::println("deleted {}", (size_t) tree_id);
+	std::println("deleted {}", (size_t) config_id);
 	invalidate_selections();
 }
 
-std::vector<size_t> LevelEditor::calc_depth_indices(Game& game) {
-	std::vector<size_t> depth_indices(game.trees.size());
-	for (size_t i = 0; i < game.trees.size(); i++) {
-		auto& tree = game.trees[i];
+std::vector<size_t> LevelEditor::calc_depth_indices() const {
+	std::vector<size_t> depth_indices(all_config_info.size());
+	for (size_t i = 0; i < depth_indices.size(); i++) {
+		auto& config = all_config_info[i].ptr;
 		size_t j = i;
 		for (; j > 0; j--) {
 			size_t depth_index = depth_indices[j - 1];
-			auto& existing_tree = game.trees[depth_index];
-			if (tree->depth <= existing_tree->depth)
+			auto& existing_config = all_config_info[depth_index].ptr;
+			if (config->depth <= existing_config->depth)
 				break;
 
 			// Shift it over. Insert after the loop.

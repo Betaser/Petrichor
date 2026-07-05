@@ -9,8 +9,6 @@
 #include <raylib.h>
 
 #include "mylib.cpp"
-#include "main.hpp"
-
 #include "../gamestates/level_editor.cpp"
 #include "../entities/tree.cpp"
 #include "../scene_elements/button.cpp"
@@ -37,10 +35,6 @@ int main() {
 
 	// To check that the scope of all variables is treated as expected
 	{
-		auto img = GenImageColor(1, 1, BLANK);
-		load_texture_from_image(Main::dummy_tex, img);
-		UnloadImage(img);
-
 		Game game(screen_width, screen_height, fps);
 		game._game = &game;
 
@@ -48,10 +42,10 @@ int main() {
 		load_texture(Tree::branch_sampling_tex, "assets/tree_texture.png");
 
 		LevelEditor level_editor(game);
-		level_editor.make_initialized_tree(
-			[&game]() { 
-				game.make_tree(); 
-			}, game, { {} });
+		game.make_tree();
+		auto& tree = game.trees.back();
+		Rand rand(69);
+		level_editor.make_initialized_config(*tree, rand, { {}, 0 });
 
 		PauseMenu pause_menu(game);
 
@@ -76,11 +70,11 @@ int main() {
 							for (auto& tree : game.trees)
 								level_editor.saved_trees.push_back(std::move(tree));
 							game.load_trees(
-								Constants::test_level_path,
-								[](TreeMetadata& meta, Tree& tree) {
-									const Vector2 origin = tree.origin();
-									for (size_t i = 0; i < tree.branches.size(); i++) {
-										auto& verts = tree.branches[i].verts;
+								Constants::test_level2_path,
+								[](BranchMetadata& meta, TendrilConfig* config, size_t _) {
+									const Vector2 origin = config->origin();
+									for (size_t i = 0; i < config->branches.size(); i++) {
+										auto& verts = config->branches[i].verts;
 										for (size_t j = 0; j < verts.size(); j++)
 											verts[j] = rotate(origin, verts[j], meta.rotation) + meta.offset;
 									}
@@ -139,10 +133,8 @@ int main() {
 		// void* volatile blah = malloc(1);
 		// (void) blah;
 		unload_texture(Tree::branch_sampling_tex);
-		unload_texture(Main::dummy_tex);
 
 		std::println("branch sampling tex w/ id {} loads/unloads {}", Tree::branch_sampling_tex.id, Tree::branch_sampling_tex.load_unloads);
-		std::println("dummy tex w/ id {} loads/unloads {}", Main::dummy_tex.id, Main::dummy_tex.load_unloads);
 	}
 
 	CloseWindow();

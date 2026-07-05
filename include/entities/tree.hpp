@@ -1,6 +1,7 @@
 #ifndef TREE_H
 #define TREE_H
 
+#include <memory>
 #include <raylib.h>
 
 struct Petra;
@@ -32,6 +33,8 @@ struct TendrilRenderData {
 	Vector4 rgb_tint;
 };
 
+struct Tree;
+
 struct TendrilConfig {
 	public:
 	enum class Id : size_t {};
@@ -43,13 +46,34 @@ struct TendrilConfig {
 	Vector2 texture_pos {};
 	Vector2 small {};
 	Vector2 big {};
+	std::vector<Branch> branches;
+	std::vector<std::vector<Branch>> structured_branches;
+	// Needed to simulate branch resistance to dome "bending"
+	std::vector<Branch> original_branches;
+	// Needed to simulate branch "twisting"
+	std::vector<Vector2> prev_rel_dirs;
+	std::vector<float> branch_twists;
+	float depth = 0;
+	RenderTexture2D target;
+	Id id = (Id) 0;
+	Rand rand;
+	Tree* tree_owner = nullptr;
+
+	// Needs a copy constructor to fulfill construct_at req for unique_ptrness?
+	// TendrilConfig(const TendrilConfig& other) = default;
+	TendrilConfig(Id id, const Rand& rand, Tree* tree_owner);
+	~TendrilConfig();
 
 	void send_vals_to_branch_shader();
 	void level_editor_render(const TendrilRenderData& data);
 	// Does not figure out how we want to render it.
 	std::vector<std::vector<Branch>> gen_structured_branches(float total_length, float start_thickness, float start_rotation, float thickness_cutoff, Vector2 start_location, int MAX_TENDRILS = 5);
-
-	~TendrilConfig();
+	Vector2 origin() const;
+	void update_texture();
+	bool past_me(const Petra& petra, const float epsilon = 0) const;
+	void render_to_target(const Petra& petra);
+	void on_updated_branch();
+	void bounding_box(Vector2& small, Vector2& big);
 
 	private:
 	// Controls the horz zoom of texels, bigger = more zoomed in
@@ -61,29 +85,12 @@ struct TendrilConfig {
 	Vector2 top_rights[MAX] {};
 	// Default to this resolution, it might not matter what this really is.
 	const Vector2I blank_tex_dims { 10, 10 };
-	Rand rand;
-	Id id = (Id) 0;
-	float depth = 0;
 	TextureWithCheck sample_tex;
 	// Contains same branches as in structured_branches
-	std::vector<Branch> branches;
-	std::vector<std::vector<Branch>> structured_branches;
-	// Needed to simulate branch resistance to dome "bending"
-	std::vector<Branch> original_branches;
-	// Needed to simulate branch "twisting"
-	std::vector<Vector2> prev_rel_dirs;
-	std::vector<float> branch_twists;
-
-	TendrilConfig(Id id, const Rand& rand);
 
 	void init_gfx(ShaderWithCheck branch_shader);
 	void init_texture();
 	void unload_textures();
-	void bounding_box(Vector2& small, Vector2& big);
-	void on_updated_branch();
-	void update_texture();
-	constexpr Vector2 origin() const;
-	bool past_me(const Petra& petra, const float epsilon = 0) const;
 };
 
 struct Tree {
@@ -92,10 +99,9 @@ struct Tree {
 
 	TextureWithCheck blank_tex;
 	ShaderWithCheck trunk_shader;
-	RenderTexture2D target;
 
 	public:
-	std::vector<TendrilConfig> tendril_configs;
+	std::vector<std::unique_ptr<TendrilConfig>> tendril_configs;
 
 	// Current idea for trunk
 	std::vector<TrunkFace> trunk_faces;
@@ -103,13 +109,12 @@ struct Tree {
 	static TextureWithCheck branch_sampling_tex;
 	static void dup_branches(const std::vector<Branch>& from, std::vector<Branch>& to);
 
-	Tree(ShaderWithCheck trunk_shader);
+	Tree();
 	~Tree();
 
 	void level_editor_render(const std::vector<TendrilRenderData>& tendrils_data);
-	void render_to_target();
 
-	static std::vector<Branch> branches_from_tendrils(std::vector<std::vector<Branch>> tendril_config);
+	static std::vector<Branch> branches_from_structured_branches(std::vector<std::vector<Branch>> structured_branches);
 };
 
 #endif
