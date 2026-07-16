@@ -365,6 +365,9 @@ void LevelEditor::render(Game& game) const {
 			BeginShaderMode(select_shader);
 			DrawTexturePro(
 				selected_tex,
+				// This should work
+				full_texture(selected_tex),
+				/*
 				// source rect
 				{
 					.x = 0,
@@ -372,6 +375,7 @@ void LevelEditor::render(Game& game) const {
 					.width = (float) selected_tex.width,
 					.height = (float) selected_tex.height
 				},
+				*/
 				// dest rect
 				{
 					.x = pos.x,

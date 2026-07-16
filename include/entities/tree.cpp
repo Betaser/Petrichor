@@ -218,7 +218,7 @@ void TendrilConfig::level_editor_render(const TendrilRenderData& data) {
 		blank_tex,
 		// source rect
 		full_texture(blank_tex),
-		// dest rect, I think its the whole screen
+		// dest rect. The destination is the whole screen
 		{
 			.x = texture_pos.x,
 			.y = texture_pos.y,
@@ -232,13 +232,14 @@ void TendrilConfig::level_editor_render(const TendrilRenderData& data) {
 }
 
 void TendrilConfig::render_to_target(const Petra& petra) {
+	if (!past_me(petra))
+		return;
+
 	BeginTextureMode(target);
 	ClearBackground(BLANK);
 
-	if (past_me(petra))
-		return;
-
 	send_vals_to_branch_shader();
+
 	auto src = full_texture(blank_tex);
 	auto dest = full_texture(target.texture);
 	src.height *= -1;
@@ -433,6 +434,7 @@ std::vector<std::vector<Branch>> TendrilConfig::gen_structured_branches(float to
 	return structured_branches;
 }
 
+// If this returns false, return from the calling block
 bool TendrilConfig::past_me(const Petra& petra, const float epsilon) const {
 	return petra.depth <= depth + epsilon;
 }

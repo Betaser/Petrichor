@@ -28,6 +28,7 @@ struct Level {
     void debug_render_dome_radii(Game& game) const;
 	std::vector<Vector2> calc_rel_dirs(TendrilConfig& config);
 	void calc_twist(TendrilConfig& config);
+	void follow_petra_with_cam(Game& game);
 
     public:
     // 60

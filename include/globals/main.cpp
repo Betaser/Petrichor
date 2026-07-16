@@ -57,6 +57,8 @@ int main() {
 				slow_down = !slow_down;
 				game.set_fps(slow_down ? 5 : fps);
 			}
+			
+			game.overall_time += GetFrameTime();
 
 			pause_menu.update();
 
@@ -72,6 +74,7 @@ int main() {
 							game.load_trees(
 								Constants::test_level2_path,
 								[](BranchMetadata& meta, TendrilConfig* config, size_t _) {
+									// Check this maybe
 									const Vector2 origin = config->origin();
 									for (size_t i = 0; i < config->branches.size(); i++) {
 										auto& verts = config->branches[i].verts;

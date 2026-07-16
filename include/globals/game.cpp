@@ -11,6 +11,7 @@ Game::~Game() {}
 Game::Game(const int screen_width, const int screen_height, const int fps) {
 	this->screen_width = screen_width;
 	this->screen_height = screen_height;	
+	overall_time = 0;
 
 	level.init(screen_width, screen_height);
 

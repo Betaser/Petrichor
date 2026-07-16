@@ -417,6 +417,11 @@ void Level::calc_twist(TendrilConfig& config) {
 		config.prev_rel_dirs.push_back(dir);
 }
 
+void Level::follow_petra_with_cam(Game& game) {
+	camera.pos = petra.pos;
+	camera.screen_offset = { (float) game.screen_width / 2, (float) game.screen_height / 2 };
+}
+
 // TODO: This should take into account the tree trunk face for a specific tendrilconfig's depth
 void Level::push_tendril_config_aside(TendrilConfig& config, float cam_dist) {
 	const float radius = std::min(dome.max_radius, dome.depth_to_radius_fn(collision_dist - cam_dist));
@@ -489,6 +494,7 @@ void Level::update(Game& game) {
 	}
 }
 
+// TODO: Figure out why there is flickering.
 void Level::render(Game& game) {
 	Vector2 dims { 700, 500 };
 	Rectangle clip {
@@ -503,7 +509,7 @@ void Level::render(Game& game) {
 	DrawRectangleRec(clip, { 255, 0, 0, 100 });
 
 	// Indicate the center of where zooming happens
-	DrawRectangleV(camera.screen_offset, { 10, 10 }, { 45, 20, 45, 255 });
+	DrawRectangleV(camera.screen_offset, { 10, 10 }, { 45, 20, 45, (unsigned char) (255 * game.overall_time) });
 
 	// Render in reverse depth order
 	std::vector<TendrilConfig*> configs;
@@ -519,9 +525,11 @@ void Level::render(Game& game) {
 
 	set_shader_value(tree_foggy_blur_shader, "collisionDist", &collision_dist, SHADER_UNIFORM_FLOAT);
 
+	// Camera follows Petra directly
+	follow_petra_with_cam(game);
 	render_trees_to_target(game);
 
-	for (const auto& config_ptr: configs) {
+	for (const auto& config_ptr : configs) {
 		const auto& config = *config_ptr;
 
 		// We are past it then.
@@ -531,6 +539,7 @@ void Level::render(Game& game) {
 		const float dist = dist_from_cam(config);
 		
 		set_shader_value(tree_foggy_blur_shader, "distFromCam", &dist, SHADER_UNIFORM_FLOAT);
+		set_shader_value(tree_foggy_blur_shader, "collisionDist", &collision_dist, SHADER_UNIFORM_FLOAT);
 
 		Cam depth_cam = calc_depth_cam(dist);
 		// Change depth_cam if the tree is past the collision point
@@ -562,9 +571,6 @@ void Level::render(Game& game) {
 }
 
 void Level::render_trees_to_target(Game& game) {
-	camera.pos = petra.pos;
-	camera.screen_offset = { (float) game.screen_width / 2, (float) game.screen_height / 2 };
-
 	// BeginTextureMode(trees_target);
 	// ClearBackground(BLANK);
 	for (const auto& tree : game.trees) {

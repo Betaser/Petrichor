@@ -18,7 +18,7 @@ uniform vec2 btmLefts[MAX];
 uniform vec2 topRights[MAX];
 
 uniform float finishingAlpha = 1.0;
-uniform vec4 rgbTint;
+uniform vec4 rgbTint = vec4(0);
 
 out vec4 finalColor;
 

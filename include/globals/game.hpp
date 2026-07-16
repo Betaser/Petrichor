@@ -19,6 +19,7 @@ struct Game {
 	int fps = 0;
 	State state = EditLevel;
 	State last_state = EditLevel;
+	float overall_time;
 	Level level;
 
 	Game(const int screen_width, const int screen_height, const int fps);
