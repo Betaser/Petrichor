@@ -8,6 +8,7 @@
 #include "../scene_elements/button.hpp"
 #include "../scene_elements/ui_element_manager.cpp"
 #include "tree_metadata.cpp"
+#include "../scene_elements/region.cpp"
 
 struct LevelEditor {
 	struct Selection {
@@ -35,6 +36,11 @@ struct LevelEditor {
 		// (TODO) and scrolling now shows each branch sorted by depth, so scrolling jumps by depth
 		FocusTreeView,
 		SIZE,
+	};
+
+	struct ViewSelectorState {
+		View view;
+		LevelEditor* level_editor;
 	};
 
 	// Bottom left view selector
@@ -151,6 +157,13 @@ struct LevelEditor {
 
 	// Impl extracted out to level_editor_ui.cpp
 	void initialize_ui(Game& game);
+
+	struct ColorState {
+		float last_hover_time;
+		Color hover_color;
+	};
+	using ColorStateLerpFn = std::function<void(Region<ColorState>&, Region<ColorState>::State&, Region<ColorState>::State&, float)>;
+	void initialize_extra_buttons(Game& game, int screen_width, std::function<float(float)> adjust_t, ColorStateLerpFn color_lerp);
 	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id);
 	std::vector<size_t> calc_depth_indices() const;
 };

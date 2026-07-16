@@ -29,10 +29,10 @@ struct Button : UiElement {
 	};
 
 	State state;
-
 	// This is good enough for hovering/not hovering, but we will need another state for pressing or not.
 	// For now, just make pressing not require another state.
 	State idle_state;
+	Color hover_color;
 	
 	T data;
 
@@ -48,6 +48,7 @@ struct Button : UiElement {
 		std::function<void(Button<T>&)> on_hover,
 		std::function<void(Button<T>&)> on_pressed,
 		Color background_color = { 253, 249, 0, 100 },
+		Color hover_color = { 0, 0, 0, 255 },
 		Color text_color = { 0, 0, 0, 255 });
 
 	Button(std::function<void(Button<T>&)> on_hover);

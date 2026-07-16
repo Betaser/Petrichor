@@ -28,119 +28,7 @@ void ViewSelector::iterate_views(std::function<void(const LevelEditor::View, Rec
 	}
 }
 
-void LevelEditor::initialize_ui(Game& game) {
-	const int screen_width = game.screen_width;
-	auto debug_btn = new Button<nullptr_t>(
-		nullptr,
-		to_rect({ (float) screen_width - 190, 110 }, { 80, 80 }),
-		"Show debug keybinds",
-		[](auto& b) {
-			b.idle_state.text = "Press me to toggle instructions";
-		},
-		[this](auto& _) {
-			show_instructions = !show_instructions;
-		});
-	debug_btn_str = ui_elem_manager.add(debug_btn, "debug_btn");
-
-	struct ColorState {
-		float last_hover_time;
-		Color hover_color;
-	};
-
-	auto color_lerp = [](Region<ColorState>& self, Region<ColorState>::State& curr, Region<ColorState>::State& target, float t) {
-		self.color = ColorLerp(target.data.hover_color, curr.data.hover_color, t);
-	};
-	auto adjust_t = [](float t) {
-		return t * t;
-	};
-
-	auto depth_ui_region = (new Region<ColorState>())->init(
-		0.9,
-		&time,
-		to_rect(depth_ui.top_left, { depth_ui.WIDTH, depth_ui.height }),
-		color_lerp,
-		{ 0, depth_ui.BACKGROUND_COLOR },
-		{ 0, { 90, 40, 40, 180 } },
-		depth_ui.BACKGROUND_COLOR);
-
-	depth_ui_region->adjust_t = adjust_t;
-	depth_ui_region->render_fn = [](auto self) {
-		DrawRectangleRec(self->bounds, self->color);
-	};
-
-	ui_elem_manager.add(depth_ui_region, "depth_ui_region");
-
-	// A horz bar at the top of the screen
-	{
-		auto cam_depth_region = (new Region<ColorState>)->init(
-			0.9,
-			&time,
-			get_cam_depth(screen_width),
-			color_lerp,
-			{ 0, ColorAlpha(DARKGRAY, 0.5) },
-			{ 0, { 90, 40, 40, 180 } },
-			depth_ui.BACKGROUND_COLOR);
-		cam_depth_region->adjust_t = adjust_t;
-		cam_depth_region->render_fn = [](auto self) {
-			DrawRectangleRounded(self->bounds, 0.4, 1, self->color);
-		};
-
-		ui_elem_manager.add(cam_depth_region, "cam_depth_region");
-	}
-
-	// View selector
-	{
-		auto view_selector_region = (new Region<ColorState>)->init(
-			0.9,
-			&time,
-			view_selector.bounds(),
-			color_lerp,
-			{ 0, view_selector.background_color },
-			{ 0, { 90, 40, 40, 180 } },
-			view_selector.background_color);
-		view_selector_region->adjust_t = adjust_t;
-		view_selector_region->render_fn = [&](auto self) {
-			DrawRectangleRounded(self->bounds, view_selector.roundness, 1, self->color);
-		};
-
-		ui_elem_manager.add(view_selector_region, "view_selector_region");
-
-		size_t vbn_i = 0;
-		view_selector.iterate_views([&, &vs = view_selector](auto view, auto bounds) {
-			const std::string text = view_names[(int) view];
-			auto vs_btn = new Button<View>(
-				view,
-				bounds,
-				text,
-				[](auto& _) {},
-				[&](Button<View>& self) {
-					set_active(self.data, !get_active(self.data));
-				},
-				vs.view_color);
-
-			vs_btn->render_fn = [&, text](auto ui_element) {
-				auto& self = *dynamic_cast<Button<View>*>(ui_element);
-				const auto base_color = get_active(self.data)
-					? vs.view_selected_color
-					: vs.view_color;
-				const auto color = self.hovered && !get_active(self.data)
-					? ColorLerp(base_color, BLACK, 0.4)
-					: base_color;
-		
-				DrawRectangleRounded(
-					self.bounds,
-					0.4,
-					1,
-					color);
-
-				const int font_size = vs.calc_font_size();
-				DrawText(text.c_str(), (int) self.bounds.x, (int) self.bounds.y, font_size, vs.font_color);
-			};
-
-			view_button_names[vbn_i++] = ui_elem_manager.add(vs_btn, "vs_button");
-		});
-	}
-
+void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::function<float(float)> adjust_t, ColorStateLerpFn color_lerp) {
 	Region<ColorState>* extra_buttons_region = nullptr;
 
 	{
@@ -216,9 +104,12 @@ void LevelEditor::initialize_ui(Game& game) {
 			[](auto& _) {
 				std::println("HOVER merge tendrils");
 			},
-			[&](Button<LevelEditor*>& self) {
+			[](Button<LevelEditor*>& self) {
+				// const LevelEditor* data = self.data;
+				auto& all_config_info = self.data->all_config_info;
+				auto& selections = self.data->selections;
 				// Default to the merged tree output being based on the first selection.
-				Tree* kept_tree_addr = all_config_info[self.data->selections[0].index].ptr->tree_owner;
+				Tree* kept_tree_addr = all_config_info[selections[0].index].ptr->tree_owner;
 
 				// Move branches to chosen tree
 				for (const auto& selection : self.data->selections) {
@@ -252,7 +143,7 @@ void LevelEditor::initialize_ui(Game& game) {
 				*/
 
 				std::println("deleted other trees");
-				set_active_extra_button_group(None);
+				self.data->set_active_extra_button_group(None);
 			},
 			GREEN);
 		button->render_fn = [](UiElement* ui_element) {
@@ -266,6 +157,132 @@ void LevelEditor::initialize_ui(Game& game) {
 	}
 
 	extra_state_to_group[None] = { {} };
+}
+
+void LevelEditor::initialize_ui(Game& game) {
+	const int screen_width = game.screen_width;
+	ColorStateLerpFn color_lerp = [](Region<ColorState>& self, Region<ColorState>::State& curr, Region<ColorState>::State& target, float t) {
+		self.color = ColorLerp(target.data.hover_color, curr.data.hover_color, t);
+	};
+	auto adjust_t = [](float t) {
+		return t * t;
+	};
+
+	auto debug_btn = new Button<LevelEditor*>(
+		this,
+		to_rect({ (float) screen_width - 190, 110 }, { 80, 80 }),
+		"Show debug keybinds",
+		[](auto& b) {
+			b.idle_state.text = "Press me to toggle instructions";
+		},
+		[](auto& b) {
+			bool& show_instructions = b.data->show_instructions;
+			show_instructions = !show_instructions;
+		});
+	debug_btn_str = ui_elem_manager.add(debug_btn, "debug_btn");
+
+	auto depth_ui_region = (new Region<ColorState>())->init(
+		0.9,
+		&time,
+		to_rect(depth_ui.top_left, { depth_ui.WIDTH, depth_ui.height }),
+		color_lerp,
+		{ 0, depth_ui.BACKGROUND_COLOR },
+		{ 0, { 90, 40, 40, 180 } },
+		depth_ui.BACKGROUND_COLOR);
+
+	depth_ui_region->adjust_t = adjust_t;
+	depth_ui_region->render_fn = [](auto self) {
+		DrawRectangleRec(self->bounds, self->color);
+	};
+
+	ui_elem_manager.add(depth_ui_region, "depth_ui_region");
+
+	// A horz bar at the top of the screen
+	{
+		auto cam_depth_region = (new Region<ColorState>)->init(
+			0.9,
+			&time,
+			get_cam_depth(screen_width),
+			color_lerp,
+			{ 0, ColorAlpha(DARKGRAY, 0.5) },
+			{ 0, { 90, 40, 40, 180 } },
+			depth_ui.BACKGROUND_COLOR);
+		cam_depth_region->adjust_t = adjust_t;
+		cam_depth_region->render_fn = [](auto self) {
+			DrawRectangleRounded(self->bounds, 0.4, 1, self->color);
+		};
+
+		ui_elem_manager.add(cam_depth_region, "cam_depth_region");
+	}
+
+	// View selector
+	{
+		auto view_selector_region = (new Region<ColorState>)->init(
+			0.9,
+			&time,
+			view_selector.bounds(),
+			color_lerp,
+			{ 0, view_selector.background_color },
+			{ 0, { 90, 40, 40, 180 } },
+			view_selector.background_color);
+		view_selector_region->adjust_t = adjust_t;
+		view_selector_region->render_fn = [&](auto self) {
+			DrawRectangleRounded(self->bounds, view_selector.roundness, 1, self->color);
+		};
+
+		ui_elem_manager.add(view_selector_region, "view_selector_region");
+
+		size_t vbn_i = 0;
+		view_selector.iterate_views([&vbn_i, le = this, &vs = view_selector](auto view, auto bounds) {
+			const std::string text = le->view_names[(int) view];
+			
+			auto vs_btn = new Button<ViewSelectorState>(
+				{ view, le },
+				bounds,
+				text,
+				[](auto& _) {},
+				[](auto& self) {
+					LevelEditor* le = self.data.level_editor;
+					le->set_active(self.data.view, !le->get_active(self.data.view));
+				},
+				vs.view_color);
+			vs_btn->render_fn = [&vs](auto ui_element) {
+				auto& self = *dynamic_cast<Button<ViewSelectorState>*>(ui_element);
+				const auto base_color = self.data.level_editor->get_active(self.data.view)
+					? vs.view_selected_color
+					: vs.view_color;
+				const auto color = self.hovered && !self.data.level_editor->get_active(self.data.view)
+					? ColorLerp(base_color, BLACK, 0.4)
+					: base_color;
+		
+				DrawRectangleRounded(
+					self.bounds,
+					0.4,
+					1,
+					color);
+
+				const int font_size = vs.calc_font_size();
+				DrawText(self.state.text.c_str(), (int) self.bounds.x, (int) self.bounds.y, font_size, vs.font_color);
+			};
+
+			le->view_button_names[vbn_i++] = le->ui_elem_manager.add(vs_btn, "vs_button");
+		});
+	}
+	
+	// Two tools for your left mouse click to be doing; either placing a tendril config or placing a tree trunk segment
+	{
+		struct MouseToolState {
+			enum ToolType {
+				PlaceTendrilConfig,
+				PlaceTreeTrunk,
+			};
+			ToolType tool;
+		};
+		// auto tendril_btn = new Button<MouseToolState>
+	}
+
+	// Extra buttons stuff 
+	initialize_extra_buttons(game, screen_width, adjust_t, color_lerp);
 }
 
 Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id) {

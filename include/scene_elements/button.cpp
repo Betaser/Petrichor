@@ -10,9 +10,11 @@ Button<T>::Button(
 	std::function<void(Button<T>&)> on_hover,
 	std::function<void(Button<T>&)> on_pressed,
 	Color background_color,
+	Color hover_color,
 	Color text_color) {
 	hovered = false;
 	color = background_color;
+	this->hover_color = hover_color;
 	state.last_hit = false;
 	state.hit = false;
 	state.text = text;
@@ -36,7 +38,7 @@ idle_state = state;
 		const auto& text_color = self.state.text_color;
 
 		const auto c = self.hovered
-			? ColorLerp(self.color, BLACK, 0.4)
+			? ColorLerp(self.color, self.hover_color, 0.4)
 			: self.color;
 
 		DrawRectangle(pos.x, pos.y, dims.x, dims.y, c);

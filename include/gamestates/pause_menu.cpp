@@ -27,14 +27,13 @@ struct PauseMenu {
 			nullptr,
 			to_rect(pos, { BUTTON_WIDTH, BUTTON_HEIGHT }),
 			setting.text,
-			[](Button<nullptr_t>& self) {
-				self.color = ColorLerp(self.color, { 50, 0, 50, 255 }, 0.4);
-			},
+			[](Button<nullptr_t>& _) {},
 			[&](Button<nullptr_t>& _) {
 				game.state = setting.state;
 				active = false;
 			},
 			setting.background_color,
+			Color { 50, 0, 50, 255 },
 			WHITE
 		));
 	}

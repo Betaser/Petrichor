@@ -148,14 +148,14 @@ void LevelEditor::update(Game& game) {
 	const bool selecting = is_selecting();
 
 	// Let's test that it fails.
-	auto debug_button = ui_elem_manager.get<Button<nullptr_t>>(debug_btn_str);
+	auto debug_button = ui_elem_manager.get<Button<LevelEditor*>>(debug_btn_str);
 	
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		// if (debug_button->hovered)
 		debug_button->state.hit = true;
 
 		for (const auto& name : view_button_names)
-			ui_elem_manager.get<Button<View>>(name)->state.hit = true;
+			ui_elem_manager.get<Button<ViewSelectorState>>(name)->state.hit = true;
 
 		const auto& active_group = extra_state_to_group[active_extra_button];
 		for (const auto& name : active_group.names) {
