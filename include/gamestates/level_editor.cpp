@@ -9,6 +9,29 @@
 #include "../globals/mylib.hpp"
 #include "../globals/constants.cpp"
 
+
+void LevelEditor::ExtraButton::set_active_extra_button_group(ExtraButtonState button_state) {
+	active_state = button_state;
+	for (auto state = (ExtraButtonState) 0; 
+		state < EXTRA_SIZE; 
+		state = (ExtraButtonState) ((size_t) state + 1)) {
+		const auto& group = extra_state_to_group[state];
+		for (const auto& name : group.names)
+			owner->ui_elem_manager.set_active(name, state == button_state);
+	}
+
+	// None state should mean hidden extra buttons
+	owner->ui_elem_manager.set_active(region_name, button_state != None);
+}
+
+void LevelEditor::ExtraButton::set_hit_state_true() {
+	const auto& active_group = extra_state_to_group[active_state];
+	for (const auto& name : active_group.names) {
+		std::println("reinterpret {} as Button<nullptr_t>", name);
+		owner->ui_elem_manager.reinterpret<Button<nullptr_t>>(name)->state.hit = true;
+	}
+}
+
 LevelEditor::LevelEditor(Game& game) {
 	std::println("init level editor");
 
@@ -140,7 +163,7 @@ void LevelEditor::update(Game& game) {
 			tree_multi_select(mouse_pos);
 		else 
 			tree_single_select(mouse_pos);
-		set_active_extra_button_group(selections.size() > 1
+		extra_button.set_active_extra_button_group(selections.size() > 1
 			? OnMultipleSelected
 			: None);
 	}
@@ -157,11 +180,10 @@ void LevelEditor::update(Game& game) {
 		for (const auto& name : view_button_names)
 			ui_elem_manager.get<Button<ViewSelectorState>>(name)->state.hit = true;
 
-		const auto& active_group = extra_state_to_group[active_extra_button];
-		for (const auto& name : active_group.names) {
-			std::println("reinterpret {} as Button<nullptr_t>", name);
-			ui_elem_manager.reinterpret<Button<nullptr_t>>(name)->state.hit = true;
-		}
+		for (const auto& name : mouse_tool_used.names)
+			ui_elem_manager.get<Button<MouseToolState>>(name)->state.hit = true;
+
+		extra_button.set_hit_state_true();
 	}
 
 	// Yeah this looks weird but we use hit + hovered to do logic.
@@ -436,7 +458,7 @@ void LevelEditor::render(Game& game) const {
 
 void LevelEditor::invalidate_selections() {
 	selections.clear();
-	set_active_extra_button_group(None);
+	extra_button.set_active_extra_button_group(None);
 }
 
 void LevelEditor::duplicate_selected_tendril() {
@@ -636,20 +658,6 @@ int LevelEditor::from_selected_by_id(TendrilConfig::Id config_id) const {
 	if (search == selections.end())
 		return -1;
 	return search->index;
-}
-
-void LevelEditor::set_active_extra_button_group(ExtraButtonState button_state) {
-	active_extra_button = button_state;
-	for (auto state = (ExtraButtonState) 0; 
-		state < EXTRA_SIZE; 
-		state = (ExtraButtonState) ((size_t) state + 1)) {
-		const auto& group = extra_state_to_group[state];
-		for (const auto& name : group.names)
-			ui_elem_manager.set_active(name, state == button_state);
-	}
-
-	// None state should mean hidden extra buttons
-	ui_elem_manager.set_active(extra_buttons_region_name, button_state != None);
 }
 
 void LevelEditor::delete_config(size_t config_index) {

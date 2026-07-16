@@ -29,6 +29,7 @@ void ViewSelector::iterate_views(std::function<void(const LevelEditor::View, Rec
 }
 
 void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::function<float(float)> adjust_t, ColorStateLerpFn color_lerp) {
+	extra_button.owner = this;
 	Region<ColorState>* extra_buttons_region = nullptr;
 
 	{
@@ -57,8 +58,8 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 			DrawRectangleRec(ui_element->bounds, ui_element->color);
 		};
 
-		extra_buttons_region_name = ui_elem_manager.add(region, "generic_region");
-		extra_buttons_region = ui_elem_manager.get<Region<ColorState>>(extra_buttons_region_name);
+		extra_button.region_name = ui_elem_manager.add(region, "generic_region");
+		extra_buttons_region = ui_elem_manager.get<Region<ColorState>>(extra_button.region_name);
 	}
 
 	auto make_centered_rect = [](Vector2 dims, Rectangle ref_rect) {
@@ -90,7 +91,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 		};
 
 		const auto& name = ui_elem_manager.add(button, "center_petra_btn");
-		extra_state_to_group[OnCameraView] = { { name } };
+		extra_button.extra_state_to_group[OnCameraView] = { { name } };
 	}
 
 	// Make merge tendrils button
@@ -118,32 +119,14 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 					if (sel_tree_addr == kept_tree_addr)
 						continue;
 
-					// auto& sel_tree_config = sel_tree_addr->tendril_configs[sel_config_info.tree_owner_index];
 					auto it = sel_tree_addr->tendril_configs.begin() + sel_config_info.tree_owner_index;
-					// Pretty sure this should work tbh?
 					kept_tree_addr->tendril_configs.push_back(std::move(*it));
 					sel_tree_addr->tendril_configs.erase(it);
 
 					sel_config_info.ptr->tree_owner = kept_tree_addr;
 				}
 
-				// Delete the other selected trees
-				std::vector<size_t> saved_selection_indices(selections.size());
-				for (size_t i = 0; i < selections.size(); i++)
-					saved_selection_indices[i] = selections[i].index;
-
-				/*
-				for (const auto& sel_index : saved_selection_indices) {
-					const Tree* sel_tree_addr = all_config_info[sel_index].ptr->tree_owner;
-					if (sel_tree_addr == kept_tree_addr)
-						continue;
-
-					delete_config(sel_index);
-				}
-				*/
-
-				std::println("deleted other trees");
-				self.data->set_active_extra_button_group(None);
+				self.data->extra_button.set_active_extra_button_group(None);
 			},
 			GREEN);
 		button->render_fn = [](UiElement* ui_element) {
@@ -153,10 +136,10 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 		};
 
 		const auto& name = ui_elem_manager.add(button, "merge_trees_btn");
-		extra_state_to_group[OnMultipleSelected] = { { name } };
+		extra_button.extra_state_to_group[OnMultipleSelected] = { { name } };
 	}
 
-	extra_state_to_group[None] = { {} };
+	extra_button.extra_state_to_group[None] = { {} };
 }
 
 void LevelEditor::initialize_ui(Game& game) {
@@ -271,14 +254,38 @@ void LevelEditor::initialize_ui(Game& game) {
 	
 	// Two tools for your left mouse click to be doing; either placing a tendril config or placing a tree trunk segment
 	{
-		struct MouseToolState {
-			enum ToolType {
-				PlaceTendrilConfig,
-				PlaceTreeTrunk,
+		// Rn we just make the bounds be something random
+		for (size_t i = 0; i < MouseToolUsed::MOUSE_TOOL_SIZE; i++) {
+			Rectangle bounds {
+				300 + (float) i * 120,
+				300,
+				100,
+				100
 			};
-			ToolType tool;
-		};
-		// auto tendril_btn = new Button<MouseToolState>
+			MouseToolUsed::ToolType btn_tool_type = (MouseToolUsed::ToolType) i;
+			Color btn_color = RED;
+			std::string btn_text = "Tree trunk/config idk";
+			Color btn_hover_color = ColorLerp(YELLOW, BLACK, 0.4);
+			auto mouse_tool_btn = new Button<MouseToolState>(
+				{ &mouse_tool_used, btn_tool_type },
+				bounds,
+				btn_text,
+				[](auto& _) {},
+				[](auto& self) {
+					self.data.used->type = self.data.tool_type;
+				},
+				btn_color,
+				btn_hover_color,
+				WHITE);
+
+			mouse_tool_btn->render_fn = [](auto ui_element) {
+				auto& self = *dynamic_cast<Button<MouseToolState>*>(ui_element);
+				self.hovered = self.hovered || self.data.used->type == self.data.tool_type;
+				Button<MouseToolState>::render_button(ui_element);
+			};
+
+			mouse_tool_used.names[i] = ui_elem_manager.add(mouse_tool_btn, btn_text);
+		}
 	}
 
 	// Extra buttons stuff 

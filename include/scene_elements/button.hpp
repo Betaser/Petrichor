@@ -55,6 +55,20 @@ struct Button : UiElement {
 
 	virtual ~Button();
 
+	static void render_button(const UiElement* ui_element) {
+		const auto& self = *dynamic_cast<const Button<T>*>(ui_element);
+		const auto [pos, dims] = to_pos_dims(self.bounds);
+		const auto& text = self.state.text;
+		const auto& text_color = self.state.text_color;
+
+		const auto c = self.hovered
+			? ColorLerp(self.color, self.hover_color, 0.4)
+			: self.color;
+
+		DrawRectangle(pos.x, pos.y, dims.x, dims.y, c);
+		DrawText(text.c_str(), pos.x, pos.y, 20, text_color);
+	}
+
 	void take_input(Vector2 cursor) override;
 	void update() override;
 	bool in_use() const override;

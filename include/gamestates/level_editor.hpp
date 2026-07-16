@@ -117,15 +117,45 @@ struct LevelEditor {
 		EXTRA_SIZE
 	};
 
+	// Initialized while "initialize_ui" runs.
+	struct ExtraButton {
+		ExtraButtonState active_state = None;
+		std::array<UiElementGroup, EXTRA_SIZE> extra_state_to_group;
+		std::string region_name;
+		LevelEditor* owner;
+
+		void set_hit_state_true();
+		void set_active_extra_button_group(ExtraButtonState button_state);
+	};
+
 	struct ConfigInfo {
 		TendrilConfig* ptr;
 		size_t tree_owner_index;
 	};
 
-	// Initialized while "initialize_ui" runs.
-	ExtraButtonState active_extra_button;
-	std::array<UiElementGroup, EXTRA_SIZE> extra_state_to_group;
-	std::string extra_buttons_region_name;
+	struct ColorState {
+		float last_hover_time;
+		Color hover_color;
+	};
+	using ColorStateLerpFn = std::function<void(Region<ColorState>&, Region<ColorState>::State&, Region<ColorState>::State&, float)>;
+
+	struct MouseToolUsed {
+		enum ToolType {
+			PlaceTendrilConfig,
+			PlaceTreeTrunk,
+			MOUSE_TOOL_SIZE
+		};
+		std::array<std::string, MOUSE_TOOL_SIZE> names;
+
+		ToolType type = PlaceTendrilConfig;
+	};
+
+	struct MouseToolState {
+		MouseToolUsed* used;
+		MouseToolUsed::ToolType tool_type;
+	};
+
+	ExtraButton extra_button;
 	std::string debug_btn_str;
 	// Don't need to have this around tbh, should be part of the ui_elem_manager
 	bool show_instructions = false;
@@ -135,6 +165,7 @@ struct LevelEditor {
 	float min_cam_depth;
 	float max_cam_depth;
 	std::vector<ConfigInfo> all_config_info;
+	MouseToolUsed mouse_tool_used;
 
 	Rectangle get_cam_depth(const int screen_width) const;
 	void render_cam_depth(Game& game) const;
@@ -152,17 +183,11 @@ struct LevelEditor {
 	void branch_verts_from_metadata(size_t config_index);
 	bool contains_selection(size_t index) const;
 	int from_selected_by_id(TendrilConfig::Id config_id) const;
-	void set_active_extra_button_group(ExtraButtonState button_state);
 	void delete_config(size_t config_index);
 
 	// Impl extracted out to level_editor_ui.cpp
 	void initialize_ui(Game& game);
 
-	struct ColorState {
-		float last_hover_time;
-		Color hover_color;
-	};
-	using ColorStateLerpFn = std::function<void(Region<ColorState>&, Region<ColorState>::State&, Region<ColorState>::State&, float)>;
 	void initialize_extra_buttons(Game& game, int screen_width, std::function<float(float)> adjust_t, ColorStateLerpFn color_lerp);
 	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id);
 	std::vector<size_t> calc_depth_indices() const;
