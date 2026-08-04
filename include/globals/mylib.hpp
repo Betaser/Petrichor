@@ -86,6 +86,7 @@ bool is_inside(const Vector2& pt, const std::array<const Vector2, 2>& bounds, co
 std::string to_str(const Vector2& v, const int decimal_pts);
 
 // Misc
+Rectangle min_max_to_rect(const Vector2& min_boundary, const Vector2& max_boundary);
 bool pt_in_rect(const Vector2& pt, const Rectangle& rect);
 bool is_overlap(const Rectangle& r1, const Rectangle& r2);
 Rectangle full_texture(const Texture2D& tex);

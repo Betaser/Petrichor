@@ -101,7 +101,7 @@ struct UiElementManager {
 	void remove(const std::string& name) {
 		const bool debug = true;
 		if (debug && !named_elements.contains(name))
-			throw std::runtime_error(std::format("{} NOT IN named_elements", name));
+			throw std::runtime_error(std::format(".remove {} NOT IN named_elements", name));
 		std::println("mark for removal {} from NAMED_ELEMENTS", name);
 
 		mark_for_removal.push_back(name);
@@ -112,7 +112,7 @@ struct UiElementManager {
 	T* reinterpret(const std::string& name) {
 		const bool debug = true;
 		if (debug && !named_elements.contains(name))
-			throw std::runtime_error(std::format("{} NOT IN named_elements", name));
+			throw std::runtime_error(std::format(".reinterpret {} NOT IN named_elements", name));
 		T* data = reinterpret_cast<T*>(named_elements.at(name).elem.get());
 		return data;
 	}
@@ -123,7 +123,7 @@ struct UiElementManager {
 		// For searchability
 		const bool debug = true;
 		if (debug && !named_elements.contains(name))
-			throw std::runtime_error(std::format("{} NOT IN named_elements", name));
+			throw std::runtime_error(std::format(".get {} NOT IN named_elements", name));
 		T* data = dynamic_cast<T*>(named_elements.at(name).elem.get());
 		if (debug && data == nullptr)
 			throw std::runtime_error(std::format("BAD CAST for named_elements[{}]", name));

@@ -54,6 +54,19 @@ void LevelEditor::reinit(Game& game) {
 	branch_metadatas.clear();
 	ui_elem_manager.init();
 	config_to_managed_buttons.clear();
+	mouse_tool_permits_selection_movement = false;
+	// Why did I not clear all_config_info before???
+	all_config_info.clear();
+
+	// NOT PART OF all_config_infos, intentionally.
+	{
+		// A tree is guaranteed to already exist cause it was done in main.
+		auto& back_tree = game.trees.back();
+		mouse_tool_preview_config = std::make_unique<TendrilConfig>(TendrilConfig::Id(0), Rand(69), back_tree.get());
+		BranchMetadata meta({}, 0);
+		std::println("randomize the preview");
+		randomize_tendrils(*mouse_tool_preview_config, meta);
+	}
 
 	depth_ui.height = (float) game.screen_height - 2 * depth_ui.SPACING;
 	depth_ui.top_left = {
@@ -86,11 +99,10 @@ void LevelEditor::make_initialized_config(Tree& tree, const Rand& rand, const Br
 	std::println("make config w/ id {}", (size_t) config->id);
 
 	const auto& depth_rect = update_config_for_depth_ui(*config);
-	BranchMetadata temp(metadata.offset, metadata.rotation);
 	if (ids_available)
-		branch_metadatas[(size_t) config->id] = temp;
+		branch_metadatas[(size_t) config->id] = metadata;
 	else
-		branch_metadatas.push_back(temp);
+		branch_metadatas.push_back(metadata);
 
 	randomize_tendrils((size_t) config_index_and_id);
 
@@ -118,9 +130,8 @@ void LevelEditor::make_initialized_config(Tree& tree, const Rand& rand, const Br
 	std::string name = ui_elem_manager.add(depth_btn, "depth_btn");
 	config_to_managed_buttons[config->id] = name;
 }
-
-void LevelEditor::randomize_tendrils(size_t config_index) {
-	auto& config = *all_config_info[config_index].ptr;
+	
+void LevelEditor::randomize_tendrils(TendrilConfig& config, const BranchMetadata& meta) {
 	// Try using randomly generated tendrils too
 	const Vector2 start_location { 100, 100 };
 
@@ -128,13 +139,32 @@ void LevelEditor::randomize_tendrils(size_t config_index) {
 	config.branches = Tree::branches_from_structured_branches(structured_branches);
 	config.structured_branches = structured_branches;
 
+	config.on_updated_branch();
+	branch_verts_from_metadata(config, meta);
+	config.update_texture();
+}
+
+void LevelEditor::randomize_tendrils(size_t config_index) {
+	auto& config = *all_config_info[config_index].ptr;
 	const auto& meta = branch_metadatas[(size_t) config.id];
+
+	randomize_tendrils(config, meta);
+
+	/*
+	// Try using randomly generated tendrils too
+	const Vector2 start_location { 100, 100 };
+
+	auto structured_branches = config.gen_structured_branches(400, 20, 1.2, 0.1, start_location);
+	config.branches = Tree::branches_from_structured_branches(structured_branches);
+	config.structured_branches = structured_branches;
+
 	branch_metadatas[(size_t) config.id] = BranchMetadata(meta.offset, meta.rotation);
 	config.on_updated_branch();
 
 	branch_verts_from_metadata(config_index);
 
 	config.update_texture();
+	*/
 }
 
 void LevelEditor::update_selected_verts() {
@@ -157,8 +187,16 @@ void LevelEditor::update(Game& game) {
 	const auto mouse_pos = GetMousePosition();
 	auto ui_elem_manager_view = ui_elem_manager.update(mouse_pos);
 
+	const bool selecting = is_selecting();
+	const bool last_ui_hovered = ui_hovered;
+	ui_hovered = ui_elem_manager_view.any_hovered();	
+	const bool using_ui = ui_elem_manager_view.any_in_use();
+
+	// Let's test that it fails.
+	auto debug_button = ui_elem_manager.get<Button<LevelEditor*>>(debug_btn_str);
+
 	// Right click to select, chooses closest tree
-	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+	if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
 		if (IsKeyDown(KEY_LEFT_SHIFT))
 			tree_multi_select(mouse_pos);
 		else 
@@ -167,14 +205,8 @@ void LevelEditor::update(Game& game) {
 			? OnMultipleSelected
 			: None);
 	}
-
-	const bool selecting = is_selecting();
-
-	// Let's test that it fails.
-	auto debug_button = ui_elem_manager.get<Button<LevelEditor*>>(debug_btn_str);
 	
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-		// if (debug_button->hovered)
 		debug_button->state.hit = true;
 
 		for (const auto& name : view_button_names)
@@ -184,6 +216,70 @@ void LevelEditor::update(Game& game) {
 			ui_elem_manager.get<Button<MouseToolState>>(name)->state.hit = true;
 
 		extra_button.set_hit_state_true();
+	}
+
+	// New addition, do something depending on what the MouseToolState::ToolUsed is.
+	bool mouse_tool_can_place = !using_ui;
+	const bool cursor_hovering_selection = is_cursor_hovering_selection(mouse_pos);
+	if (cursor_hovering_selection)
+		mouse_tool_can_place = false;
+
+	switch (mouse_tool_used.type) {
+		case MouseToolUsed::PlaceTendrilConfig: {
+			// If you left click and your mouse is inside of the bounds of a selected item, you can move as normal as you hold down left click.
+			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+				mouse_tool_permits_selection_movement = cursor_hovering_selection;
+
+			if (mouse_tool_can_place) {
+				// Make a tree branch with default depth/rotation 
+				// at the location of the cursor, with a biggest rand value + 1 I suppose?
+				int seed = 69;
+				for (auto& tree : game.trees) {
+					for (auto& config : tree->tendril_configs) {
+						seed = std::max(seed, config->rand.seed + 1);
+					}
+				}
+				auto& tree = game.trees.back();
+				const Vector2 default_offset { 100, 100 };
+				const Vector2 offset_mouse_pos { mouse_pos - default_offset };
+
+				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+
+					// I should probably get rid of this really weird offset issue
+					// Location is kinda wonky (by a consistent amount, so whatevs)
+					// Change selection to the recently placed thing.
+					BranchMetadata meta(offset_mouse_pos, 0);
+					invalidate_selections();
+					selections.push_back({ all_config_info.size(), meta.offset });
+					Rand rand(seed);
+					make_initialized_config(*tree, rand, meta);
+				}
+				// TODO: Also if we are on this mode, preview our placement.
+				else {
+					// NOT PART OF all_config_infos, intentionally.
+					auto& config = mouse_tool_preview_config;
+					config->rand.set_seed(seed);
+					config->tree_owner = tree.get();
+					BranchMetadata meta(offset_mouse_pos, 0);
+					randomize_tendrils(*mouse_tool_preview_config, meta);
+				}
+			}
+		}
+		break;
+		case MouseToolUsed::PlaceTreeTrunk: {
+			std::println("TODO: Place tree trunk down");
+			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && mouse_tool_can_place) {
+				// Similar to PlaceTendrilConfig but place a tree trunk at the mouse location
+			}
+		}
+		break;
+		case MouseToolUsed::SelectionCentric: {
+			// This mode means left click does nothing at all.
+			mouse_tool_permits_selection_movement = true;
+			// Preview a tree's selections when you hover over it
+		}
+		break;
+		case MouseToolUsed::MOUSE_TOOL_SIZE: break;
 	}
 
 	// Yeah this looks weird but we use hit + hovered to do logic.
@@ -196,10 +292,6 @@ void LevelEditor::update(Game& game) {
 			}
 		}
 	}
-
-	const bool last_ui_hovered = ui_hovered;
-	ui_hovered = ui_elem_manager_view.any_hovered();	
-	const bool using_ui = ui_elem_manager_view.any_in_use();
 
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_S)) {
 		std::println("SAVE INTIATED, BUT IMPL DELAYED FOR NOW");
@@ -214,12 +306,15 @@ void LevelEditor::update(Game& game) {
 		*/
 	}
 
+	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
+		std::println("reinit");
+		reinit(game);
+	}
+
 	if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_O)) {
-		// Why not just reinit
 		reinit(game);
 
 		std::println("Load file {}", Constants::test_level2_path);
-		all_config_info.clear();
 		game.load_trees(
 			Constants::test_level2_path, 
 			[&](BranchMetadata& meta, TendrilConfig* config, size_t tree_owner_index) {
@@ -272,8 +367,9 @@ void LevelEditor::update(Game& game) {
 			auto& meta = branch_metadatas[(size_t) selected->id];
 
 			if ((!using_ui && IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-			 || (last_ui_hovered != ui_hovered))
+			 || (last_ui_hovered != ui_hovered)) {
 				selection_offset = mouse_pos - meta.offset;
+			}
 
 			// rotation
 			float rotation_input = 0;
@@ -291,14 +387,16 @@ void LevelEditor::update(Game& game) {
 
 			// Adapted from main's while loop
 			if (IsKeyPressed(KEY_R)) {
-				selected->rand.set_seed(++selected->rand.seed);
+				const int new_seed = selected->rand.seed + (IsKeyDown(KEY_LEFT_SHIFT) ? -1 : 1);
+				selected->rand.set_seed(new_seed);
 				randomize_tendrils(selected_index);
 			}
 
 			// offset
-			if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+			if (!using_ui && IsMouseButtonDown(MOUSE_LEFT_BUTTON) && mouse_tool_permits_selection_movement) {
 				meta.offset = mouse_pos - selection_offset;
 
+				std::println("Left mouse down and mouse tool permits");
 				update_selected_verts();
 				// just translate it instead of reloading shaders.
 				Vector2 small, big;
@@ -336,7 +434,7 @@ void LevelEditor::render(Game& game) const {
 		const bool tree_selected = selected_trees.contains(config->tree_owner);
 
 		if (get_active(FocusTreeView)) {
-			if (!tree_selected ) {
+			if (!tree_selected) {
 				depth_alpha *= 0.1 * (0.5 * sin(time * 2.3) + 0.5);
 			}
 		}
@@ -437,6 +535,15 @@ void LevelEditor::render(Game& game) const {
 	render_cam_depth(game);
 
 	ui_elem_manager.render();
+
+	// Preview shall have some fricken look.
+	if (mouse_tool_used.type == MouseToolUsed::PlaceTendrilConfig && 
+		!is_cursor_hovering_selection(GetMousePosition())) {
+		mouse_tool_preview_config->level_editor_render({
+			.finishing_alpha = 0.2,
+			.rgb_tint = to_vec4(ColorAlpha(RED, 0.2))
+		});
+	}
 
 	// A little scuffed, but will be helpful for debugging later.
 	{
@@ -580,26 +687,68 @@ Rectangle LevelEditor::update_config_for_depth_ui(const TendrilConfig& config) {
 	};
 }
 
-bool LevelEditor::find_cursor_selection(Vector2 cursor, Selection* selection) {
-	float shortest = INFINITY;
-
-	for (size_t i = 0; i < all_config_info.size(); i++) {
-		const auto& config = all_config_info[i].ptr;
+bool LevelEditor::is_cursor_hovering_selection(Vector2 cursor) const {
+	for (const auto& selection : selections) {
 		Vector2 small, big;
-		config->bounding_box(small, big);
-		if (!pt_in_rect(cursor, { small.x, small.y, big.x - small.x, big.y - small.y }))
-			continue;
-
-		auto mid = (small + big) / 2;
-		float dist = length(mid - cursor);
-		if (dist < shortest) {
-			selection->index = i;
-			selection->offset = branch_metadatas[i].offset;
-			shortest = dist;
-		}
+		all_config_info[selection.index].ptr->bounding_box(small, big);
+		if (pt_in_rect(cursor, min_max_to_rect(small, big)))
+			return true;
 	}
+	return false;
+}
 
-	return shortest != INFINITY;
+// Actually I think it makes more sense to choose a selection whose depth that is closer to the editor's 
+bool LevelEditor::find_cursor_selection(Vector2 cursor, Selection* selection) {
+	enum SelectionResolution {
+		ClosestMidpoint,
+		ClosestDepth,
+	};
+	switch (ClosestDepth) {
+		case ClosestDepth: {
+			float closest_depth_diff = INFINITY;
+
+			for (size_t i = 0; i < all_config_info.size(); i++) {
+				const auto& config = all_config_info[i].ptr;
+				Vector2 small, big;
+				config->bounding_box(small, big);
+				if (!pt_in_rect(cursor, min_max_to_rect(small, big)))
+					continue;
+
+				const float depth_diff = abs(config->depth - cam_depth);
+
+				if (depth_diff < closest_depth_diff) {
+					selection->index = i;
+					selection->offset = branch_metadatas[i].offset;
+					closest_depth_diff = depth_diff;
+				}
+			}
+
+			return closest_depth_diff != INFINITY;
+		}
+		break;
+		case ClosestMidpoint: {
+			float shortest = INFINITY;
+
+			for (size_t i = 0; i < all_config_info.size(); i++) {
+				const auto& config = all_config_info[i].ptr;
+				Vector2 small, big;
+				config->bounding_box(small, big);
+				if (!pt_in_rect(cursor, min_max_to_rect(small, big)))
+					continue;
+
+				auto mid = (small + big) / 2;
+				float dist = length(mid - cursor);
+				if (dist < shortest) {
+					selection->index = i;
+					selection->offset = branch_metadatas[i].offset;
+					shortest = dist;
+				}
+			}
+
+			return shortest != INFINITY;
+		}
+		break;
+	}
 }
 
 void LevelEditor::tree_single_select(Vector2 mouse_pos) {
@@ -628,10 +777,24 @@ void LevelEditor::tree_multi_select(Vector2 mouse_pos) {
 		invalidate_selections();
 }
 
-void LevelEditor::branch_verts_from_metadata(size_t config_index) {
-	auto& config = all_config_info[config_index].ptr;
-	auto& meta = branch_metadatas[(size_t) config->id];
+void LevelEditor::branch_verts_from_metadata(TendrilConfig& config, const BranchMetadata& meta) {
+	const float rotation = snap(meta.rotation, 2.0 * PI / 30);
 
+	const auto& origin = config.original_branches[0].back();
+	for (size_t i = 0; i < config.original_branches.size(); i++) {
+		auto& sel_verts = config.branches[i].verts;
+		const auto& verts = config.original_branches[i].verts;
+		for (size_t j = 0; j < verts.size(); j++)
+			sel_verts[j] = rotate(origin, verts[j], rotation) + meta.offset;
+	}
+}
+
+void LevelEditor::branch_verts_from_metadata(size_t config_index) {
+	auto& config = *all_config_info[config_index].ptr;
+	auto& meta = branch_metadatas[(size_t) config.id];
+	branch_verts_from_metadata(config, meta);
+
+	/*
 	const float rotation = snap(meta.rotation, 2.0 * PI / 30);
 
 	const auto& origin = config->original_branches[0].back();
@@ -641,23 +804,25 @@ void LevelEditor::branch_verts_from_metadata(size_t config_index) {
 		for (size_t j = 0; j < verts.size(); j++)
 			sel_verts[j] = rotate(origin, verts[j], rotation) + meta.offset;
 	}
+	*/
 }
 
-bool LevelEditor::contains_selection(size_t index) const {
-	return std::find_if(selections.begin(), selections.end(), 
-		[&](auto& sel) {
-			return sel.index == index;
-		}) != selections.end();
+bool LevelEditor::contains_selection(size_t index) const { 
+	for (const auto& selection : selections) {
+		if (selection.index == index) {
+			return true;
+		}
+	}
+	return false;
 }
 
 int LevelEditor::from_selected_by_id(TendrilConfig::Id config_id) const {
-	const auto& search = std::find_if(selections.begin(), selections.end(),
-		[&](auto& sel) {
-			return all_config_info[sel.index].ptr->id == config_id;
-		});
-	if (search == selections.end())
-		return -1;
-	return search->index;
+	for (const auto& selection : selections) {
+		const auto& id = all_config_info[selection.index].ptr->id;
+		if (id == config_id)
+			return selection.index;
+	}
+	return -1;
 }
 
 void LevelEditor::delete_config(size_t config_index) {

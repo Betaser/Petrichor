@@ -1,64 +1,11 @@
 #include <cstdio>
 #include <math.h>
 #include <format>
-#include <print>
 
 #include "constants.cpp"
 #include "mylib.hpp"
 
-// Maybe I can just use an arena for my memory allocations?
-// But destructor of more complex than PODs must be "trivially destructable"
-// https://medium.com/@sgn00/high-performance-memory-management-arena-allocators-c685c81ee338
-struct ArenaAllocator;
-struct ArenaAllocator {
-	// Clearly a bad way to do it
-	char mempool[10] { 0 };
-	void* ptr = &mempool;
-
-	ArenaAllocator() {}
-
-	template <typename T> 
-	T* push() {
-		const size_t sz = sizeof(T);
-		if ((size_t) ptr + sz > (size_t) &mempool + sizeof(mempool)) {
-			std::println("out of memory");
-			return nullptr;
-		}
-		T* p = (T*) ptr;
-		ptr = (void*) ((size_t) ptr + sz);
-
-		return p;
-	}
-
-	void reset() {
-		ptr = &mempool;
-	}
-
-	static void test() {
-		ArenaAllocator arena;
-
-		float* f = make_float(&arena, 9);
-		std::println("f after being set: {}", *f);
-		float* f2 = make_float(&arena, 21);
-		std::println("f2 after being set: {}", *f2);
-		float* f3 = make_float(&arena, 22);
-		std::println("f3 is null {}", f3 == nullptr);
-
-		arena.reset();
-		f3 = make_float(&arena, 22);
-		std::println("f3 is null {}", f3 == nullptr);
-	}
-
-	typedef ArenaAllocator* const Arena;
-	private:
-	static float* make_float(Arena arena, float val) {
-		float* f = arena->push<float>();
-		if (f == nullptr)
-			return nullptr;
-		*f = val;
-		return f;
-	}
-};
+// An ArenaAllocator idea could be made, referenced hexmerge game for inspiration.
 
 void unload_shader(ShaderWithCheck& shader_with) {
 	shader_with.load_unloads--;
@@ -208,7 +155,7 @@ Vector3 cross(const Vector3& a, const Vector3& b) {
 float dist_pt_from_line(const Vector2& pt, const std::array<const Vector2, 2>& line) {
 	const Vector2 to_point = line[0] - pt;
 	const Vector2 out_v = perp_rhr(line[1] - line[0]);
-	return std::abs(dot(to_point, out_v) / length(out_v));
+	return abs(dot(to_point, out_v) / length(out_v));
 }
 
 bool pt_in_polygon(const Vector2& pt, const std::vector<Vector2>& polygon) {
@@ -318,6 +265,15 @@ Vector2 rel_dir(const Vector2& v, const Vector2& origin_v) {
 
 std::string to_str(const Vector2& v, const int decimal_pts) {
 	return std::format("({:.{}f}, {:.{}f})", v.x, decimal_pts, v.y, decimal_pts);
+}
+
+Rectangle min_max_to_rect(const Vector2& min_boundary, const Vector2& max_boundary) {
+	return {
+		min_boundary.x,
+		min_boundary.y,
+		max_boundary.x - min_boundary.x,
+		max_boundary.y - min_boundary.y
+	};
 }
 
 bool pt_in_rect(const Vector2& pt, const Rectangle& rect) {

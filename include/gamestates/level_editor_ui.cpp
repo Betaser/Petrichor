@@ -255,6 +255,28 @@ void LevelEditor::initialize_ui(Game& game) {
 	// Two tools for your left mouse click to be doing; either placing a tendril config or placing a tree trunk segment
 	{
 		// Rn we just make the bounds be something random
+		struct Config {
+			std::string text;
+			Color base_color;
+			Color hovered_color;
+		};
+		const std::vector<Config> TOOL_CONFIGS = {
+			{
+				"Tendril Config",
+				RED,
+				ColorLerp(RED, YELLOW, 0.6)
+			},
+			{
+				"Tree Trunk",
+				ORANGE,
+				ColorLerp(ORANGE, YELLOW, 0.5)
+			},
+			{
+				"Move Selection",
+				GREEN,
+				ColorLerp(GREEN, YELLOW, 0.5)
+			}
+		};
 		for (size_t i = 0; i < MouseToolUsed::MOUSE_TOOL_SIZE; i++) {
 			Rectangle bounds {
 				300 + (float) i * 120,
@@ -263,28 +285,31 @@ void LevelEditor::initialize_ui(Game& game) {
 				100
 			};
 			MouseToolUsed::ToolType btn_tool_type = (MouseToolUsed::ToolType) i;
-			Color btn_color = RED;
-			std::string btn_text = "Tree trunk/config idk";
-			Color btn_hover_color = ColorLerp(YELLOW, BLACK, 0.4);
+
+			const auto [text, base_color, hover_color] = TOOL_CONFIGS[i];
 			auto mouse_tool_btn = new Button<MouseToolState>(
 				{ &mouse_tool_used, btn_tool_type },
 				bounds,
-				btn_text,
+				text,
 				[](auto& _) {},
 				[](auto& self) {
 					self.data.used->type = self.data.tool_type;
+					std::println("Ran mousetoolbtn onpress, tool_type is now {}", (int) self.data.used->type);
 				},
-				btn_color,
-				btn_hover_color,
+				base_color,
+				hover_color,
 				WHITE);
 
-			mouse_tool_btn->render_fn = [](auto ui_element) {
+			mouse_tool_btn->render_fn = [&game, &hc = hover_color](auto ui_element) {
 				auto& self = *dynamic_cast<Button<MouseToolState>*>(ui_element);
 				self.hovered = self.hovered || self.data.used->type == self.data.tool_type;
+				// Idk it needs some pop, so let's make the hover_color waver
+				self.hover_color = ColorLerp(hc, YELLOW, 0.5 + 0.5 * sin(game.overall_time * 2 * PI));
+
 				Button<MouseToolState>::render_button(ui_element);
 			};
 
-			mouse_tool_used.names[i] = ui_elem_manager.add(mouse_tool_btn, btn_text);
+			mouse_tool_used.names[i] = ui_elem_manager.add(mouse_tool_btn, text);
 		}
 	}
 

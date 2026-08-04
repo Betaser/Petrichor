@@ -41,8 +41,9 @@ int main() {
 		// Load tree tex once
 		load_texture(Tree::branch_sampling_tex, "assets/tree_texture.png");
 
-		LevelEditor level_editor(game);
+		// Make tree first, cause level_editor reinit uses it.
 		game.make_tree();
+		LevelEditor level_editor(game);
 		auto& tree = game.trees.back();
 		Rand rand(69);
 		level_editor.make_initialized_config(*tree, rand, { {}, 0 });

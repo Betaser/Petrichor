@@ -100,6 +100,7 @@ struct LevelEditor {
 
 	void reinit(Game& game);
 	void make_initialized_config(Tree& tree, const Rand& rand, const BranchMetadata& metadata);
+	void randomize_tendrils(TendrilConfig& config, const BranchMetadata& meta);
 	void randomize_tendrils(size_t config_index);
 	void update_selected_verts();
 	void init_selection_texture();
@@ -143,11 +144,14 @@ struct LevelEditor {
 		enum ToolType {
 			PlaceTendrilConfig,
 			PlaceTreeTrunk,
+			// Selection are prioritized
+			SelectionCentric,
 			MOUSE_TOOL_SIZE
 		};
 		std::array<std::string, MOUSE_TOOL_SIZE> names;
 
-		ToolType type = PlaceTendrilConfig;
+		// A sensible default.
+		ToolType type = SelectionCentric;
 	};
 
 	struct MouseToolState {
@@ -165,7 +169,9 @@ struct LevelEditor {
 	float min_cam_depth;
 	float max_cam_depth;
 	std::vector<ConfigInfo> all_config_info;
+	std::unique_ptr<TendrilConfig> mouse_tool_preview_config = nullptr;
 	MouseToolUsed mouse_tool_used;
+	bool mouse_tool_permits_selection_movement = false;
 
 	Rectangle get_cam_depth(const int screen_width) const;
 	void render_cam_depth(Game& game) const;
@@ -177,9 +183,11 @@ struct LevelEditor {
 	bool get_active(View view) const;
 	// Does a full recalculation for every tree, but eh.
 	Rectangle update_config_for_depth_ui(const TendrilConfig& config);
+	bool is_cursor_hovering_selection(Vector2 cursor) const;
 	bool find_cursor_selection(Vector2 cursor, Selection* selection);
 	void tree_single_select(Vector2 mouse_pos);
 	void tree_multi_select(Vector2 mouse_pos);
+	void branch_verts_from_metadata(TendrilConfig& config, const BranchMetadata& meta);
 	void branch_verts_from_metadata(size_t config_index);
 	bool contains_selection(size_t index) const;
 	int from_selected_by_id(TendrilConfig::Id config_id) const;
