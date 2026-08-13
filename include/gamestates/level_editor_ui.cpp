@@ -1,5 +1,4 @@
 #include "level_editor.hpp"
-#include "../scene_elements/region.cpp"
 
 using ViewSelector = LevelEditor::ViewSelector;
 
@@ -300,7 +299,8 @@ void LevelEditor::initialize_ui(Game& game) {
 				hover_color,
 				WHITE);
 
-			mouse_tool_btn->render_fn = [&game, &hc = hover_color](auto ui_element) {
+			// FIXED: hc = hover_color instead of &hc = hover_color
+			mouse_tool_btn->render_fn = [&game, hc = hover_color](auto ui_element) {
 				auto& self = *dynamic_cast<Button<MouseToolState>*>(ui_element);
 				self.hovered = self.hovered || self.data.used->type == self.data.tool_type;
 				// Idk it needs some pop, so let's make the hover_color waver
