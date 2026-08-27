@@ -5,22 +5,29 @@
 #include <random>
 #include <array>
 #include <raylib.h>
+#include <functional>
+
+struct DeferThis {
+	std::vector<std::function<void()>> to_run;
+
+	~DeferThis();
+
+	DeferThis& and_this(std::function<void()> run);
+};
 
 // Typedef it with shader if we are sure there's no issues
 struct ShaderWithCheck : Shader {
 	int load_unloads = 0;
+	void unload_shader(); 
+	void load_shader(const char* filename);
 };
-
-void unload_shader(ShaderWithCheck& shader_with); 
-void load_shader(ShaderWithCheck& shader_with, const char* filename);
 
 struct TextureWithCheck : Texture2D {
 	int load_unloads = 0;
+	void unload_texture();
+	void load_texture(const char* filename);
+	void load_texture_from_image(Image image);
 };
-
-void unload_texture(TextureWithCheck& texture_with);
-void load_texture(TextureWithCheck& texture_with, const char* filename);
-void load_texture_from_image(TextureWithCheck& texture_with, Image image);
 
 struct Vector2I {
 	int x = 0;
@@ -98,6 +105,9 @@ struct PosDims {
 };
 PosDims to_pos_dims(const Rectangle& rect);
 Vector4 to_vec4(const Color& color);
+
+template <typename T>
+T get_or(std::optional<T> opt, std::function<T()> supplier);
 
 // Math, non vector
 float snap(const float f, const float by);

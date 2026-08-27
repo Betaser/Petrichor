@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <bitset>
+#include <optional>
 
 #include "../globals/game.hpp"
 #include "../scene_elements/button.hpp"
@@ -160,6 +161,8 @@ struct LevelEditor {
 		ToolType type = SelectionCentric;
 	};
 
+	Button<std::optional<Vector2>>* pivot_point_button;
+	bool last_selecting = false;
 	ExtraButtonManager extra_button_manager;
 	Button<LevelEditor*>* debug_button;
 	// Don't need to have this around tbh, should be part of the ui_elem_manager
@@ -200,6 +203,7 @@ struct LevelEditor {
 	void initialize_extra_buttons(Game& game, int screen_width, std::function<float(float)> adjust_t, ColorStateLerpFn color_lerp);
 	Button<DepthState>* make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id);
 	std::vector<size_t> calc_depth_indices() const;
+	Vector2 calc_default_pivot_point(Game& game);
 };
 
 #endif

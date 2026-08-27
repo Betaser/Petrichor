@@ -319,6 +319,27 @@ void LevelEditor::initialize_ui(Game& game) {
 
 	// Extra buttons stuff 
 	initialize_extra_buttons(game, screen_width, adjust_t, color_lerp);
+
+	// Pivot point stuff
+	{
+		Vector2 pos = calc_default_pivot_point(game);
+		auto btn = new Button<std::optional<Vector2>>(
+			pos,
+			to_rect(pos, { 20, 20 }),
+			"",
+			[](auto& _) {},
+			[](auto& _) {
+				std::println("Pivot point selected, TODO: Impl moving it");	
+			},
+			MAGENTA);
+		btn->render_fn = [](UiElement* ui_element) {
+			auto& self = *dynamic_cast<Button<std::optional<Vector2>>*>(ui_element);
+			if (self.data)
+				DrawRectangleRounded(self.bounds, 0.2, 1, self.color);
+		};
+		pivot_point_button = btn;
+		ui_elem_manager.add(btn, "pivot_point_btn");
+	}
 }
 
 Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle& depth_rect, TendrilConfig::Id config_id) {

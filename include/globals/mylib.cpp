@@ -5,44 +5,53 @@
 #include "constants.cpp"
 #include "mylib.hpp"
 
+DeferThis::~DeferThis() {
+	for (int i = to_run.size() - 1; i >= 0; i--)
+		to_run[i]();
+}
+
 // An ArenaAllocator idea could be made, referenced hexmerge game for inspiration.
-
-void unload_shader(ShaderWithCheck& shader_with) {
-	shader_with.load_unloads--;
-	UnloadShader(shader_with);
+DeferThis& DeferThis::and_this(std::function<void()> run) {
+	to_run.push_back(run);
+	return *this;
 }
 
-void load_shader(ShaderWithCheck& shader_with, const char* filename) {
-	shader_with.load_unloads++;
+void ShaderWithCheck::unload_shader() {
+	load_unloads--;
+	UnloadShader(*this);
+}
+
+void ShaderWithCheck::load_shader(const char* filename) {
+	load_unloads++;
 	Shader shader = LoadShader(0, TextFormat(filename, Constants::glsl_version));
-	// Sus
-	shader_with.id = shader.id;
-	shader_with.locs = shader.locs;
+	// Sure I guess that works
+	id = shader.id;
+	locs = shader.locs;
 }
 
-void unload_texture(TextureWithCheck& texture_with) {
-	texture_with.load_unloads--;
-	UnloadTexture(texture_with);
+void TextureWithCheck::unload_texture() {
+	load_unloads--;
+	UnloadTexture(*this);
 }
 
-void load_texture(TextureWithCheck& texture_with, const char* filename) {
-	texture_with.load_unloads++;
+void TextureWithCheck::load_texture(const char* filename) {
+	load_unloads++;
 	Texture2D tex = LoadTexture(filename);
-	texture_with.format = tex.format;
-	texture_with.height = tex.height;
-	texture_with.id = tex.id;
-	texture_with.mipmaps = tex.mipmaps;
-	texture_with.width = tex.width;
+	format = tex.format;
+	height = tex.height;
+	id = tex.id;
+	mipmaps = tex.mipmaps;
+	width = tex.width;
 }
 
-void load_texture_from_image(TextureWithCheck& texture_with, Image image) {
-	texture_with.load_unloads++;
+void TextureWithCheck::load_texture_from_image(Image image) {
+	load_unloads++;
 	Texture2D tex = LoadTextureFromImage(image);
-	texture_with.format = tex.format;
-	texture_with.height = tex.height;
-	texture_with.id = tex.id;
-	texture_with.mipmaps = tex.mipmaps;
-	texture_with.width = tex.width;
+	format = tex.format;
+	height = tex.height;
+	id = tex.id;
+	mipmaps = tex.mipmaps;
+	width = tex.width;
 }
 
 Vector2I::Vector2I(Vector2 v) {
@@ -326,6 +335,7 @@ PosDims to_pos_dims(const Rectangle& rect) {
 		.dims = { rect.width, rect.height }
 	};
 }
+
 Vector4 to_vec4(const Color& color) {
 	return {
 		.x = (float) color.r / 255,
@@ -333,6 +343,13 @@ Vector4 to_vec4(const Color& color) {
 		.z = (float) color.b / 255,
 		.w = (float) color.a / 255
 	};
+}
+
+template <typename T>
+T get_or(std::optional<T> opt, std::function<T()> supplier) {
+	if (!opt)
+		return supplier();
+	return opt.value();
 }
 
 float snap(const float f, const float by) {

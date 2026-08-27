@@ -44,7 +44,7 @@ TendrilConfig::TendrilConfig(Id id, const Rand& rand, Tree* tree_owner) : rand(r
 	this->tree_owner = tree_owner;
 	std::println("init tendril config with id {}", (size_t) id);
 	ShaderWithCheck tendril_shader;
-	load_shader(tendril_shader, "assets/tree_tendril.fs");
+	tendril_shader.load_shader("assets/tree_tendril.fs");
 	init_gfx(tendril_shader);
 
 	// This resolution actually matters. Lower looks ps1-like. It seems like 1000x1000 (1000, 1000) is practically perfect, but too slow to render more than like 5 branches at.
@@ -55,7 +55,7 @@ TendrilConfig::~TendrilConfig() {
 	std::println("deinit tendril config");
 	unload_textures();
 	std::println("unload branch shader!");
-	unload_shader(branch_shader);
+	branch_shader.unload_shader();
 	std::println("branch shader w/ id {} loads/unloads {}", branch_shader.id, branch_shader.load_unloads);
 
 	std::println("tendril config blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
@@ -83,7 +83,7 @@ void TendrilConfig::on_updated_branch() {
 
 void TendrilConfig::unload_textures() {
 	std::println("unload texs");
-	unload_texture(blank_tex);
+	blank_tex.unload_texture();
 }
 
 void TendrilConfig::bounding_box(Vector2& small, Vector2& big) {
@@ -106,7 +106,7 @@ void TendrilConfig::init_texture() {
 	update_texture();
 
 	auto blank = GenImageColor(blank_tex_dims.x, blank_tex_dims.y, BLANK);
-	load_texture_from_image(blank_tex, blank);
+	blank_tex.load_texture_from_image(blank);
 	UnloadImage(blank);
 
 	int loc = GetShaderLocation(branch_shader, "tex");
@@ -440,20 +440,20 @@ bool TendrilConfig::past_me(const Petra& petra, const float epsilon) const {
 }
 
 Tree::Tree() {
-	load_shader(trunk_shader, "assets/tree_trunk.fs");
+	trunk_shader.load_shader("assets/tree_trunk.fs");
 	std::println("init tree");
 	auto blank = GenImageColor(blank_tex_dims.x, blank_tex_dims.y, BLANK);
-	load_texture_from_image(blank_tex, blank);
+	blank_tex.load_texture_from_image(blank);
 	UnloadImage(blank);
 }
 
 Tree::~Tree() {
 	std::println("deinit tree");
 	std::println("unload texs");
-	unload_texture(blank_tex);
+	blank_tex.unload_texture();
 	std::println("tendril config blank tex w/ id {} loads/unloads {}", blank_tex.id, blank_tex.load_unloads);
 	std::println("unload trunk shader!");
-	unload_shader(trunk_shader);
+	trunk_shader.unload_shader();
 	std::println("trunk shader w/ id {} loads/unloads {}", trunk_shader.id, trunk_shader.load_unloads);
 }
 

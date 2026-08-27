@@ -38,14 +38,14 @@ LevelEditor::LevelEditor(Game& game) {
 	view_selector.screen_height = &game.screen_height;
 
 	init_selection_texture();
-	load_shader(select_shader, "assets/select.fs");
+	select_shader.load_shader("assets/select.fs");
 	reinit(game);
 }
 
 LevelEditor::~LevelEditor() {
 	std::println("deinit level editor");
-	unload_texture(selected_tex);
-	unload_shader(select_shader);
+	selected_tex.unload_texture();
+	select_shader.unload_shader();
 	std::println("select shader w/ id {} loads/unloads {}", select_shader.id, select_shader.load_unloads);
 	std::println("selected_tex w/ id {} loads/unloads {}", selected_tex.id, selected_tex.load_unloads);
 }
@@ -79,7 +79,8 @@ void LevelEditor::reinit(Game& game) {
 	time = 0;
 	initialize_ui(game);
 
-	invalidate_selections();	
+	invalidate_selections();
+
 	std::println("reinit level editor");
 }
 
@@ -161,17 +162,21 @@ void LevelEditor::init_selection_texture() {
 	std::println("init selection texture");
 
 	auto blank = GenImageColor(10, 10, BLANK);
-	load_texture_from_image(selected_tex, blank);
+	selected_tex.load_texture_from_image(blank);
 	UnloadImage(blank);
 }
 
 void LevelEditor::update(Game& game) {
+	DeferThis defer;
+
 	time += GetFrameTime();
 
 	const auto mouse_pos = GetMousePosition();
 	auto ui_elem_manager_view = ui_elem_manager.update(mouse_pos);
 
 	const bool selecting = is_selecting();
+	defer.and_this([&]() { last_selecting = selecting; });
+
 	const bool last_ui_hovered = ui_hovered;
 	ui_hovered = ui_elem_manager_view.any_hovered();	
 	const bool using_ui = ui_elem_manager_view.any_in_use();
@@ -197,6 +202,9 @@ void LevelEditor::update(Game& game) {
 
 		for (const auto& btn : mouse_tool_used.buttons)
 			btn->state.hit = true;
+
+		if (pivot_point_button->data)
+			pivot_point_button->state.hit = true;
 
 		extra_button_manager.set_hit_state_true();
 	}
@@ -325,9 +333,20 @@ void LevelEditor::update(Game& game) {
 	}
 
 	if (selecting) {
-		// Show an moveable pivot point that defaults to the center of the screen.
-		// auto pivot_point_button = Button<
-		// ui_elem_manager.add(pivot_point_button);
+		// Then we make sure to create a pivot point.
+		if (!last_selecting) {
+			// Clearly this involves some weird lifetimes causing a bug, ofc analyze this in wsl.
+			auto pivot_point = get_or<Vector2>(
+				pivot_point_button->data, 
+				[&]() { 
+					auto pivot_point = calc_default_pivot_point(game);
+					pivot_point_button->data = pivot_point;
+					return pivot_point;
+				});
+
+			// Idk do other stuff now.
+			(void) pivot_point;
+		}
 
 		// Deletion, should be tough
 		if (IsKeyPressed(KEY_BACKSPACE)) {
@@ -393,6 +412,10 @@ void LevelEditor::update(Game& game) {
 				tree_tex_bounds += select_extra_bounds;
 			}
 		}
+	}
+	else {
+		// If we stop selecting, destroy the pivot point data.
+		pivot_point_button->data = std::nullopt;
 	}
 
 	// Use mouse scroll wheel to control depth
@@ -832,4 +855,9 @@ std::vector<size_t> LevelEditor::calc_depth_indices() const {
 	}
 
 	return depth_indices;
+}
+
+Vector2 LevelEditor::calc_default_pivot_point(Game& game) {
+	Vector2 screen_center { (float) game.screen_width / 2, (float) game.screen_height / 2 };
+	return screen_center;
 }

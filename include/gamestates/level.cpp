@@ -240,10 +240,10 @@ Level::Level() {
 	petra.depth = -100;
 
 	auto img = GenImageColor(10, 10, BLANK);
-	load_texture_from_image(fog_texture, img);
+	fog_texture.load_texture_from_image(img);
 	UnloadImage(img);
-	load_shader(fog_shader, "assets/ambient_fog.fs");
-	load_shader(tree_foggy_blur_shader, "assets/tree_foggy_blur.fs");
+	fog_shader.load_shader("assets/ambient_fog.fs");
+	tree_foggy_blur_shader.load_shader("assets/tree_foggy_blur.fs");
 
 	dome = {
 		.pos = {},
@@ -265,11 +265,11 @@ void Level::init(int screen_width, int screen_height) {
 }
 
 Level::~Level() {
-	unload_texture(fog_texture);
+	fog_texture.unload_texture();
 	std::println("fog texture loads/unloads {}", fog_texture.load_unloads);
-	unload_shader(fog_shader);
+	fog_shader.unload_shader();
 	std::println("ambient fog shader loads/unloads {}", fog_shader.load_unloads);
-	unload_shader(tree_foggy_blur_shader);
+	tree_foggy_blur_shader.unload_shader();
 	std::println("tree foggy blur shader loads/unloads {}", tree_foggy_blur_shader.load_unloads);
 }
 

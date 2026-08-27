@@ -39,7 +39,7 @@ int main() {
 		game._game = &game;
 
 		// Load tree tex once
-		load_texture(Tree::branch_sampling_tex, "assets/tree_texture.png");
+		Tree::branch_sampling_tex.load_texture("assets/tree_texture.png");
 
 		// Make tree first, cause level_editor reinit uses it.
 		game.make_tree();
@@ -136,7 +136,7 @@ int main() {
 		// do a bad, this is indeed caught by ubuntu -fsanitize=leak
 		// void* volatile blah = malloc(1);
 		// (void) blah;
-		unload_texture(Tree::branch_sampling_tex);
+		Tree::branch_sampling_tex.unload_texture();
 
 		std::println("branch sampling tex w/ id {} loads/unloads {}", Tree::branch_sampling_tex.id, Tree::branch_sampling_tex.load_unloads);
 	}
