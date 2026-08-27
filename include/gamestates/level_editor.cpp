@@ -10,7 +10,7 @@
 #include "../globals/constants.cpp"
 
 
-void LevelEditor::ExtraButton::set_active_extra_button_group(ExtraButtonState button_state) {
+void LevelEditor::ExtraButtonManager::set_active_extra_button_group(ExtraButtonState button_state) {
 	active_state = button_state;
 	for (auto state = (ExtraButtonState) 0; 
 		state < EXTRA_SIZE; 
@@ -24,7 +24,7 @@ void LevelEditor::ExtraButton::set_active_extra_button_group(ExtraButtonState bu
 	owner->ui_elem_manager.set_active(region_name, button_state != None);
 }
 
-void LevelEditor::ExtraButton::set_hit_state_true() {
+void LevelEditor::ExtraButtonManager::set_hit_state_true() {
 	const auto& active_group = extra_state_to_group[active_state];
 	for (const auto& name : active_group.names) {
 		std::println("reinterpret {} as Button<nullptr_t>", name);
@@ -149,22 +149,6 @@ void LevelEditor::randomize_tendrils(size_t config_index) {
 	const auto& meta = branch_metadatas[(size_t) config.id];
 
 	randomize_tendrils(config, meta);
-
-	/*
-	// Try using randomly generated tendrils too
-	const Vector2 start_location { 100, 100 };
-
-	auto structured_branches = config.gen_structured_branches(400, 20, 1.2, 0.1, start_location);
-	config.branches = Tree::branches_from_structured_branches(structured_branches);
-	config.structured_branches = structured_branches;
-
-	branch_metadatas[(size_t) config.id] = BranchMetadata(meta.offset, meta.rotation);
-	config.on_updated_branch();
-
-	branch_verts_from_metadata(config_index);
-
-	config.update_texture();
-	*/
 }
 
 void LevelEditor::update_selected_verts() {
@@ -193,7 +177,6 @@ void LevelEditor::update(Game& game) {
 	const bool using_ui = ui_elem_manager_view.any_in_use();
 
 	// Let's test that it fails.
-	auto debug_button = ui_elem_manager.get<Button<LevelEditor*>>(debug_btn_str);
 
 	// Right click to select, chooses closest tree
 	if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
@@ -201,7 +184,7 @@ void LevelEditor::update(Game& game) {
 			tree_multi_select(mouse_pos);
 		else 
 			tree_single_select(mouse_pos);
-		extra_button.set_active_extra_button_group(selections.size() > 1
+		extra_button_manager.set_active_extra_button_group(selections.size() > 1
 			? OnMultipleSelected
 			: None);
 	}
@@ -209,13 +192,13 @@ void LevelEditor::update(Game& game) {
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		debug_button->state.hit = true;
 
-		for (const auto& name : view_button_names)
-			ui_elem_manager.get<Button<ViewSelectorState>>(name)->state.hit = true;
+		for (const auto& btn : view_buttons)
+			btn->state.hit = true;
 
-		for (const auto& name : mouse_tool_used.names)
-			ui_elem_manager.get<Button<MouseToolState>>(name)->state.hit = true;
+		for (const auto& btn : mouse_tool_used.buttons)
+			btn->state.hit = true;
 
-		extra_button.set_hit_state_true();
+		extra_button_manager.set_hit_state_true();
 	}
 
 	// New addition, do something depending on what the MouseToolState::ToolUsed is.
@@ -225,7 +208,7 @@ void LevelEditor::update(Game& game) {
 		mouse_tool_can_place = false;
 
 	switch (mouse_tool_used.type) {
-		case MouseToolUsed::PlaceTendrilConfig: {
+		case MouseTool::PlaceTendrilConfig: {
 			// If you left click and your mouse is inside of the bounds of a selected item, you can move as normal as you hold down left click.
 			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
 				mouse_tool_permits_selection_movement = cursor_hovering_selection;
@@ -266,20 +249,20 @@ void LevelEditor::update(Game& game) {
 			}
 		}
 		break;
-		case MouseToolUsed::PlaceTreeTrunk: {
+		case MouseTool::PlaceTreeTrunk: {
 			std::println("TODO: Place tree trunk down");
 			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && mouse_tool_can_place) {
 				// Similar to PlaceTendrilConfig but place a tree trunk at the mouse location
 			}
 		}
 		break;
-		case MouseToolUsed::SelectionCentric: {
+		case MouseTool::SelectionCentric: {
 			// This mode means left click does nothing at all.
 			mouse_tool_permits_selection_movement = true;
 			// Preview a tree's selections when you hover over it
 		}
 		break;
-		case MouseToolUsed::MOUSE_TOOL_SIZE: break;
+		case MouseTool::MOUSE_TOOL_SIZE: break;
 	}
 
 	// Yeah this looks weird but we use hit + hovered to do logic.
@@ -342,6 +325,10 @@ void LevelEditor::update(Game& game) {
 	}
 
 	if (selecting) {
+		// Show an moveable pivot point that defaults to the center of the screen.
+		// auto pivot_point_button = Button<
+		// ui_elem_manager.add(pivot_point_button);
+
 		// Deletion, should be tough
 		if (IsKeyPressed(KEY_BACKSPACE)) {
 			for (auto& [selected_index, _] : selections) {
@@ -537,7 +524,7 @@ void LevelEditor::render(Game& game) const {
 	ui_elem_manager.render();
 
 	// Preview shall have some fricken look.
-	if (mouse_tool_used.type == MouseToolUsed::PlaceTendrilConfig && 
+	if (mouse_tool_used.type == MouseTool::PlaceTendrilConfig && 
 		!is_cursor_hovering_selection(GetMousePosition())) {
 		mouse_tool_preview_config->level_editor_render({
 			.finishing_alpha = 0.2,
@@ -565,7 +552,7 @@ void LevelEditor::render(Game& game) const {
 
 void LevelEditor::invalidate_selections() {
 	selections.clear();
-	extra_button.set_active_extra_button_group(None);
+	extra_button_manager.set_active_extra_button_group(None);
 }
 
 void LevelEditor::duplicate_selected_tendril() {
@@ -793,18 +780,6 @@ void LevelEditor::branch_verts_from_metadata(size_t config_index) {
 	auto& config = *all_config_info[config_index].ptr;
 	auto& meta = branch_metadatas[(size_t) config.id];
 	branch_verts_from_metadata(config, meta);
-
-	/*
-	const float rotation = snap(meta.rotation, 2.0 * PI / 30);
-
-	const auto& origin = config->original_branches[0].back();
-	for (size_t i = 0; i < config->original_branches.size(); i++) {
-		auto& sel_verts = config->branches[i].verts;
-		const auto& verts = config->original_branches[i].verts;
-		for (size_t j = 0; j < verts.size(); j++)
-			sel_verts[j] = rotate(origin, verts[j], rotation) + meta.offset;
-	}
-	*/
 }
 
 bool LevelEditor::contains_selection(size_t index) const { 

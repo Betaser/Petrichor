@@ -28,8 +28,8 @@ void ViewSelector::iterate_views(std::function<void(const LevelEditor::View, Rec
 }
 
 void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::function<float(float)> adjust_t, ColorStateLerpFn color_lerp) {
-	extra_button.owner = this;
-	Region<ColorState>* extra_buttons_region = nullptr;
+	extra_button_manager.owner = this;
+	Region<ColorState>* extra_button_region = nullptr;
 
 	{
 		Color extra_buttons_bg_color {
@@ -57,8 +57,8 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 			DrawRectangleRec(ui_element->bounds, ui_element->color);
 		};
 
-		extra_button.region_name = ui_elem_manager.add(region, "generic_region");
-		extra_buttons_region = ui_elem_manager.get<Region<ColorState>>(extra_button.region_name);
+		extra_button_manager.region_name = ui_elem_manager.add(region, "generic_region");
+		extra_button_region = region;
 	}
 
 	auto make_centered_rect = [](Vector2 dims, Rectangle ref_rect) {
@@ -76,7 +76,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 			&game.level.petra,
 			make_centered_rect(
 				{ 130, 40 },
-				extra_buttons_region->bounds),
+				extra_button_region->bounds),
 			"Center on Petra",
 			[](auto& _) {},
 			[](auto& self) {
@@ -90,7 +90,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 		};
 
 		const auto& name = ui_elem_manager.add(button, "center_petra_btn");
-		extra_button.extra_state_to_group[OnCameraView] = { { name } };
+		extra_button_manager.extra_state_to_group[OnCameraView] = { { name } };
 	}
 
 	// Make merge tendrils button
@@ -99,7 +99,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 			this,
 			make_centered_rect(
 				{ 110, 40 },
-				extra_buttons_region->bounds),
+				extra_button_region->bounds),
 			"Merge tendrils",
 			[](auto& _) {
 				std::println("HOVER merge tendrils");
@@ -125,7 +125,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 					sel_config_info.ptr->tree_owner = kept_tree_addr;
 				}
 
-				self.data->extra_button.set_active_extra_button_group(None);
+				self.data->extra_button_manager.set_active_extra_button_group(None);
 			},
 			GREEN);
 		button->render_fn = [](UiElement* ui_element) {
@@ -135,10 +135,10 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 		};
 
 		const auto& name = ui_elem_manager.add(button, "merge_trees_btn");
-		extra_button.extra_state_to_group[OnMultipleSelected] = { { name } };
+		extra_button_manager.extra_state_to_group[OnMultipleSelected] = { { name } };
 	}
 
-	extra_button.extra_state_to_group[None] = { {} };
+	extra_button_manager.extra_state_to_group[None] = { {} };
 }
 
 void LevelEditor::initialize_ui(Game& game) {
@@ -150,7 +150,7 @@ void LevelEditor::initialize_ui(Game& game) {
 		return t * t;
 	};
 
-	auto debug_btn = new Button<LevelEditor*>(
+	debug_button = new Button<LevelEditor*>(
 		this,
 		to_rect({ (float) screen_width - 190, 110 }, { 80, 80 }),
 		"Show debug keybinds",
@@ -161,7 +161,7 @@ void LevelEditor::initialize_ui(Game& game) {
 			bool& show_instructions = b.data->show_instructions;
 			show_instructions = !show_instructions;
 		});
-	debug_btn_str = ui_elem_manager.add(debug_btn, "debug_btn");
+	ui_elem_manager.add(debug_button, "debug_button");
 
 	auto depth_ui_region = (new Region<ColorState>())->init(
 		0.9,
@@ -247,7 +247,9 @@ void LevelEditor::initialize_ui(Game& game) {
 				DrawText(self.state.text.c_str(), (int) self.bounds.x, (int) self.bounds.y, font_size, vs.font_color);
 			};
 
-			le->view_button_names[vbn_i++] = le->ui_elem_manager.add(vs_btn, "vs_button");
+			// le->view_button_names[vbn_i++] = le->ui_elem_manager.add(vs_btn, "vs_button");
+			le->ui_elem_manager.add(vs_btn, "vs_button");
+			le->view_buttons[vbn_i++] = vs_btn;
 		});
 	}
 	
@@ -276,17 +278,17 @@ void LevelEditor::initialize_ui(Game& game) {
 				ColorLerp(GREEN, YELLOW, 0.5)
 			}
 		};
-		for (size_t i = 0; i < MouseToolUsed::MOUSE_TOOL_SIZE; i++) {
+		for (size_t i = 0; i < MouseTool::MOUSE_TOOL_SIZE; i++) {
 			Rectangle bounds {
 				300 + (float) i * 120,
 				300,
 				100,
 				100
 			};
-			MouseToolUsed::ToolType btn_tool_type = (MouseToolUsed::ToolType) i;
+			MouseTool::ToolType btn_tool_type = (MouseTool::ToolType) i;
 
 			const auto [text, base_color, hover_color] = TOOL_CONFIGS[i];
-			auto mouse_tool_btn = new Button<MouseToolState>(
+			auto mouse_tool_btn = new Button<MouseTool::State>(
 				{ &mouse_tool_used, btn_tool_type },
 				bounds,
 				text,
@@ -301,15 +303,17 @@ void LevelEditor::initialize_ui(Game& game) {
 
 			// FIXED: hc = hover_color instead of &hc = hover_color
 			mouse_tool_btn->render_fn = [&game, hc = hover_color](auto ui_element) {
-				auto& self = *dynamic_cast<Button<MouseToolState>*>(ui_element);
+				auto& self = *dynamic_cast<Button<MouseTool::State>*>(ui_element);
 				self.hovered = self.hovered || self.data.used->type == self.data.tool_type;
 				// Idk it needs some pop, so let's make the hover_color waver
 				self.hover_color = ColorLerp(hc, YELLOW, 0.5 + 0.5 * sin(game.overall_time * 2 * PI));
 
-				Button<MouseToolState>::render_button(ui_element);
+				Button<MouseTool::State>::render_button(ui_element);
 			};
 
-			mouse_tool_used.names[i] = ui_elem_manager.add(mouse_tool_btn, text);
+			// mouse_tool_used.names[i] = ui_elem_manager.add(mouse_tool_btn, text);
+			ui_elem_manager.add(mouse_tool_btn, text);
+			mouse_tool_used.buttons[i] = mouse_tool_btn;
 		}
 	}
 

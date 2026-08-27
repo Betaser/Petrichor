@@ -92,7 +92,9 @@ struct LevelEditor {
 		"Camera Panning",
 		"Focus Trees",
 	};
-	std::array<std::string, SIZE> view_button_names;
+	// Prefer to use normal ptr collections unless using more features of the element manager are desired.
+	// std::array<std::string, SIZE> view_button_names;
+	std::array<Button<ViewSelectorState>*, SIZE> view_buttons;
 	std::bitset<SIZE> views_active { 0 };
 
 	LevelEditor(Game& game);
@@ -118,8 +120,14 @@ struct LevelEditor {
 		EXTRA_SIZE
 	};
 
+	struct ColorState {
+		float last_hover_time;
+		Color hover_color;
+	};
+	using ColorStateLerpFn = std::function<void(Region<ColorState>&, Region<ColorState>::State&, Region<ColorState>::State&, float)>;
+
 	// Initialized while "initialize_ui" runs.
-	struct ExtraButton {
+	struct ExtraButtonManager {
 		ExtraButtonState active_state = None;
 		std::array<UiElementGroup, EXTRA_SIZE> extra_state_to_group;
 		std::string region_name;
@@ -134,13 +142,7 @@ struct LevelEditor {
 		size_t tree_owner_index;
 	};
 
-	struct ColorState {
-		float last_hover_time;
-		Color hover_color;
-	};
-	using ColorStateLerpFn = std::function<void(Region<ColorState>&, Region<ColorState>::State&, Region<ColorState>::State&, float)>;
-
-	struct MouseToolUsed {
+	struct MouseTool {
 		enum ToolType {
 			PlaceTendrilConfig,
 			PlaceTreeTrunk,
@@ -148,19 +150,18 @@ struct LevelEditor {
 			SelectionCentric,
 			MOUSE_TOOL_SIZE
 		};
-		std::array<std::string, MOUSE_TOOL_SIZE> names;
+		struct State {
+			MouseTool* used;
+			MouseTool::ToolType tool_type;
+		};
+		std::array<Button<State>*, MOUSE_TOOL_SIZE> buttons;
 
 		// A sensible default.
 		ToolType type = SelectionCentric;
 	};
 
-	struct MouseToolState {
-		MouseToolUsed* used;
-		MouseToolUsed::ToolType tool_type;
-	};
-
-	ExtraButton extra_button;
-	std::string debug_btn_str;
+	ExtraButtonManager extra_button_manager;
+	Button<LevelEditor*>* debug_button;
 	// Don't need to have this around tbh, should be part of the ui_elem_manager
 	bool show_instructions = false;
 	Vector2 select_extra_bounds { 10, 10 };
@@ -170,7 +171,7 @@ struct LevelEditor {
 	float max_cam_depth;
 	std::vector<ConfigInfo> all_config_info;
 	std::unique_ptr<TendrilConfig> mouse_tool_preview_config = nullptr;
-	MouseToolUsed mouse_tool_used;
+	MouseTool mouse_tool_used;
 	bool mouse_tool_permits_selection_movement = false;
 
 	Rectangle get_cam_depth(const int screen_width) const;
