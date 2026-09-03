@@ -1,4 +1,5 @@
 #include "level_editor.hpp"
+#include "../globals/mylib.hpp"
 
 using ViewSelector = LevelEditor::ViewSelector;
 
@@ -38,7 +39,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 			.b = 65,
 			.a = 55
 		};
-		auto region = (new Region<ColorState>())->init(
+		auto region = new Region<ColorState>(
 			1.2,
 			&time,
 			{
@@ -144,7 +145,7 @@ void LevelEditor::initialize_extra_buttons(Game& game, int screen_width, std::fu
 void LevelEditor::initialize_ui(Game& game) {
 	const int screen_width = game.screen_width;
 	ColorStateLerpFn color_lerp = [](Region<ColorState>& self, Region<ColorState>::State& curr, Region<ColorState>::State& target, float t) {
-		self.color = ColorLerp(target.data.hover_color, curr.data.hover_color, t);
+		self.color = lerp(target.data.hover_color, curr.data.hover_color, t);
 	};
 	auto adjust_t = [](float t) {
 		return t * t;
@@ -163,7 +164,7 @@ void LevelEditor::initialize_ui(Game& game) {
 		});
 	ui_elem_manager.add(debug_button, "debug_button");
 
-	auto depth_ui_region = (new Region<ColorState>())->init(
+	auto depth_ui_region = new Region<ColorState>(
 		0.9,
 		&time,
 		to_rect(depth_ui.top_left, { depth_ui.WIDTH, depth_ui.height }),
@@ -181,7 +182,7 @@ void LevelEditor::initialize_ui(Game& game) {
 
 	// A horz bar at the top of the screen
 	{
-		auto cam_depth_region = (new Region<ColorState>)->init(
+		auto cam_depth_region = new Region<ColorState>(
 			0.9,
 			&time,
 			get_cam_depth(screen_width),
@@ -199,7 +200,7 @@ void LevelEditor::initialize_ui(Game& game) {
 
 	// View selector
 	{
-		auto view_selector_region = (new Region<ColorState>)->init(
+		auto view_selector_region = new Region<ColorState>(
 			0.9,
 			&time,
 			view_selector.bounds(),
@@ -234,7 +235,7 @@ void LevelEditor::initialize_ui(Game& game) {
 					? vs.view_selected_color
 					: vs.view_color;
 				const auto color = self.hovered && !self.data.level_editor->get_active(self.data.view)
-					? ColorLerp(base_color, BLACK, 0.4)
+					? lerp(base_color, BLACK, 0.4)
 					: base_color;
 		
 				DrawRectangleRounded(
@@ -265,17 +266,17 @@ void LevelEditor::initialize_ui(Game& game) {
 			{
 				"Tendril Config",
 				RED,
-				ColorLerp(RED, YELLOW, 0.6)
+				lerp(RED, YELLOW, 0.6)
 			},
 			{
 				"Tree Trunk",
 				ORANGE,
-				ColorLerp(ORANGE, YELLOW, 0.5)
+				lerp(ORANGE, YELLOW, 0.5)
 			},
 			{
 				"Move Selection",
 				GREEN,
-				ColorLerp(GREEN, YELLOW, 0.5)
+				lerp(GREEN, YELLOW, 0.5)
 			}
 		};
 		for (size_t i = 0; i < MouseTool::MOUSE_TOOL_SIZE; i++) {
@@ -306,7 +307,7 @@ void LevelEditor::initialize_ui(Game& game) {
 				auto& self = *dynamic_cast<Button<MouseTool::State>*>(ui_element);
 				self.hovered = self.hovered || self.data.used->type == self.data.tool_type;
 				// Idk it needs some pop, so let's make the hover_color waver
-				self.hover_color = ColorLerp(hc, YELLOW, 0.5 + 0.5 * sin(game.overall_time * 2 * PI));
+				self.hover_color = lerp(hc, YELLOW, 0.5 + 0.5 * sin(game.overall_time * 2 * PI));
 
 				Button<MouseTool::State>::render_button(ui_element);
 			};
@@ -339,6 +340,84 @@ void LevelEditor::initialize_ui(Game& game) {
 		};
 		pivot_point_button = btn;
 		ui_elem_manager.add(btn, "pivot_point_btn");
+	}
+
+	// Hierarchy sidebar stuff
+	{
+		/*
+		double duration,
+		float* time,
+		Rectangle bounds, 
+		const F& lerp_fn,
+		where F = std::function<void(Region<T>&, typename Region<T>::State&, typename Region<T>::State&, float)> lerp_fn;
+		const T& state_data, 
+		const T& idle_state_data, 
+		Color color);
+		 */
+		// Top leftish to bottom leftish
+		const auto stuckout_height = (float) game.screen_height - 100;
+		// Beige
+		const Color stuckout_color { .r = 255, .g = 240, .b = 219, .a = 255 };
+		// Grayer beige that's translucent
+		const Color stowaway_color = lerp(stuckout_color, { .r = 255, .g = 255, .b = 255, .a = 100 }, 0.5);
+
+		using HS = LevelEditor::HierarchyState;
+
+		auto stowed_bounds = to_rect({ 0, 50 }, { 50, stuckout_height * 0.2f });
+		auto stuckout_bounds = to_rect({ 0, 50 }, { 250, stuckout_height });
+
+		auto main_region = new Region<HS>(
+			1.2,
+			&time,
+			stowed_bounds,	
+			[](Region<HS>& self, Region<HS>::State& curr, Region<HS>::State& target, float t) {
+				self.color = lerp(target.data.color, curr.data.color, t);
+				self.bounds.height = lerp(target.data.height, curr.data.height, t);
+			},
+			{ 
+				.status = HS::Status::STOWED_AWAY,
+				.color = stowaway_color,
+				.height = stowed_bounds.height,
+			},
+			{ 
+				.status = HS::Status::STUCK_OUT,
+				.color = stuckout_color,
+				.height = stuckout_height,
+			},
+			stowaway_color);
+		main_region->adjust_t = [](auto t) { return t; };
+		main_region->render_fn = [](auto self) {
+			DrawRectangleRec(self->bounds, self->color);
+		};
+
+		// ui_elem_manager.add(main_region, "hierarchy_main_region");
+
+		// Invisible, and does not change bounds.
+		auto change_status_region = new Region<Rectangle>(
+			1.2,
+			&time,
+			stowed_bounds,
+			[](Region<Rectangle>& self, Region<Rectangle>::State& curr, Region<Rectangle>::State& target, float t) {
+				(void) curr;
+				(void) t;
+				// Instantly change bounds accordingly. 
+				self.bounds = target.data;
+
+				// I really hope there's a better way to code region
+				// so that the API looks the same, but I don't need to do this weirdness.
+				target.last_hovered = true;
+
+				// TODO: Pretend that the main region was touched, which prob requires some rewriting.
+				// Decoupling region activation from a mouse, by involving transitions of the hovered state should be done in the region rewrite (though it might be more applicable to ui_elem_manager.)
+			},
+			stowed_bounds,
+			stuckout_bounds,
+			MAGENTA);
+		change_status_region->render_fn = [](auto self) {
+			DrawRectangleRec(self->bounds, self->color);
+		};
+
+		ui_elem_manager.add(change_status_region, "hierarchy_change_status_region");
 	}
 }
 
@@ -384,11 +463,11 @@ Button<LevelEditor::DepthState>* LevelEditor::make_depth_button(const Rectangle&
 				leftmost + Vector2 { tri_width, -tri_height / 2 },
 				RED);
 
-			color = ColorLerp(self.color, RED, 0.7);
+			color = lerp(self.color, RED, 0.7);
 		}
 
 		if (self.in_use())
-			color = ColorLerp(color, { 0, 90, 150, 170 }, 0.5);
+			color = lerp(color, { 0, 90, 150, 170 }, 0.5);
 		
 		const float SEL_BUFFER = 0.15;
 		Rectangle render_bounds {

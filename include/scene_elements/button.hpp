@@ -66,7 +66,7 @@ struct Button : UiElement {
 		const auto& text_color = self.state.text_color;
 
 		const auto c = self.hovered
-			? ColorLerp(self.color, self.hover_color, 0.4)
+			? lerp(self.color, self.hover_color, 0.4)
 			: self.color;
 
 		DrawRectangle(pos.x, pos.y, dims.x, dims.y, c);

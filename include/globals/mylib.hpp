@@ -97,7 +97,7 @@ Rectangle min_max_to_rect(const Vector2& min_boundary, const Vector2& max_bounda
 bool pt_in_rect(const Vector2& pt, const Rectangle& rect);
 bool is_overlap(const Rectangle& r1, const Rectangle& r2);
 Rectangle full_texture(const Texture2D& tex);
-Color mix(const Color& a, const Color& b, const float amt);
+Color lerp(const Color& a, const Color& b, const float amt);
 void set_shader_value(const ShaderWithCheck& shader_with, const char* uniform_name, const void* data, ShaderUniformDataType uniform_type); 
 Rectangle to_rect(const Vector2& pos, const Vector2& dims);
 struct PosDims {
@@ -111,5 +111,8 @@ T get_or(std::optional<T> opt, std::function<T()> supplier);
 
 // Math, non vector
 float snap(const float f, const float by);
+
+template <typename T>
+T lerp(T start, T end, const float t);
 
 #endif

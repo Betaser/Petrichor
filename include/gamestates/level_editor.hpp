@@ -161,6 +161,16 @@ struct LevelEditor {
 		ToolType type = SelectionCentric;
 	};
 
+	struct HierarchyState {
+		enum Status {
+			STOWED_AWAY,
+			STUCK_OUT
+		};
+		Status status = STUCK_OUT;
+		Color color;
+		float height;
+	};
+
 	Button<std::optional<Vector2>>* pivot_point_button;
 	bool last_selecting = false;
 	ExtraButtonManager extra_button_manager;

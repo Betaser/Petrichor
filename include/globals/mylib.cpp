@@ -307,7 +307,7 @@ Rectangle full_texture(const Texture2D& tex) {
 	};
 }
 
-Color mix(const Color& a, const Color& b, const float amt) {
+Color lerp(const Color& a, const Color& b, const float amt) {
 	return {
 		.r = (unsigned char) (a.r + amt * (b.r - a.r)),
 		.g = (unsigned char) (a.g + amt * (b.g - a.g)),
@@ -354,4 +354,9 @@ T get_or(std::optional<T> opt, std::function<T()> supplier) {
 
 float snap(const float f, const float by) {
 	return (float) int(f / by) * by;
+}
+
+template <typename T>
+T lerp(T start, T end, const float t) {
+	return start + (end - start) * t;
 }

@@ -235,7 +235,6 @@ void LevelEditor::update(Game& game) {
 				const Vector2 offset_mouse_pos { mouse_pos - default_offset };
 
 				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-
 					// I should probably get rid of this really weird offset issue
 					// Location is kinda wonky (by a consistent amount, so whatevs)
 					// Change selection to the recently placed thing.
@@ -468,7 +467,7 @@ void LevelEditor::render(Game& game) const {
 					.a = color.a
 				};
 				float wane = 0.4 * sin(time * 6.0) * wane_speed + 0.4;
-				rgb_tint = to_vec4(ColorLerp(color, highlight, wane));
+				rgb_tint = to_vec4(lerp(color, highlight, wane));
 			}
 		}
 

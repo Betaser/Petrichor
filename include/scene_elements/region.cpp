@@ -1,12 +1,12 @@
 #include "region.hpp"
 
+// Region doesn't work logically I think. I should really change it.
 template <typename T>
-template <typename F>
-Region<T>* Region<T>::init(
+Region<T>::Region(
 	double duration,
 	float* time,
 	Rectangle bounds, 
-	const F& lerp_fn,
+	const auto& lerp_fn,
 	const T& state_data, 
 	const T& idle_state_data, 
 	Color color) {
@@ -26,7 +26,6 @@ Region<T>* Region<T>::init(
 	this->time = time;
 	target = &this->state;
 	this->lerp_fn = lerp_fn;
-	return this;
 }
 
 template <typename T>
@@ -56,8 +55,8 @@ void Region<T>::update() {
 
 	state->last_hovered = hovered;
 
-	auto curr_s = *dynamic_cast<State*>(state.get());
-	auto target_s = *dynamic_cast<State*>(target->get());
+	auto& curr_s = *dynamic_cast<State*>(state.get());
+	auto& target_s = *dynamic_cast<State*>(target->get());
 	lerp_fn(*this, curr_s, target_s, t());
 }
 
